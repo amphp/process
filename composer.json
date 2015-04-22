@@ -1,5 +1,5 @@
 {
-    "name": "amphp/asp",
+    "name": "amphp/process",
     "homepage": "https://github.com/amphp/process",
     "description": "Asynchronous process manager",
     "require": {
