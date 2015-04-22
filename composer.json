@@ -1,0 +1,20 @@
+{
+    "name": "amphp/asp",
+    "homepage": "https://github.com/amphp/process",
+    "description": "Asynchronous process manager",
+    "require": {
+        "amphp/amp": "~0.16.0"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Bob Weinand",
+            "email": "bobwei9@hotmail.com"
+        }
+    ],
+    "autoload": {
+        "classmap": [
+            {"Amp\\Process": "Process.php"}
+        ]
+    }
+}
