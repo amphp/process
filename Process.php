@@ -24,7 +24,7 @@ class Process {
 	const BUFFER_STDERR = 2;
 	const BUFFER_ALL = 3;
 
-	/* $options are passed directly to proc_open(), "cmd" and "env" entries are passed as fourth respectively fifth parameters to proc_open() */
+	/* $options are passed directly to proc_open(), "cwd" and "env" entries are passed as fourth respectively fifth parameters to proc_open() */
 	public function __construct($cmd, array $options = [], Reactor $reactor = null) {
 		$this->reactor = $reactor ?: getReactor();
 		$this->cmd = $cmd;
