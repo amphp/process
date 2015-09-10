@@ -138,6 +138,14 @@ class Process {
 		$this->writeDeferreds = [];
 	}
 
+	public function pid() {
+		if (!$this->proc) {
+			return;
+		}
+
+		return \proc_get_status($this->proc)["pid"];
+	}
+
 	/**
 	 * @return Promise which will succeed after $str was written. It will contain the total number of already written bytes to the process
 	 */
