@@ -3,7 +3,7 @@
     "homepage": "https://github.com/amphp/process",
     "description": "Asynchronous process manager",
     "require": {
-        "amphp/amp": "~0.16.0"
+        "amphp/amp": "^1"
     },
     "license": "MIT",
     "authors": [
