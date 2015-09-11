@@ -75,7 +75,6 @@ class Process {
 						$result->signal = $status["termsig"];
 					}
 					$result->exit = $status["exitcode"];
-					$this->proc = NULL;
 					$this->deferred->succeed($result);
 
 					foreach ($this->writeDeferreds as $deferred) {
@@ -139,11 +138,7 @@ class Process {
 	}
 
 	public function pid() {
-		if (!$this->proc) {
-			return;
-		}
-
-		return \proc_get_status($this->proc)["pid"];
+		return $this->status()["pid"];
 	}
 
 	/**
@@ -164,4 +159,14 @@ class Process {
 
 		return $deferred->promise();
 	}
+
+    /**
+     * @return array|null
+     */
+    public function status() {
+        if ($this->proc === null) {
+            return null;
+        }
+        return proc_get_status($this->proc);
+    }
 }
