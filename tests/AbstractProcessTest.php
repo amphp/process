@@ -6,7 +6,7 @@ use Amp\Process;
 
 abstract class AbstractProcessTest extends \PHPUnit_Framework_TestCase {
 
-    const CMD_PROCESS = "php -r 'sleep(2);'";
+    const CMD_PROCESS = "php -r 'sleep(2); echo \"foo\"'";
 
     abstract function testReactor();
 
@@ -29,5 +29,24 @@ abstract class AbstractProcessTest extends \PHPUnit_Framework_TestCase {
      */
     public function testPid(Process $process) {
         $this->assertInternalType('int', $process->pid());
+    }
+
+    /**
+     * @depends testCommandCanRun
+     */
+    public function testKillProcess(Process $process) {
+        $return = $process->kill();
+        $this->assertTrue($return);
+    }
+
+    /**
+     *
+     */
+    public function testProcessResolvePromise() {
+        $process = new Process(self::CMD_PROCESS);
+        $promise = $process->exec();
+        $this->assertInstanceOf('\Amp\Promise', $promise);
+        $result = (yield $promise);
+        $this->assertSame('foo', $result);
     }
 }

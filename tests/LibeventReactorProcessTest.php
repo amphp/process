@@ -2,7 +2,6 @@
 
 namespace Amp\Process\Test;
 
-
 use Amp\LibeventReactor;
 
 class LibeventReactorProcessTest extends AbstractProcessTest {
