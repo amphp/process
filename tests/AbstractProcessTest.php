@@ -7,16 +7,14 @@ use Amp\Process;
 /**
  * Class AbstractProcessTest
  * @package Amp\Process\Test
- * @covers \Amp\Process
  */
 abstract class AbstractProcessTest extends \PHPUnit_Framework_TestCase {
 
-    const CMD_PROCESS = 'echo 1;';
+    const CMD_PROCESS = 'echo foo';
 
     abstract function testReactor();
 
     /**
-     * @coverage \Amp\Process::exec
      * @expectedException \RuntimeException
      */
     public function testMultipleExecution() {
@@ -27,11 +25,6 @@ abstract class AbstractProcessTest extends \PHPUnit_Framework_TestCase {
         });
     }
 
-    /**
-     * @coverage \Amp\Process::exec
-     * @coverage \Amp\Process::pid
-     * @coverage \Amp\Process::status
-     */
     public function testCommandCanRun() {
         \Amp\run(function(){
             $process = new Process(self::CMD_PROCESS);
@@ -45,9 +38,6 @@ abstract class AbstractProcessTest extends \PHPUnit_Framework_TestCase {
         });
     }
 
-    /**
-     * @coverage \Amp\Process::exec
-     */
     public function testProcessResolvePromise()
     {
         \Amp\run(function(){
@@ -60,9 +50,6 @@ abstract class AbstractProcessTest extends \PHPUnit_Framework_TestCase {
         });
     }
 
-    /**
-     * @coverage \Amp\Process::kill
-     */
     public function testKillSignals()
     {
         \Amp\run(function(){
@@ -80,9 +67,6 @@ abstract class AbstractProcessTest extends \PHPUnit_Framework_TestCase {
     }
 
 
-    /**
-     * @covers \Amp\Process::getCommand
-     */
     public function testGetCommand() {
         $process = new Process(self::CMD_PROCESS);
         $this->assertSame(self::CMD_PROCESS, $process->getCommand());
