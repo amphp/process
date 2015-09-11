@@ -6,8 +6,14 @@ use Amp\LibeventReactor;
 
 class LibeventReactorProcessTest extends AbstractProcessTest {
 
-    public function setUp(){
-        \Amp\reactor(new LibeventReactor());
+    protected function setUp() {
+        if (extension_loaded("libevent")) {
+            \Amp\reactor($assign = new LibeventReactor);
+        } else {
+            $this->markTestSkipped(
+                "libevent extension not loaded"
+            );
+        }
     }
 
     public function testReactor() {

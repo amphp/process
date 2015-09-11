@@ -7,7 +7,13 @@ use Amp\UvReactor;
 class UvReactorProcessTest extends AbstractProcessTest {
 
     public function setUp(){
-        \Amp\reactor(new UvReactor());
+        if (extension_loaded("uv")) {
+            \Amp\reactor($assign = new UvReactor);
+        } else {
+            $this->markTestSkipped(
+                "php-uv extension not loaded"
+            );
+        }
     }
 
     public function testReactor() {
