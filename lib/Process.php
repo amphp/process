@@ -112,12 +112,12 @@ class Process {
 	}
 
 	/* Only kills process, Promise returned by exec() will succeed in the next tick */
-	public function kill($signal = 15) {
-		if ($this->proc) {
-			return proc_terminate($this->proc, $signal);
-		}
-		return false;
-	}
+    public function kill($signal = 15) {
+        if ($this->proc) {
+            return proc_terminate($this->proc, $signal);
+        }
+        return false;
+    }
 
 	/* Aborts all watching completely and immediately */
 	public function cancel($signal = 9) {
@@ -125,7 +125,7 @@ class Process {
 			return;
 		}
 
-		$this->kill($signal);
+		$this->doSignal($signal, true);
 		\Amp\cancel($this->stdout);
 		\Amp\cancel($this->stderr);
 		\Amp\cancel($this->stdin);
@@ -178,11 +178,30 @@ class Process {
     }
 
     /**
-     * Returns the command executed
+     * Returns the command of the current executed process.
      *
      * @return string
      */
     public function getCommand() {
         return $this->cmd;
+    }
+
+    private function doSignal($signal, $throwException)
+    {
+        if (!$this->status()['running']) {
+            if ($throwException) {
+                throw new \LogicException('The process is not running.');
+            }
+            return false;
+        }
+
+        if (true !== @proc_terminate($this->proc, $signal)) {
+            if ($throwException) {
+                throw new \RuntimeException(sprintf('Error while sending signal `%s`.', $signal));
+            }
+            return false;
+        }
+
+        return true;
     }
 }
