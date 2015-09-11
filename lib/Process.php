@@ -7,9 +7,9 @@ class Process {
 	private $options;
 	private $proc;
 
-	private $stdin;
-	private $stdout;
-	private $stderr;
+	public $stdin;
+	public $stdout;
+	public $stderr;
 
 	private $deferred;
 	private $writeDeferreds = [];
@@ -137,10 +137,6 @@ class Process {
 		$this->writeDeferreds = [];
 	}
 
-	public function pid() {
-		return $this->status()["pid"];
-	}
-
 	/**
 	 * @return Promise which will succeed after $str was written. It will contain the total number of already written bytes to the process
 	 */
@@ -161,6 +157,8 @@ class Process {
 	}
 
     /**
+     * Alias for \proc_get_status()
+     *
      * @return array|null
      */
     public function status() {
@@ -168,5 +166,23 @@ class Process {
             return null;
         }
         return proc_get_status($this->proc);
+    }
+
+    /**
+     * Returns the process identifier (PID) of the executed process, if applicable.
+     *
+     * @return int|null
+     */
+    public function pid() {
+        return $this->status()["pid"];
+    }
+
+    /**
+     * Returns the command executed
+     *
+     * @return string
+     */
+    public function getCommand() {
+        return $this->cmd;
     }
 }

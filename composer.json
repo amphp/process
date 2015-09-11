@@ -5,16 +5,24 @@
     "require": {
         "amphp/amp": "^1"
     },
+    "require-dev": {
+      "phpunit/phpunit": "^4.8",
+      "fabpot/php-cs-fixer": "~1.9"
+    },
     "license": "MIT",
     "authors": [
         {
             "name": "Bob Weinand",
             "email": "bobwei9@hotmail.com"
+        },
+        {
+            "name": "Edoardo Biraghi",
+            "email": "edoardo.biraghi@gmail.com"
         }
     ],
     "autoload": {
         "classmap": [
-            {"Amp\\Process": "Process.php"}
+            {"Amp\\Process": "lib/Process.php"}
         ]
     }
 }
