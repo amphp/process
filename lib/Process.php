@@ -7,9 +7,9 @@ class Process {
 	private $options;
 	private $proc;
 
-	public $stdin;
-	public $stdout;
-	public $stderr;
+	private $stdin;
+	private $stdout;
+	private $stderr;
 
 	private $deferred;
 	private $writeDeferreds = [];
@@ -125,7 +125,7 @@ class Process {
 			return;
 		}
 
-		$this->doSignal($signal, true);
+        $this->kill($signal);
 		\Amp\cancel($this->stdout);
 		\Amp\cancel($this->stderr);
 		\Amp\cancel($this->stdin);
@@ -184,24 +184,5 @@ class Process {
      */
     public function getCommand() {
         return $this->cmd;
-    }
-
-    private function doSignal($signal, $throwException)
-    {
-        if (!$this->status()['running']) {
-            if ($throwException) {
-                throw new \LogicException('The process is not running.');
-            }
-            return false;
-        }
-
-        if (true !== @proc_terminate($this->proc, $signal)) {
-            if ($throwException) {
-                throw new \RuntimeException(sprintf('Error while sending signal `%s`.', $signal));
-            }
-            return false;
-        }
-
-        return true;
     }
 }
