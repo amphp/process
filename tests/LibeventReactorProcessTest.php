@@ -5,7 +5,6 @@ namespace Amp\Process\Test;
 use Amp\LibeventReactor;
 
 class LibeventReactorProcessTest extends AbstractProcessTest {
-
     protected function setUp() {
         if (extension_loaded("libevent")) {
             \Amp\reactor($assign = new LibeventReactor);

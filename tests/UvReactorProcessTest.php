@@ -5,7 +5,6 @@ namespace Amp\Process\Test;
 use Amp\UvReactor;
 
 class UvReactorProcessTest extends AbstractProcessTest {
-
     public function setUp(){
         if (extension_loaded("uv")) {
             \Amp\reactor($assign = new UvReactor);
