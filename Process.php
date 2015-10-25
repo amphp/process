@@ -10,6 +10,8 @@ class Process {
     private $stdin;
     private $stdout;
     private $stderr;
+    private $exit;
+    private $openPipes;
 
     private $deferred;
     private $writeDeferreds = [];
@@ -39,10 +41,20 @@ class Process {
             throw new \RuntimeException("Process was already launched");
         }
 
-        $fds = [["pipe", "r"], ["pipe", "w"], ["pipe", "w"]];
         $cwd = isset($this->options["cwd"]) ? $this->options["cwd"] : NULL;
         $env = isset($this->options["env"]) ? $this->options["env"] : NULL;
-        if (!$this->proc = @proc_open($this->cmd, $fds, $pipes, $cwd, $env, $this->options)) {
+
+        if (stripos(PHP_OS, "WIN") !== 0) {
+            $fds = [["pipe", "r"], ["pipe", "w"], ["pipe", "w"], ["pipe", "w"]];
+            $this->proc = @proc_open("$this->cmd; echo $? >&3", $fds, $pipes, $cwd, $env, $this->options);
+        } else {
+            $options = $this->options;
+            $options["bypass_shell"] = true;
+            $fds = [["pipe", "r"], ["pipe", "w"], ["pipe", "w"]];
+            $this->proc = @proc_open($this->cmd, $fds, $pipes, $cwd, $env, $options);
+        }
+
+        if (!$this->proc) {
             return new Failure(new \RuntimeException("Failed executing command: $this->cmd"));
         }
 
@@ -53,6 +65,12 @@ class Process {
         stream_set_blocking($pipes[0], false);
         stream_set_blocking($pipes[1], false);
         stream_set_blocking($pipes[2], false);
+        if (isset($pipes[3])) {
+            stream_set_blocking($pipes[3], false);
+            $this->openPipes = 3;
+        } else {
+            $this->openPipes = 2;
+        }
 
         $this->deferred = new Deferred;
         $result = new \stdClass;
@@ -64,24 +82,35 @@ class Process {
             $result->stderr = "";
         }
 
-        $this->stdout = \Amp\onReadable($pipes[1], function($watcher, $sock) use ($result) {
-            if ("" == $data = @fread($sock, 8192)) {
-                \Amp\cancel($watcher);
-                \Amp\cancel($this->stdin);
-                \Amp\immediately(function() use ($result) {
-                    $status = proc_get_status($this->proc);
-                    assert($status["running"] === false);
-                    if ($status["signaled"]) {
-                        $result->signal = $status["termsig"];
-                    }
-                    $result->exit = $status["exitcode"];
-                    $this->deferred->succeed($result);
+        $cleanup = function() use ($result) {
+            \Amp\cancel($this->stdin);
 
-                    foreach ($this->writeDeferreds as $deferred) {
-                        $deferred->fail(new \Exception("Write could not be completed, process finished"));
-                    }
-                    $this->writeDeferreds = [];
-                });
+            $deferreds = $this->writeDeferreds;
+            $this->writeDeferreds = [];
+
+            $status = \proc_get_status($this->proc);
+            if ($status["running"] === false && $status["signaled"]) {
+                $result->signal = $status["termsig"];
+                $result->exit = $status["exitcode"];
+            }
+
+            if (!isset($this->exit)) {
+                $result->exit = proc_close($this->proc);
+            }
+            unset($this->proc);
+
+            $this->deferred->succeed($result);
+            foreach ($deferreds as $deferred) {
+                $deferred->fail(new \Exception("Write could not be completed, process finished"));
+            }
+        };
+
+        $this->stdout = \Amp\onReadable($pipes[1], function($watcher, $sock) use ($result, $cleanup) {
+            if ("" == $data = @\fread($sock, 8192)) {
+                \Amp\cancel($watcher);
+                if (--$this->openPipes == 0) {
+                    \Amp\immediately($cleanup);
+                }
             } else {
                 if (isset($result->stdout)) {
                     $result->stdout .= $data;
@@ -89,9 +118,13 @@ class Process {
                 $this->deferred->update(["out", $data]);
             }
         });
-        $this->stderr = \Amp\onReadable($pipes[2], function($watcher, $sock) use ($result) {
-            if ("" == $data = @fread($sock, 8192)) {
+
+        $this->stderr = \Amp\onReadable($pipes[2], function($watcher, $sock) use ($result, $cleanup) {
+            if ("" == $data = @\fread($sock, 8192)) {
                 \Amp\cancel($watcher);
+                if (--$this->openPipes == 0) {
+                    \Amp\immediately($cleanup);
+                }
             } else {
                 if (isset($result->stderr)) {
                     $result->stderr .= $data;
@@ -99,8 +132,9 @@ class Process {
                 $this->deferred->update(["err", $data]);
             }
         });
+
         $this->stdin = \Amp\onWritable($pipes[0], function($watcher, $sock) {
-            $this->writeCur += @fwrite($sock, $this->writeBuf);
+            $this->writeCur += @\fwrite($sock, $this->writeBuf);
 
             if ($this->writeCur == $this->writeTotal) {
                 \Amp\disable($watcher);
@@ -112,13 +146,25 @@ class Process {
             }
         }, ["enable" => false]);
 
+        if (isset($pipes[3])) {
+            $this->exit = \Amp\onReadable($pipes[3], function ($watcher, $sock) use ($result, $cleanup) {
+                stream_set_blocking($sock, true); // it should never matter, but just to be really 100% sure.
+                $result->exit = (int) stream_get_contents($sock);
+
+                \Amp\cancel($watcher);
+                if (--$this->openPipes == 0) {
+                    \Amp\immediately($cleanup);
+                }
+            });
+        }
+
         return $this->deferred->promise();
     }
 
     /* Only kills process, Promise returned by exec() will succeed in the next tick */
     public function kill($signal = 15) {
         if ($this->proc) {
-            return proc_terminate($this->proc, $signal);
+            return \proc_terminate($this->proc, $signal);
         }
         return false;
     }
@@ -129,16 +175,23 @@ class Process {
             return;
         }
 
-        $this->kill($signal);
         \Amp\cancel($this->stdout);
         \Amp\cancel($this->stderr);
         \Amp\cancel($this->stdin);
+        if (isset($this->exit)) {
+            \Amp\cancel($this->exit);
+        }
+
+        $deferreds = $this->writeDeferreds;
+        $this->writeDeferreds = [];
+
+        $this->kill($signal);
+        unset($this->proc);
         $this->deferred->fail(new \RuntimeException("Process watching was cancelled"));
 
-        foreach ($this->writeDeferreds as $deferred) {
+        foreach ($deferreds as $deferred) {
             $deferred->fail(new \Exception("Write could not be completed, process watching was cancelled"));
         }
-        $this->writeDeferreds = [];
     }
 
     /**
