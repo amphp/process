@@ -198,7 +198,9 @@ class Process {
      * @return Promise which will succeed after $str was written. It will contain the total number of already written bytes to the process
      */
     public function write($str) {
-        assert(strlen($str) > 0);
+        if (strlen($str) === 0) {
+            throw new \InvalidArgumentException("String to be written cannot be empty");
+        }
 
         if (!$this->proc) {
             throw new \RuntimeException("Process was not yet launched");
