@@ -203,7 +203,7 @@ class Process {
         }
 
         if (!$this->proc) {
-            throw new \RuntimeException("Process was not yet launched");
+            throw new \RuntimeException("Process was not yet executed");
         }
 
         $this->writeBuf .= $str;
