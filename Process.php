@@ -27,6 +27,10 @@ class Process {
 
     /* $options are passed directly to proc_open(), "cwd" and "env" entries are passed as fourth respectively fifth parameters to proc_open() */
     public function __construct($cmd, array $options = []) {
+        if (is_array($cmd)) {
+            $cmd = implode(" ", array_map("escapeshellarg", $cmd));
+        }
+
         $this->cmd = $cmd;
         $this->options = $options;
     }
@@ -220,7 +224,7 @@ class Process {
         if ($this->proc === null) {
             return null;
         }
-        
+
         return proc_get_status($this->proc)["pid"];
     }
 
