@@ -7,6 +7,7 @@ class Process {
     private $options;
     private $proc;
 
+    private $stdinSock;
     private $stdin;
     private $stdout;
     private $stderr;
@@ -137,6 +138,8 @@ class Process {
             }
         });
 
+        $this->stdinSock = $pipes[0];
+
         $this->stdin = \Amp\onWritable($pipes[0], function($watcher, $sock) {
             $this->writeCur += @\fwrite($sock, $this->writeBuf);
 
@@ -210,6 +213,10 @@ class Process {
             throw new \RuntimeException("Process was not yet launched");
         }
 
+        if(!is_resource($this->stdinSock)) {
+            throw new \RuntimeException("stdin pipe is closed, cannot write to it");
+        }
+
         $this->writeBuf .= $str;
         \Amp\enable($this->stdin);
 
@@ -217,6 +224,14 @@ class Process {
         $deferred = $this->writeDeferreds[$this->writeTotal] = new Deferred;
 
         return $deferred->promise();
+    }
+
+    public function closeStdin() {
+        \Amp\cancel($this->stdin);
+
+        if(!@fclose($this->stdinSock)) {
+            throw new \RuntimeException("Unable to close stdin pipe");
+        }
     }
 
     /* Returns the process identifier (PID) of the executed process, if applicable. */
