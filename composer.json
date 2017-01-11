@@ -3,22 +3,27 @@
     "homepage": "https://github.com/amphp/process",
     "description": "Asynchronous process manager",
     "require": {
-        "amphp/amp": "^1"
+        "amphp/amp": "dev-master as 2.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "^4.8",
-        "fabpot/php-cs-fixer": "~1.9"
+        "amphp/loop": "dev-master",
+        "phpunit/phpunit": "^5.0",
+        "friendsofphp/php-cs-fixer": "~1.9"
     },
     "license": "MIT",
     "authors": [
         {
             "name": "Bob Weinand",
             "email": "bobwei9@hotmail.com"
+        },
+        {
+            "name": "Aaron Piotrowski",
+            "email": "aaron@trowski.com"
         }
     ],
     "autoload": {
-        "classmap": [
-            {"Amp\\Process": "Process.php"}
-        ]
+        "psr-4": {
+            "Amp\\Process\\": "lib"
+        }
     }
 }
