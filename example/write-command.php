@@ -6,7 +6,7 @@ use Amp\{ Listener, Process\StreamedProcess };
 
 AsyncInterop\Loop::execute(\Amp\wrap(function() {
     $process = new StreamedProcess('read ; echo "$REPLY"');
-    $process->start();
+    $process->execute();
 
     /* send to stdin */
     $process->write("abc\n");

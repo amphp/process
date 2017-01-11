@@ -6,7 +6,7 @@ use Amp\{ Listener, Process\StreamedProcess };
 
 AsyncInterop\Loop::execute(\Amp\wrap(function() {
     $process = new StreamedProcess("echo 1; sleep 1; echo 2; sleep 1; echo 3");
-    $process->start();
+    $process->execute();
 
     $listener = new Listener($process->getStdOut());
 

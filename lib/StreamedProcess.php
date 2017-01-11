@@ -63,8 +63,8 @@ class StreamedProcess {
     /**
      * {@inheritdoc}
      */
-    public function start() {
-        $this->process->start();
+    public function execute(): Promise {
+        $promise = $this->process->execute();
 
         $process = $this->process;
         $writes = $this->writeQueue;
@@ -131,8 +131,7 @@ class StreamedProcess {
         $this->stdoutWatcher = Loop::onReadable($this->process->getStdout(), $callback, $this->stdoutEmitter);
         $this->stderrWatcher = Loop::onReadable($this->process->getStderr(), $callback, $this->stderrEmitter);
 
-        $this->promise = $this->process->join();
-        $this->promise->when(function (\Throwable $exception = null, int $code = null) {
+        $promise->when(function (\Throwable $exception = null, int $code = null) {
             Loop::cancel($this->stdinWatcher);
             Loop::cancel($this->stdoutWatcher);
             Loop::cancel($this->stderrWatcher);
@@ -146,6 +145,8 @@ class StreamedProcess {
             $this->stdoutEmitter->resolve($code);
             $this->stderrEmitter->resolve($code);
         });
+
+        return $promise;
     }
 
     /**
@@ -199,17 +200,6 @@ class StreamedProcess {
 
     public function getStderr(): Stream {
         return $this->stderrEmitter->stream();
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function join(): Promise {
-        if ($this->promise === null) {
-            throw new StatusError("The process has not been started");
-        }
-
-        return $this->promise;
     }
 
     /**
