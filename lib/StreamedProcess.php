@@ -170,7 +170,7 @@ class StreamedProcess {
             }
 
             // Error reporting suppressed since fwrite() emits E_WARNING if the pipe is broken or the buffer is full.
-            $written = @\fwrite($this->process->getStdIn(), $data, self::CHUNK_SIZE);
+            $written = @\fwrite($this->process->getStdIn(), $data);
 
             if ($written === false) {
                 $message = "Failed to write to stream";
