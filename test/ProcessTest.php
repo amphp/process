@@ -3,7 +3,6 @@
 namespace Amp\Test\Process;
 
 use Amp\Process\Process;
-use Amp\Process\ProcessException;
 use AsyncInterop\Loop;
 
 class ProcessTest extends \PHPUnit_Framework_TestCase {
@@ -15,20 +14,17 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
     public function testMultipleExecution() {
         Loop::execute(function() {
             $process = new Process(self::CMD_PROCESS);
-            $process->start();
-            $process->start();
+            $process->execute();
+            $process->execute();
         });
     }
 
-    public function testJoinResolvesToExitCode() {
+    public function testExecuteResolvesToExitCode() {
         Loop::execute(\Amp\wrap(function() {
-            $process = new Process(self::CMD_PROCESS);
-            $process->start();
-            $promise = $process->join();
+            $process = new Process("exit 42");
+            $code = yield $process->execute();
 
-            $code = yield $promise;
-
-            $this->assertSame(0, $code);
+            $this->assertSame(42, $code);
         }));
     }
 
@@ -36,9 +32,7 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
         Loop::execute(function() {
             $process = new Process(self::CMD_PROCESS);
             $this->assertSame(0, $process->getPid());
-            $process->start();
-
-            $promise = $process->join();
+            $promise = $process->execute();
 
             $completed = false;
             $promise->when(function() use (&$completed) { $completed = true; });
@@ -54,8 +48,7 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
     public function testKillSignals() {
         Loop::execute(\Amp\wrap(function() {
             $process = new Process(self::CMD_PROCESS);
-            $process->start();
-            $promise = $process->join();
+            $promise = $process->execute();
 
             $process->kill();
 

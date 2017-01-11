@@ -108,8 +108,10 @@ class Process {
     /**
      * @throws \Amp\Process\ProcessException If starting the process fails.
      * @throws \Amp\Process\StatusError If the process is already running.
+     *
+     * @return \AsyncInterop\Promise<int> Succeeds with exit code of the process or fails if the process is killed.
      */
-    public function start() {
+    public function execute(): Promise {
         if ($this->deferred !== null) {
             throw new StatusError("The process has already been started");
         }
@@ -160,7 +162,7 @@ class Process {
         $process = &$this->process;
 
         $this->watcher = Loop::onReadable($stream, static function ($watcher, $resource) use (
-            &$process, $deferred, $stdin
+            $process, $deferred, $stdin
         ) {
             Loop::cancel($watcher);
 
@@ -169,7 +171,8 @@ class Process {
                     if (!\is_resource($resource) || \feof($resource)) {
                         throw new ProcessException("Process ended unexpectedly");
                     }
-                    $code = @\fread($resource, 1);
+                    $code = @\fread($resource, 3); // Single byte written as string
+                    $code = \rtrim($code);
                     if (!\strlen($code) || !\is_numeric($code)) {
                         throw new ProcessException("Process ended without providing a status code");
                     }
@@ -179,7 +182,6 @@ class Process {
                     }
                     if (\is_resource($process)) {
                         \proc_close($process);
-                        $process = null;
                     }
                     if (\is_resource($stdin)) {
                         \fclose($stdin);
@@ -193,22 +195,7 @@ class Process {
             $deferred->resolve((int) $code);
         });
 
-        Loop::disable($this->watcher);
-    }
-
-    /**
-     * @return \AsyncInterop\Promise<int> Resolves with exit status.
-     *
-     * @throws \Amp\Process\StatusError If the process has not been started.
-     */
-    public function join(): Promise {
-        if ($this->deferred === null) {
-            throw new StatusError("The process has not been started");
-        }
-
-        Loop::enable($this->watcher);
-
-        return $this->deferred->promise();
+        return $deferred->promise();
     }
 
     /**
