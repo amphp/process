@@ -2,7 +2,7 @@
 
 namespace Amp\Process;
 
-use Amp\{ Coroutine, Deferred, Emitter, Failure, Stream, Success };
+use Amp\{ Deferred, Emitter, Failure, Stream, Success };
 use AsyncInterop\{ Loop, Promise };
 
 class StreamedProcess {
@@ -66,38 +66,52 @@ class StreamedProcess {
     public function start() {
         $this->process->start();
 
+        $process = $this->process;
         $writes = $this->writeQueue;
-        $this->stdinWatcher = Loop::onWritable($this->process->getStdIn(), static function ($watcher, $resource) use ($writes) {
-            while (!$writes->isEmpty()) {
-                /** @var \Amp\Deferred $deferred */
-                list($data, $previous, $deferred) = $writes->shift();
-                $length = \strlen($data);
+        $this->stdinWatcher = Loop::onWritable($this->process->getStdin(), static function ($watcher, $resource) use ($process, $writes) {
+            try {
+                while (!$writes->isEmpty()) {
+                    /** @var \Amp\Deferred $deferred */
+                    list($data, $previous, $deferred) = $writes->shift();
+                    $length = \strlen($data);
 
-                if ($length === 0) {
-                    $deferred->resolve(0);
-                    continue;
-                }
-
-                // Error reporting suppressed since fwrite() emits E_WARNING if the pipe is broken or the buffer is full.
-                $written = @\fwrite($resource, $data);
-
-                if ($written === false || $written === 0) {
-                    $message = "Failed to write to STDIN";
-                    if ($error = \error_get_last()) {
-                        $message .= \sprintf(" Errno: %d; %s", $error["type"], $error["message"]);
+                    if ($length === 0) {
+                        $deferred->resolve(0);
+                        continue;
                     }
-                    $deferred->fail(new ProcessException($message));
+
+                    // Error reporting suppressed since fwrite() emits E_WARNING if the pipe is broken or the buffer is full.
+                    $written = @\fwrite($resource, $data);
+
+                    if ($written === false || $written === 0) {
+                        $message = "Failed to write to STDIN";
+                        if ($error = \error_get_last()) {
+                            $message .= \sprintf(" Errno: %d; %s", $error["type"], $error["message"]);
+                        }
+                        $exception = new ProcessException($message);
+
+                        $deferred->fail($exception);
+                        while (!$writes->isEmpty()) { // Empty the write queue and fail all Deferreds.
+                            list(, , $deferred) = $writes->shift();
+                            $deferred->fail($exception);
+                        }
+                        $process->kill();
+                        return;
+                    }
+
+                    if ($length <= $written) {
+                        $deferred->resolve($written + $previous);
+                        continue;
+                    }
+
+                    $data = \substr($data, $written);
+                    $writes->unshift([$data, $written + $previous, $deferred]);
                     return;
                 }
-
-                if ($length <= $written) {
-                    $deferred->resolve($written + $previous);
-                    continue;
+            } finally {
+                if ($writes->isEmpty()) {
+                    Loop::disable($watcher);
                 }
-
-                $data = \substr($data, $written);
-                $writes->unshift([$data, $written + $previous, $deferred]);
-                return;
             }
         });
         Loop::disable($this->stdinWatcher);
@@ -114,8 +128,8 @@ class StreamedProcess {
             }
         };
 
-        $this->stdoutWatcher = Loop::onReadable($this->process->getStdOut(), $callback, $this->stdoutEmitter);
-        $this->stderrWatcher = Loop::onReadable($this->process->getStdErr(), $callback, $this->stderrEmitter);
+        $this->stdoutWatcher = Loop::onReadable($this->process->getStdout(), $callback, $this->stdoutEmitter);
+        $this->stderrWatcher = Loop::onReadable($this->process->getStderr(), $callback, $this->stderrEmitter);
 
         $this->promise = $this->process->join();
         $this->promise->when(function (\Throwable $exception = null, int $code = null) {
@@ -173,34 +187,17 @@ class StreamedProcess {
             $data = \substr($data, $written);
         }
 
-        return new Coroutine($this->doWrite($data, $written));
-    }
-
-    private function doWrite(string $data, int $written): \Generator {
         $deferred = new Deferred;
         $this->writeQueue->push([$data, $written, $deferred]);
-
         Loop::enable($this->stdinWatcher);
-
-        try {
-            $written = yield $deferred->promise();
-        } catch (\Throwable $exception) {
-            $this->kill();
-            throw $exception;
-        } finally {
-            if ($this->writeQueue->isEmpty()) {
-                Loop::disable($this->stdinWatcher);
-            }
-        }
-
-        return $written;
+        return $deferred->promise();
     }
 
-    public function getStdOut(): Stream {
+    public function getStdout(): Stream {
         return $this->stdoutEmitter->stream();
     }
 
-    public function getStdErr(): Stream {
+    public function getStderr(): Stream {
         return $this->stderrEmitter->stream();
     }
 

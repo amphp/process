@@ -309,7 +309,7 @@ class Process {
      *
      * @throws \Amp\Process\StatusError If the process is not running.
      */
-    public function getStdIn() {
+    public function getStdin() {
         if ($this->stdin === null) {
             throw new StatusError("The process has not been started");
         }
@@ -324,7 +324,7 @@ class Process {
      *
      * @throws \Amp\Process\StatusError If the process is not running.
      */
-    public function getStdOut() {
+    public function getStdout() {
         if ($this->stdout === null) {
             throw new StatusError("The process has not been started");
         }
@@ -339,7 +339,7 @@ class Process {
      *
      * @throws \Amp\Process\StatusError If the process is not running.
      */
-    public function getStdErr() {
+    public function getStderr() {
         if ($this->stderr === null) {
             throw new StatusError("The process has not been started");
         }
