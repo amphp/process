@@ -54,15 +54,14 @@ class Process {
             $command = \implode(" ", \array_map("escapeshellarg", $command));
         }
         $this->command = $command;
-
-        if ($cwd !== null) {
-            $this->cwd = $cwd;
-        }
+        $this->cwd = $cwd ?? "";
 
         foreach ($env as $key => $value) {
-            if (!\is_array($value)) { // $env cannot accept array values.
-                $this->env[(string) $key] = (string) $value;
+            if (\is_array($value)) {
+                throw new \Error("\$env cannot accept array values");
             }
+
+            $this->env[(string) $key] = (string) $value;
         }
 
         $this->options = $options;
@@ -171,8 +170,7 @@ class Process {
                     if (!\is_resource($resource) || \feof($resource)) {
                         throw new ProcessException("Process ended unexpectedly");
                     }
-                    $code = @\fread($resource, 3); // Single byte written as string
-                    $code = \rtrim($code);
+                    $code = \rtrim(@\fread($resource, 3)); // Single byte written as string
                     if (!\strlen($code) || !\is_numeric($code)) {
                         throw new ProcessException("Process ended without providing a status code");
                     }
@@ -227,16 +225,21 @@ class Process {
             throw new StatusError("The process is not running");
         }
 
-        \proc_terminate($this->process, (int) $signo);
+        \proc_terminate($this->process, $signo);
     }
 
     /**
-     * Returns the PID of the child process. Value is only meaningful if the process has been started and PHP was not
-     * compiled with --enable-sigchild.
+     * Returns the PID of the child process. Value is only meaningful if PHP was not compiled with --enable-sigchild.
      *
      * @return int
+     *
+     * @throws \Amp\Process\StatusError
      */
     public function getPid(): int {
+        if ($this->pid === 0) {
+            throw new StatusError("The process has not been started");
+        }
+
         return $this->pid;
     }
 
@@ -252,7 +255,7 @@ class Process {
     /**
      * Gets the current working directory.
      *
-     * @return string The current working directory or null if inherited from the current PHP process.
+     * @return string The current working directory an empty string if inherited from the current PHP process.
      */
     public function getWorkingDirectory(): string {
         if ($this->cwd === "") {
@@ -265,7 +268,7 @@ class Process {
     /**
      * Gets the environment variables array.
      *
-     * @return mixed[] Array of environment variables.
+     * @return string[] Array of environment variables.
      */
     public function getEnv(): array {
         return $this->env;

@@ -31,7 +31,6 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
     public function testCommandCanRun() {
         Loop::execute(function() {
             $process = new Process(self::CMD_PROCESS);
-            $this->assertSame(0, $process->getPid());
             $promise = $process->execute();
 
             $completed = false;

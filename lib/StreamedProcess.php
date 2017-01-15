@@ -29,9 +29,6 @@ class StreamedProcess {
     /** @var \SplQueue Queue of data to write to STDIN. */
     private $writeQueue;
 
-    /** @var \AsyncInterop\Promise Promise resolved when process ends. */
-    private $promise;
-
     /**
      * @param   string|array $command Command to run.
      * @param   string|null $cwd Working directory or use an empty string to use the working directory of the current
@@ -57,7 +54,6 @@ class StreamedProcess {
         $this->stdoutEmitter = new Emitter;
         $this->stderrEmitter = new Emitter;
         $this->writeQueue = new \SplQueue;
-        $this->promise = null;
     }
 
     /**
@@ -68,7 +64,9 @@ class StreamedProcess {
 
         $process = $this->process;
         $writes = $this->writeQueue;
-        $this->stdinWatcher = Loop::onWritable($this->process->getStdin(), static function ($watcher, $resource) use ($process, $writes) {
+        $this->stdinWatcher = Loop::onWritable($this->process->getStdin(), static function ($watcher, $resource) use (
+            $process, $writes
+        ) {
             try {
                 while (!$writes->isEmpty()) {
                     /** @var \Amp\Deferred $deferred */
