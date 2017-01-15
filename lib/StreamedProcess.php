@@ -2,7 +2,7 @@
 
 namespace Amp\Process;
 
-use Amp\{ Deferred, Emitter, Failure, Stream, Success };
+use Amp\{ Deferred, Emitter, Failure, Message, Success };
 use AsyncInterop\{ Loop, Promise };
 
 class StreamedProcess {
@@ -192,12 +192,22 @@ class StreamedProcess {
         return $deferred->promise();
     }
 
-    public function getStdout(): Stream {
-        return $this->stdoutEmitter->stream();
+    /**
+     * Each call returns a new Message object.
+     *
+     * @return \Amp\Message
+     */
+    public function getStdout(): Message {
+        return new Message($this->stdoutEmitter->stream());
     }
 
-    public function getStderr(): Stream {
-        return $this->stderrEmitter->stream();
+    /**
+     * Each call returns a new Message object.
+     *
+     * @return \Amp\Message
+     */
+    public function getStderr(): Message {
+        return new Message($this->stderrEmitter->stream());
     }
 
     /**

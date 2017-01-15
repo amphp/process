@@ -2,20 +2,17 @@
 
 include dirname(__DIR__) . "/vendor/autoload.php";
 
-use Amp\{ Listener, Process\StreamedProcess };
+use Amp\Process\StreamedProcess;
 
 AsyncInterop\Loop::execute(\Amp\wrap(function() {
     $process = new StreamedProcess('read ; echo "$REPLY"');
-    $process->execute();
+    $promise = $process->execute();
 
     /* send to stdin */
     $process->write("abc\n");
 
-    $listener = new Listener($process->getStdOut());
+    echo yield $process->getStdout();
 
-    while (yield $listener->advance()) {
-        echo $listener->getCurrent();
-    }
-
-    echo "Process exited with {$listener->getResult()}.\n";
+    $code = yield $promise;
+    echo "Process exited with {$code}.\n";
 }));
