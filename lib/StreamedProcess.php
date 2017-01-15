@@ -17,6 +17,12 @@ class StreamedProcess {
     /** @var \Amp\Emitter Emits bytes read from STDERR. */
     private $stderrEmitter;
 
+    /** @var \Amp\Message */
+    private $stdoutMessage;
+
+    /** @var \Amp\Message */
+    private $stderrMessage;
+
     /** @var string|null */
     private $stdinWatcher;
 
@@ -40,6 +46,8 @@ class StreamedProcess {
         $this->process = new Process($command, $cwd, $env, $options);
         $this->stdoutEmitter = new Emitter;
         $this->stderrEmitter = new Emitter;
+        $this->stdoutMessage = new Message($this->stdoutEmitter->stream());
+        $this->stderrMessage = new Message($this->stderrEmitter->stream());
         $this->writeQueue = new \SplQueue;
     }
 
@@ -53,6 +61,8 @@ class StreamedProcess {
         $this->stderrWatcher = null;
         $this->stdoutEmitter = new Emitter;
         $this->stderrEmitter = new Emitter;
+        $this->stdoutMessage = new Message($this->stdoutEmitter->stream());
+        $this->stderrMessage = new Message($this->stderrEmitter->stream());
         $this->writeQueue = new \SplQueue;
     }
 
@@ -193,21 +203,21 @@ class StreamedProcess {
     }
 
     /**
-     * Each call returns a new Message object.
+     * Message buffering the output of STDOUT.
      *
      * @return \Amp\Message
      */
     public function getStdout(): Message {
-        return new Message($this->stdoutEmitter->stream());
+        return $this->stdoutMessage;
     }
 
     /**
-     * Each call returns a new Message object.
+     * Message buffering the output of STDERR.
      *
      * @return \Amp\Message
      */
     public function getStderr(): Message {
-        return new Message($this->stderrEmitter->stream());
+        return $this->stderrMessage;
     }
 
     /**
