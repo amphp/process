@@ -42,6 +42,9 @@ class Process {
     /** @var string */
     private $watcher;
 
+    /** @var bool */
+    private $running = false;
+
     /**
      * @param   string|array $command Command to run.
      * @param   string|null $cwd Working directory or use an empty string to use the working directory of the current
@@ -77,6 +80,10 @@ class Process {
 
         Loop::cancel($this->watcher);
 
+        if (\is_resource($this->process)) {
+            \proc_close($this->process);
+        }
+
         if (\is_resource($this->stdin)) {
             \fclose($this->stdin);
         }
@@ -102,6 +109,7 @@ class Process {
         $this->stdin = null;
         $this->stdout = null;
         $this->stderr = null;
+        $this->running = false;
     }
 
     /**
@@ -158,11 +166,13 @@ class Process {
         $this->stderr = $pipes[2];
         $stream = $pipes[3];
 
-        $process = $this->process;
+        $this->running = true;
+        $running = &$this->running;
         $this->watcher = Loop::onReadable($stream, static function ($watcher, $resource) use (
-            $process, $deferred, $stdin
+            &$running, $deferred, $stdin
         ) {
             Loop::cancel($watcher);
+            $running = false;
 
             try {
                 try {
@@ -176,9 +186,6 @@ class Process {
                 } finally {
                     if (\is_resource($resource)) {
                         \fclose($resource);
-                    }
-                    if (\is_resource($process)) {
-                        \proc_close($process);
                     }
                     if (\is_resource($stdin)) {
                         \fclose($stdin);
@@ -199,12 +206,11 @@ class Process {
      * {@inheritdoc}
      */
     public function kill() {
-        if (\is_resource($this->process)) {
+        if ($this->running && \is_resource($this->process)) {
+            $this->running = false;
+
             // Forcefully kill the process using SIGKILL.
             \proc_terminate($this->process, 9);
-
-            // "Detach" from the process and let it die asynchronously.
-            $this->process = null;
 
             Loop::cancel($this->watcher);
 
@@ -288,7 +294,7 @@ class Process {
      * @return bool
      */
     public function isRunning(): bool {
-        return \is_resource($this->process);
+        return $this->running;
     }
 
     /**
