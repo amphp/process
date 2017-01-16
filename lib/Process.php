@@ -158,8 +158,7 @@ class Process {
         $this->stderr = $pipes[2];
         $stream = $pipes[3];
 
-        $process = &$this->process;
-
+        $process = $this->process;
         $this->watcher = Loop::onReadable($stream, static function ($watcher, $resource) use (
             $process, $deferred, $stdin
         ) {

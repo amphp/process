@@ -19,12 +19,27 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
         });
     }
 
+    public function testIsRunning() {
+        Loop::execute(\Amp\wrap(function() {
+            $process = new Process("exit 42");
+            $promise = $process->execute();
+
+            $this->assertTrue($process->isRunning());
+
+            yield $promise;
+
+            $this->assertFalse($process->isRunning());
+        }));
+    }
+
+
     public function testExecuteResolvesToExitCode() {
         Loop::execute(\Amp\wrap(function() {
             $process = new Process("exit 42");
             $code = yield $process->execute();
 
             $this->assertSame(42, $code);
+            $this->assertFalse($process->isRunning());
         }));
     }
 
