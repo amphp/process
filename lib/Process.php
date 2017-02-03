@@ -132,7 +132,9 @@ class Process {
             ["pipe", "w"], // exit code pipe
         ];
 
-        $command = $this->command . "; echo $? >&3";
+        $nd = \strncasecmp(\PHP_OS, "WIN", 3) === 0 ? "NUL" : "/dev/null";
+
+        $command = \sprintf('(%s) 3>%s; code=$?; echo $code >&3; exit $code', $this->command, $nd);
 
         $this->process = @\proc_open($command, $fd, $pipes, $this->cwd ?: null, $this->env ?: null, $this->options);
 
@@ -178,9 +180,6 @@ class Process {
                         throw new ProcessException("Process ended unexpectedly");
                     }
                     $code = \rtrim(@\fread($resource, 3)); // Single byte written as string
-                    if (!\strlen($code) || !\is_numeric($code)) {
-                        throw new ProcessException("Process ended without providing a status code");
-                    }
                 } finally {
                     if (\is_resource($resource)) {
                         \fclose($resource);
