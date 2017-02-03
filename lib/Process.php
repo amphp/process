@@ -132,9 +132,7 @@ class Process {
             ["pipe", "w"], // exit code pipe
         ];
 
-        $nd = \strncasecmp(\PHP_OS, "WIN", 3) === 0 ? "NUL" : "/dev/null";
-
-        $command = \sprintf('(%s) 3>%s; code=$?; echo $code >&3; exit $code', $this->command, $nd);
+        $command = $this->command . "; echo $? >&3";
 
         $this->process = @\proc_open($command, $fd, $pipes, $this->cwd ?: null, $this->env ?: null, $this->options);
 
