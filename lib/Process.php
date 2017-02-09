@@ -132,9 +132,11 @@ class Process {
             ["pipe", "w"], // exit code pipe
         ];
 
-        $nd = \strncasecmp(\PHP_OS, "WIN", 3) === 0 ? "NUL" : "/dev/null";
-
-        $command = \sprintf('(%s) 3>%s; code=$?; echo $code >&3; exit $code', $this->command, $nd);
+        if (\strncasecmp(\PHP_OS, "WIN", 3) === 0) {
+            $command = $this->command;
+        } else {
+            $command = \sprintf('(%s) 3>/dev/null; code=$?; echo $code >&3; exit $code', $this->command);
+        }
 
         $this->process = @\proc_open($command, $fd, $pipes, $this->cwd ?: null, $this->env ?: null, $this->options);
 
@@ -164,22 +166,30 @@ class Process {
         $this->stdin = $stdin = $pipes[0];
         $this->stdout = $pipes[1];
         $this->stderr = $pipes[2];
-        $stream = $pipes[3];
 
         $this->running = true;
+
+        $process = &$this->process;
         $running = &$this->running;
-        $this->watcher = Loop::onReadable($stream, static function ($watcher, $resource) use (
-            &$running, $deferred, $stdin
+        $this->watcher = Loop::onReadable($pipes[3], static function ($watcher, $resource) use (
+            &$process, &$running, $deferred, $stdin
         ) {
             Loop::cancel($watcher);
             $running = false;
 
             try {
                 try {
-                    if (!\is_resource($resource) || \feof($resource)) {
-                        throw new ProcessException("Process ended unexpectedly");
+                    if (\strncasecmp(\PHP_OS, "WIN", 3) === 0) {
+                        $code = proc_get_status($process)["exitcode"];
+                    } else {
+                        if (!\is_resource($resource) || \feof($resource)) {
+                            throw new ProcessException("Process ended unexpectedly");
+                        }
+                        $code = \rtrim(@\stream_get_contents($resource));
+                        if (!\strlen($code) || !\is_numeric($code)) {
+                            throw new ProcessException("Unable to read exit code");
+                        }
                     }
-                    $code = \rtrim(@\fread($resource, 3)); // Single byte written as string
                 } finally {
                     if (\is_resource($resource)) {
                         \fclose($resource);
