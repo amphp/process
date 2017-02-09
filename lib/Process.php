@@ -167,6 +167,17 @@ class Process {
         $this->stdout = $pipes[1];
         $this->stderr = $pipes[2];
 
+        if ($status["exitcode"] !== -1 && $status["exitcode"] !== false) {
+            $this->deferred->resolve($status["exitcode"]);
+            if (\is_resource($pipes[3])) {
+                \fclose($pipes[3]);
+            }
+            if (\is_resource($stdin)) {
+                \fclose($stdin);
+            }
+            return $deferred->promise();
+        }
+
         $this->running = true;
 
         $process = &$this->process;
@@ -180,7 +191,11 @@ class Process {
             try {
                 try {
                     if (\strncasecmp(\PHP_OS, "WIN", 3) === 0) {
-                        $code = proc_get_status($process)["exitcode"];
+                        $status = \proc_get_status($process);
+                        if (!\is_array($status)) {
+                            throw new ProcessException("Unable to get process status");
+                        }
+                        $code = $status["exitcode"];
                     } else {
                         if (!\is_resource($resource) || \feof($resource)) {
                             throw new ProcessException("Process ended unexpectedly");
