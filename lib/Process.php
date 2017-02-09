@@ -133,7 +133,7 @@ class Process {
         ];
 
         if (\strncasecmp(\PHP_OS, "WIN", 3) === 0) {
-            $command = $this->command;
+            $command = '"' . $this->command . '; exit $LASTEXITCODE" & echo %ERRORLEVEL%';
         } else {
             $command = \sprintf('(%s) 3>/dev/null; code=$?; echo $code >&3; exit $code', $this->command);
         }
@@ -167,17 +167,6 @@ class Process {
         $this->stdout = $pipes[1];
         $this->stderr = $pipes[2];
 
-        if ($status["exitcode"] !== -1 && $status["exitcode"] !== false) {
-            $this->deferred->resolve($status["exitcode"]);
-            if (\is_resource($pipes[3])) {
-                \fclose($pipes[3]);
-            }
-            if (\is_resource($stdin)) {
-                \fclose($stdin);
-            }
-            return $deferred->promise();
-        }
-
         $this->running = true;
 
         $process = &$this->process;
@@ -190,21 +179,10 @@ class Process {
 
             try {
                 try {
-                    if (\strncasecmp(\PHP_OS, "WIN", 3) === 0) {
-                        $status = \proc_get_status($process);
-                        if (!\is_array($status)) {
-                            throw new ProcessException("Unable to get process status");
-                        }
-                        $code = $status["exitcode"];
-                    } else {
-                        if (!\is_resource($resource) || \feof($resource)) {
-                            throw new ProcessException("Process ended unexpectedly");
-                        }
-                        $code = \rtrim(@\stream_get_contents($resource));
-                        if (!\strlen($code) || !\is_numeric($code)) {
-                            throw new ProcessException("Unable to read exit code");
-                        }
+                    if (!\is_resource($resource) || \feof($resource)) {
+                        throw new ProcessException("Process ended unexpectedly");
                     }
+                    $code = \rtrim(@\stream_get_contents($resource));
                 } finally {
                     if (\is_resource($resource)) {
                         \fclose($resource);
