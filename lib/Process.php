@@ -133,9 +133,13 @@ class Process {
         ];
 
         if (\strncasecmp(\PHP_OS, "WIN", 3) === 0) {
-            $command = '"' . $this->command . '; exit $LASTEXITCODE" & echo %ERRORLEVEL%';
+            $command = $this->command;
         } else {
-            $command = \sprintf('(%s) 3>/dev/null; code=$?; echo $code >&3; exit $code', $this->command);
+            $command = \sprintf(
+                '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0;' .
+                'pid=$!; echo $pid >&3; wait $pid; RC=$?; echo $RC >&3; exit $RC',
+                $this->command
+            );
         }
 
         $this->process = @\proc_open($command, $fd, $pipes, $this->cwd ?: null, $this->env ?: null, $this->options);
@@ -194,6 +198,10 @@ class Process {
             } catch (\Throwable $exception) {
                 $deferred->fail($exception);
                 return;
+            }
+
+            if (\strncasecmp(\PHP_OS, "WIN", 3) === 0) {
+                $code = \proc_get_status($process)["exitcode"];
             }
 
             $deferred->resolve((int) $code);
