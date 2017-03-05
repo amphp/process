@@ -8,7 +8,8 @@
     "require-dev": {
         "amphp/loop": "dev-master",
         "phpunit/phpunit": "^5.0",
-        "friendsofphp/php-cs-fixer": "~1.9"
+        "friendsofphp/php-cs-fixer": "~1.9",
+        "kelunik/fqn-check": "^0.1.3"
     },
     "license": "MIT",
     "authors": [
