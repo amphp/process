@@ -6,6 +6,9 @@ use Amp\Deferred;
 use AsyncInterop\{ Loop, Promise };
 
 class Process {
+    /** @var bool */
+    private static $onWindows;
+
     /** @var resource|null */
     private $process;
 
@@ -53,6 +56,10 @@ class Process {
      * @param   mixed[] $options Options for proc_open().
      */
     public function __construct($command, string $cwd = null, array $env = [], array $options = []) {
+        if (self::$onWindows === null) {
+            self::$onWindows = \strncasecmp(\PHP_OS, "WIN", 3) === 0;
+        }
+
         if (\is_array($command)) {
             $command = \implode(" ", \array_map("escapeshellarg", $command));
         }
@@ -132,7 +139,7 @@ class Process {
             ["pipe", "w"], // exit code pipe
         ];
 
-        if (\strncasecmp(\PHP_OS, "WIN", 3) === 0) {
+        if (self::$onWindows) {
             $command = $this->command;
         } else {
             $command = \sprintf(
@@ -149,7 +156,8 @@ class Process {
             if ($error = \error_get_last()) {
                 $message .= \sprintf(" Errno: %d; %s", $error["type"], $error["message"]);
             }
-            throw new ProcessException($message);
+            $deferred->fail(new ProcessException($message));
+            return $deferred->promise();
         }
 
         $this->oid = \getmypid();
@@ -158,18 +166,31 @@ class Process {
         if (!$status) {
             \proc_close($this->process);
             $this->process = null;
-            throw new ProcessException("Could not get process status");
-        }
-
-        $this->pid = $status["pid"];
-
-        foreach ($pipes as $pipe) {
-            \stream_set_blocking($pipe, false);
+            $deferred->fail(new ProcessException("Could not get process status"));
+            return $deferred->promise();
         }
 
         $this->stdin = $stdin = $pipes[0];
         $this->stdout = $pipes[1];
         $this->stderr = $pipes[2];
+
+        if (self::$onWindows) {
+            $this->pid = $status["pid"];
+        } else {
+            // This blocking read will only block until the process scheduled, generally a few microseconds.
+            $pid = \rtrim(@\fread($pipes[3], 5)); // Read two bytes written as string.
+
+            if (!$pid || !\is_numeric($pid)) {
+                $deferred->fail(new ProcessException("Could not determine PID"));
+                return $deferred->promise();
+            }
+
+            $this->pid = (int) $pid;
+        }
+
+        foreach ($pipes as $pipe) {
+            \stream_set_blocking($pipe, false);
+        }
 
         $this->running = true;
 
@@ -186,7 +207,11 @@ class Process {
                     if (!\is_resource($resource) || \feof($resource)) {
                         throw new ProcessException("Process ended unexpectedly");
                     }
-                    $code = \rtrim(@\stream_get_contents($resource));
+                    if (self::$onWindows) {
+                        $code = \proc_get_status($process)["exitcode"];
+                    } else {
+                        $code = \rtrim(@\stream_get_contents($resource));
+                    }
                 } finally {
                     if (\is_resource($resource)) {
                         \fclose($resource);
@@ -198,10 +223,6 @@ class Process {
             } catch (\Throwable $exception) {
                 $deferred->fail($exception);
                 return;
-            }
-
-            if (\strncasecmp(\PHP_OS, "WIN", 3) === 0) {
-                $code = \proc_get_status($process)["exitcode"];
             }
 
             $deferred->resolve((int) $code);
