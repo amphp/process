@@ -178,7 +178,7 @@ class Process {
             $this->pid = $status["pid"];
         } else {
             // This blocking read will only block until the process scheduled, generally a few microseconds.
-            $pid = \rtrim(@\fread($pipes[3], 5)); // Read two bytes written as string.
+            $pid = \rtrim(@\fgets($pipes[3]));
 
             if (!$pid || !\is_numeric($pid)) {
                 $deferred->fail(new ProcessException("Could not determine PID"));
