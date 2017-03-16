@@ -2,8 +2,7 @@
 
 namespace Amp\Process;
 
-use Amp\{ Deferred, Emitter, Failure, Message, Success };
-use AsyncInterop\{ Loop, Promise };
+use Amp\{ Deferred, Emitter, Failure, Loop, Message, Promise, Success };
 
 class StreamedProcess {
     const CHUNK_SIZE = 8192;
@@ -167,7 +166,7 @@ class StreamedProcess {
     /**
      * @param string $data
      *
-     * @return \AsyncInterop\Promise
+     * @return \Amp\Promise
      */
     public function write(string $data): Promise {
         $length = \strlen($data);

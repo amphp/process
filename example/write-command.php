@@ -4,7 +4,7 @@ include dirname(__DIR__) . "/vendor/autoload.php";
 
 use Amp\Process\StreamedProcess;
 
-AsyncInterop\Loop::execute(\Amp\wrap(function() {
+Amp\Loop::run(function() {
     $process = new StreamedProcess('read ; echo "$REPLY"');
     $promise = $process->execute();
 
@@ -15,4 +15,4 @@ AsyncInterop\Loop::execute(\Amp\wrap(function() {
 
     $code = yield $promise;
     echo "Process exited with {$code}.\n";
-}));
+});

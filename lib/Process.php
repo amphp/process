@@ -2,8 +2,7 @@
 
 namespace Amp\Process;
 
-use Amp\Deferred;
-use AsyncInterop\{ Loop, Promise };
+use Amp\{ Deferred, Loop, Promise };
 
 class Process {
     /** @var resource|null */
@@ -78,7 +77,9 @@ class Process {
             $this->kill(); // Will only terminate if the process is still running.
         }
 
-        Loop::cancel($this->watcher);
+        if ($this->watcher !== null) {
+            Loop::cancel($this->watcher);
+        }
 
         if (\is_resource($this->process)) {
             \proc_close($this->process);
@@ -116,7 +117,7 @@ class Process {
      * @throws \Amp\Process\ProcessException If starting the process fails.
      * @throws \Amp\Process\StatusError If the process is already running.
      *
-     * @return \AsyncInterop\Promise<int> Succeeds with exit code of the process or fails if the process is killed.
+     * @return \Amp\Promise<int> Succeeds with exit code of the process or fails if the process is killed.
      */
     public function execute(): Promise {
         if ($this->deferred !== null) {
