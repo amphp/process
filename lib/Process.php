@@ -5,6 +5,9 @@ namespace Amp\Process;
 use Amp\{ Deferred, Loop, Promise };
 
 class Process {
+    /** @var bool */
+    private static $onWindows;
+
     /** @var resource|null */
     private $process;
 
@@ -52,6 +55,10 @@ class Process {
      * @param   mixed[] $options Options for proc_open().
      */
     public function __construct($command, string $cwd = null, array $env = [], array $options = []) {
+        if (self::$onWindows === null) {
+            self::$onWindows = \strncasecmp(\PHP_OS, "WIN", 3) === 0;
+        }
+
         if (\is_array($command)) {
             $command = \implode(" ", \array_map("escapeshellarg", $command));
         }
@@ -133,9 +140,15 @@ class Process {
             ["pipe", "w"], // exit code pipe
         ];
 
-        $nd = \strncasecmp(\PHP_OS, "WIN", 3) === 0 ? "NUL" : "/dev/null";
-
-        $command = \sprintf('(%s) 3>%s; code=$?; echo $code >&3; exit $code', $this->command, $nd);
+        if (self::$onWindows) {
+            $command = $this->command;
+        } else {
+            $command = \sprintf(
+                '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0;' .
+                'pid=$!; echo $pid >&3; wait $pid; RC=$?; echo $RC >&3; exit $RC',
+                $this->command
+            );
+        }
 
         $this->process = @\proc_open($command, $fd, $pipes, $this->cwd ?: null, $this->env ?: null, $this->options);
 
@@ -144,7 +157,8 @@ class Process {
             if ($error = \error_get_last()) {
                 $message .= \sprintf(" Errno: %d; %s", $error["type"], $error["message"]);
             }
-            throw new ProcessException($message);
+            $deferred->fail(new ProcessException($message));
+            return $deferred->promise();
         }
 
         $this->oid = \getmypid();
@@ -153,24 +167,38 @@ class Process {
         if (!$status) {
             \proc_close($this->process);
             $this->process = null;
-            throw new ProcessException("Could not get process status");
-        }
-
-        $this->pid = $status["pid"];
-
-        foreach ($pipes as $pipe) {
-            \stream_set_blocking($pipe, false);
+            $deferred->fail(new ProcessException("Could not get process status"));
+            return $deferred->promise();
         }
 
         $this->stdin = $stdin = $pipes[0];
         $this->stdout = $pipes[1];
         $this->stderr = $pipes[2];
-        $stream = $pipes[3];
+
+        if (self::$onWindows) {
+            $this->pid = $status["pid"];
+        } else {
+            // This blocking read will only block until the process scheduled, generally a few microseconds.
+            $pid = \rtrim(@\fgets($pipes[3]));
+
+            if (!$pid || !\is_numeric($pid)) {
+                $deferred->fail(new ProcessException("Could not determine PID"));
+                return $deferred->promise();
+            }
+
+            $this->pid = (int) $pid;
+        }
+
+        foreach ($pipes as $pipe) {
+            \stream_set_blocking($pipe, false);
+        }
 
         $this->running = true;
+
+        $process = &$this->process;
         $running = &$this->running;
-        $this->watcher = Loop::onReadable($stream, static function ($watcher, $resource) use (
-            &$running, $deferred, $stdin
+        $this->watcher = Loop::onReadable($pipes[3], static function ($watcher, $resource) use (
+            &$process, &$running, $deferred, $stdin
         ) {
             Loop::cancel($watcher);
             $running = false;
@@ -180,7 +208,11 @@ class Process {
                     if (!\is_resource($resource) || \feof($resource)) {
                         throw new ProcessException("Process ended unexpectedly");
                     }
-                    $code = \rtrim(@\fread($resource, 3)); // Single byte written as string
+                    if (self::$onWindows) {
+                        $code = \proc_get_status($process)["exitcode"];
+                    } else {
+                        $code = \rtrim(@\stream_get_contents($resource));
+                    }
                 } finally {
                     if (\is_resource($resource)) {
                         \fclose($resource);
