@@ -238,7 +238,7 @@ class Process {
             throw new StatusError("The process is not running");
         }
 
-        if ($this->watcher !== null) {
+        if ($this->watcher !== null && $this->running) {
             Loop::reference($this->watcher);
         }
 
