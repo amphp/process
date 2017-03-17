@@ -123,10 +123,8 @@ class Process {
     /**
      * @throws \Amp\Process\ProcessException If starting the process fails.
      * @throws \Amp\Process\StatusError If the process is already running.
-     *
-     * @return \Amp\Promise<int> Succeeds with exit code of the process or fails if the process is killed.
      */
-    public function execute(): Promise {
+    public function start() {
         if ($this->deferred !== null) {
             throw new StatusError("The process has already been started");
         }
@@ -158,7 +156,7 @@ class Process {
                 $message .= \sprintf(" Errno: %d; %s", $error["type"], $error["message"]);
             }
             $deferred->fail(new ProcessException($message));
-            return $deferred->promise();
+            return;
         }
 
         $this->oid = \getmypid();
@@ -168,7 +166,7 @@ class Process {
             \proc_close($this->process);
             $this->process = null;
             $deferred->fail(new ProcessException("Could not get process status"));
-            return $deferred->promise();
+            return;
         }
 
         $this->stdin = $stdin = $pipes[0];
@@ -183,7 +181,7 @@ class Process {
 
             if (!$pid || !\is_numeric($pid)) {
                 $deferred->fail(new ProcessException("Could not determine PID"));
-                return $deferred->promise();
+                return;
             }
 
             $this->pid = (int) $pid;
@@ -229,7 +227,22 @@ class Process {
             $deferred->resolve((int) $code);
         });
 
-        return $deferred->promise();
+        Loop::unreference($this->watcher);
+    }
+
+    /**
+     * @return \Amp\Promise<int> Succeeds with exit code of the process or fails if the process is killed.
+     */
+    public function join(): Promise {
+        if ($this->deferred === null) {
+            throw new StatusError("The process is not running");
+        }
+
+        if ($this->watcher !== null) {
+            Loop::reference($this->watcher);
+        }
+
+        return $this->deferred->promise();
     }
 
     /**

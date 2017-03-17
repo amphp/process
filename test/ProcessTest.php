@@ -14,15 +14,16 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
     public function testMultipleExecution() {
         Loop::run(function() {
             $process = new Process(self::CMD_PROCESS);
-            $process->execute();
-            $process->execute();
+            $process->start();
+            $process->start();
         });
     }
 
     public function testIsRunning() {
         Loop::run(function() {
             $process = new Process("exit 42");
-            $promise = $process->execute();
+            $process->start();
+            $promise = $process->join();
 
             $this->assertTrue($process->isRunning());
 
@@ -36,7 +37,8 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
     public function testExecuteResolvesToExitCode() {
         Loop::run(function() {
             $process = new Process("exit 42");
-            $code = yield $process->execute();
+            $process->start();
+            $code = yield $process->join();
 
             $this->assertSame(42, $code);
             $this->assertFalse($process->isRunning());
@@ -46,7 +48,8 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
     public function testCommandCanRun() {
         Loop::run(function() {
             $process = new Process(self::CMD_PROCESS);
-            $promise = $process->execute();
+            $process->start();
+            $promise = $process->join();
 
             $completed = false;
             $promise->when(function() use (&$completed) { $completed = true; });
@@ -62,7 +65,8 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
     public function testKillSignals() {
         Loop::run(function() {
             $process = new Process(self::CMD_PROCESS);
-            $promise = $process->execute();
+            $process->start();
+            $promise = $process->join();
 
             $process->kill();
 
