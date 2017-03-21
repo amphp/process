@@ -138,7 +138,7 @@ class StreamedProcess {
         $this->stdoutWatcher = Loop::onReadable($this->process->getStdout(), $callback, $this->stdoutEmitter);
         $this->stderrWatcher = Loop::onReadable($this->process->getStderr(), $callback, $this->stderrEmitter);
 
-        $this->process->join()->when(function (\Throwable $exception = null, int $code = null) {
+        $this->process->join()->onResolve(function (\Throwable $exception = null, int $code = null) {
             Loop::cancel($this->stdinWatcher);
             Loop::cancel($this->stdoutWatcher);
             Loop::cancel($this->stderrWatcher);

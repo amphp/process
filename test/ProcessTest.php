@@ -52,7 +52,7 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
             $promise = $process->join();
 
             $completed = false;
-            $promise->when(function() use (&$completed) { $completed = true; });
+            $promise->onResolve(function() use (&$completed) { $completed = true; });
             $this->assertFalse($completed);
             $this->assertInternalType('int', $process->getPid());
         });
