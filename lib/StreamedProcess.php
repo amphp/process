@@ -121,7 +121,9 @@ class StreamedProcess {
                 }
             }
         });
-        Loop::disable($this->stdinWatcher);
+        if ($this->writeQueue->isEmpty()) {
+            Loop::disable($this->stdinWatcher);
+        }
 
         $callback = static function ($watcher, $resource, Emitter $emitter) {
             // Error reporting suppressed since fread() produces a warning if the stream unexpectedly closes.
@@ -199,7 +201,9 @@ class StreamedProcess {
 
         $deferred = new Deferred;
         $this->writeQueue->push([$data, $written, $deferred]);
-        Loop::enable($this->stdinWatcher);
+        if ($this->stdinWatcher) {
+            Loop::enable($this->stdinWatcher);
+        }
         return $deferred->promise();
     }
 
