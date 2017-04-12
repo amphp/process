@@ -198,7 +198,9 @@ class Process {
         $this->watcher = Loop::onReadable($pipes[3], static function ($watcher, $resource) use (
             &$process, &$running, $deferred, $stdin
         ) {
-            Loop::cancel($watcher);
+            if($watcher) {
+                Loop::cancel($watcher);
+            }
             $running = false;
 
             try {
@@ -254,8 +256,9 @@ class Process {
 
             // Forcefully kill the process using SIGKILL.
             \proc_terminate($this->process, 9);
-
-            Loop::cancel($this->watcher);
+            if($this->watcher) {
+                Loop::cancel($this->watcher);
+            }
 
             $this->deferred->fail(new ProcessException("The process was killed"));
         }
