@@ -116,17 +116,21 @@ class StreamedProcess {
                     return;
                 }
             } finally {
-                if ($writes->isEmpty()) {
+                if ($writes->isEmpty() && $watcher) {
                     Loop::disable($watcher);
                 }
             }
         });
-        Loop::disable($this->stdinWatcher);
+        if($this->stdinWatcher) {
+            Loop::disable($this->stdinWatcher);
+        }
 
         $callback = static function ($watcher, $resource, Emitter $emitter) {
             // Error reporting suppressed since fread() produces a warning if the stream unexpectedly closes.
             if (@\feof($resource) || ($data = @\fread($resource, self::CHUNK_SIZE)) === false) {
-                Loop::disable($watcher);
+                if($watcher) {
+                    Loop::disable($watcher);
+                }
                 return;
             }
 
@@ -139,9 +143,15 @@ class StreamedProcess {
         $this->stderrWatcher = Loop::onReadable($this->process->getStderr(), $callback, $this->stderrEmitter);
 
         $this->process->join()->onResolve(function (\Throwable $exception = null, int $code = null) {
-            Loop::cancel($this->stdinWatcher);
-            Loop::cancel($this->stdoutWatcher);
-            Loop::cancel($this->stderrWatcher);
+            if($this->stdinWatcher) {
+                Loop::cancel($this->stdinWatcher);
+            }
+            if($this->stdoutWatcher) {
+                Loop::cancel($this->stdoutWatcher);
+            }
+            if($this->stderrWatcher) {
+                Loop::cancel($this->stderrWatcher);
+            }
 
             if ($exception) {
                 $this->stdoutEmitter->fail($exception);
