@@ -1,14 +1,32 @@
 # Process
 An async process dispatcher built on the amp concurrency framework
 
-## Dependencies
+[![Build Status](https://img.shields.io/travis/amphp/process/master.svg?style=flat-square)](https://travis-ci.org/amphp/process)
+[![Coverage Status](https://img.shields.io/coveralls/amphp/process/master.svg?style=flat-square)](https://coveralls.io/github/amphp/process?branch=master)
+![Stable](https://img.shields.io/badge/v0.2-stable-green.svg?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)
 
-* PHP 5.5+
+## Installation
+
+This package can be installed as a [Composer](https://getcomposer.org/) dependency.
+
+```bash
+composer require amphp/process
+```
+
+## Requirements
+
+* PHP 7.0+
 * [Amp framework](https://github.com/amphp/amp) (installed via composer)
 
-## Usage
+## Versioning
 
-It's all just one class: `Amp\Process`. For its usage, see
+`amphp/process` follows the [semver](http://semver.org/) semantic versioning specification like all other `amphp` packages.
 
-* the examples in the [examples directory](https://github.com/amphp/process/tree/master/examples) 
-* the method signatures and comments of the [Process class](https://github.com/amphp/process/blob/master/Process.php)
+## Security
+
+If you discover any security related issues, please email [`me@kelunik.com`](mailto:me@kelunik.com) instead of using the issue tracker.
+
+## License
+
+The MIT License (MIT). Please see [`LICENSE`](./LICENSE) for more information.
