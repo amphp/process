@@ -2,9 +2,14 @@
 
 namespace Amp\Process;
 
+use Amp\ByteStream\InputStream;
+use Amp\ByteStream\OutputStream;
+use Amp\ByteStream\ResourceInputStream;
+use Amp\ByteStream\ResourceOutputStream;
 use Amp\Deferred;
 use Amp\Loop;
 use Amp\Promise;
+use function Amp\call;
 
 class Process {
     /** @var bool */
@@ -25,13 +30,13 @@ class Process {
     /** @var array */
     private $options;
 
-    /** @var resource|null */
+    /** @var \Amp\ByteStream\ResourceOutputStream|null */
     private $stdin;
 
-    /** @var resource|null */
+    /** @var \Amp\ByteStream\ResourceInputStream|null */
     private $stdout;
 
-    /** @var resource|null */
+    /** @var \Amp\ByteStream\ResourceInputStream|null */
     private $stderr;
 
     /** @var int */
@@ -92,18 +97,6 @@ class Process {
 
         if (\is_resource($this->process)) {
             \proc_close($this->process);
-        }
-
-        if (\is_resource($this->stdin)) {
-            \fclose($this->stdin);
-        }
-
-        if (\is_resource($this->stdout)) {
-            \fclose($this->stdout);
-        }
-
-        if (\is_resource($this->stderr)) {
-            \fclose($this->stderr);
         }
     }
 
@@ -171,10 +164,6 @@ class Process {
             return;
         }
 
-        $this->stdin = $stdin = $pipes[0];
-        $this->stdout = $pipes[1];
-        $this->stderr = $pipes[2];
-
         if (self::$onWindows) {
             $this->pid = $status["pid"];
         } else {
@@ -189,16 +178,17 @@ class Process {
             $this->pid = (int) $pid;
         }
 
-        foreach ($pipes as $pipe) {
-            \stream_set_blocking($pipe, false);
-        }
+        $this->stdin = new ResourceOutputStream($pipes[0]);
+        $this->stdout = new ResourceInputStream($pipes[1]);
+        $this->stderr = new ResourceInputStream($pipes[2]);
+        \stream_set_blocking($pipes[3], false);
 
         $this->running = true;
 
         $process = &$this->process;
         $running = &$this->running;
         $this->watcher = Loop::onReadable($pipes[3], static function ($watcher, $resource) use (
-            &$process, &$running, $deferred, $stdin
+            &$process, &$running, $deferred
         ) {
             Loop::cancel($watcher);
             $running = false;
@@ -216,9 +206,6 @@ class Process {
                 } finally {
                     if (\is_resource($resource)) {
                         \fclose($resource);
-                    }
-                    if (\is_resource($stdin)) {
-                        \fclose($stdin);
                     }
                 }
             } catch (\Throwable $exception) {
@@ -240,11 +227,19 @@ class Process {
             throw new StatusError("The process is not running");
         }
 
-        if ($this->watcher !== null && $this->running) {
-            Loop::reference($this->watcher);
-        }
+        return call(function () {
+            if ($this->watcher !== null && $this->running) {
+                Loop::reference($this->watcher);
+            }
 
-        return $this->deferred->promise();
+            try {
+                return yield $this->deferred->promise();
+            } finally {
+                $this->stdin->close();
+                $this->stdout->close();
+                $this->stderr->close();
+            }
+        });
     }
 
     /**
@@ -345,11 +340,11 @@ class Process {
     /**
      * Gets the process input stream (STDIN).
      *
-     * @return resource
+     * @return \Amp\ByteStream\OutputStream
      *
      * @throws \Amp\Process\StatusError If the process is not running.
      */
-    public function getStdin() {
+    public function getStdin(): OutputStream {
         if ($this->stdin === null) {
             throw new StatusError("The process has not been started");
         }
@@ -360,11 +355,11 @@ class Process {
     /**
      * Gets the process output stream (STDOUT).
      *
-     * @return resource
+     * @return \Amp\ByteStream\InputStream
      *
      * @throws \Amp\Process\StatusError If the process is not running.
      */
-    public function getStdout() {
+    public function getStdout(): InputStream {
         if ($this->stdout === null) {
             throw new StatusError("The process has not been started");
         }
@@ -375,11 +370,11 @@ class Process {
     /**
      * Gets the process error stream (STDERR).
      *
-     * @return resource
+     * @return \Amp\ByteStream\InputStream
      *
      * @throws \Amp\Process\StatusError If the process is not running.
      */
-    public function getStderr() {
+    public function getStderr(): InputStream {
         if ($this->stderr === null) {
             throw new StatusError("The process has not been started");
         }
