@@ -12,7 +12,7 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
      * @expectedException \Amp\Process\StatusError
      */
     public function testMultipleExecution() {
-        Loop::run(function() {
+        Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             $process->start();
             $process->start();
@@ -20,7 +20,7 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
     }
 
     public function testIsRunning() {
-        Loop::run(function() {
+        Loop::run(function () {
             $process = new Process("exit 42");
             $process->start();
             $promise = $process->join();
@@ -35,7 +35,7 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
 
 
     public function testExecuteResolvesToExitCode() {
-        Loop::run(function() {
+        Loop::run(function () {
             $process = new Process("exit 42");
             $process->start();
             $code = yield $process->join();
@@ -46,13 +46,13 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
     }
 
     public function testCommandCanRun() {
-        Loop::run(function() {
+        Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             $process->start();
             $promise = $process->join();
 
             $completed = false;
-            $promise->onResolve(function() use (&$completed) { $completed = true; });
+            $promise->onResolve(function () use (&$completed) { $completed = true; });
             $this->assertFalse($completed);
             $this->assertInternalType('int', $process->getPid());
         });
@@ -63,7 +63,7 @@ class ProcessTest extends \PHPUnit_Framework_TestCase {
      * @expectedExceptionMessage The process was killed
      */
     public function testKillSignals() {
-        Loop::run(function() {
+        Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             $process->start();
             $promise = $process->join();
