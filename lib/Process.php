@@ -7,6 +7,7 @@ use Amp\ByteStream\OutputStream;
 use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Deferred;
+use Amp\Delayed;
 use Amp\Loop;
 use Amp\Promise;
 
@@ -177,9 +178,11 @@ class Process {
 
         if (self::$onWindows) {
             $this->pid = $status["pid"];
+            $exitcode = $status["exitcode"];
         } else {
             // This blocking read will only block until the process scheduled, generally a few microseconds.
             $pid = \rtrim(@\fgets($pipes[3]));
+            $exitcode = -1;
 
             if (!$pid || !\is_numeric($pid)) {
                 $deferred->fail(new ProcessException("Could not determine PID"));
@@ -199,18 +202,23 @@ class Process {
         $process = &$this->process;
         $running = &$this->running;
         $this->watcher = Loop::onReadable($pipes[3], static function ($watcher, $resource) use (
-            &$process, &$running, $deferred
+            &$process, &$running, $exitcode, $deferred
         ) {
             Loop::cancel($watcher);
             $running = false;
 
             try {
                 try {
-                    if (!\is_resource($resource) || \feof($resource)) {
-                        throw new ProcessException("Process ended unexpectedly");
-                    }
                     if (self::$onWindows) {
-                        $code = \proc_get_status($process)["exitcode"];
+                        $status = \proc_get_status($process);
+
+                        while ($status["running"]) {
+                            $status = \proc_get_status($process);
+                        }
+
+                        $code = $exitcode !== -1 ? $exitcode : $status["exitcode"];
+                    } else if (!\is_resource($resource) || \feof($resource)) {
+                        throw new ProcessException("Process ended unexpectedly");
                     } else {
                         $code = \rtrim(@\stream_get_contents($resource));
                     }
