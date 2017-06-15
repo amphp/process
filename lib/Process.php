@@ -7,7 +7,6 @@ use Amp\ByteStream\OutputStream;
 use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Deferred;
-use Amp\Delayed;
 use Amp\Loop;
 use Amp\Promise;
 
@@ -217,7 +216,7 @@ class Process {
                         }
 
                         $code = $exitcode !== -1 ? $exitcode : $status["exitcode"];
-                    } else if (!\is_resource($resource) || \feof($resource)) {
+                    } elseif (!\is_resource($resource) || \feof($resource)) {
                         throw new ProcessException("Process ended unexpectedly");
                     } else {
                         $code = \rtrim(@\stream_get_contents($resource));
