@@ -10,6 +10,7 @@ use Amp\Deferred;
 use Amp\Delayed;
 use Amp\Loop;
 use Amp\Promise;
+use function Amp\call;
 
 class Process {
     /** @var bool */
@@ -95,10 +96,6 @@ class Process {
             Loop::cancel($this->watcher);
         }
 
-        if (\is_resource($this->process)) {
-            \proc_close($this->process);
-        }
-
         if ($this->stdin && \is_resource($resource = $this->stdin->getResource())) {
             \fclose($resource);
         }
@@ -109,6 +106,10 @@ class Process {
 
         if ($this->stderr && \is_resource($resource = $this->stderr->getResource())) {
             \fclose($resource);
+        }
+
+        if (\is_resource($this->process)) {
+            \proc_close($this->process);
         }
     }
 
@@ -211,7 +212,7 @@ class Process {
                 try {
                     if (self::$onWindows) {
                         // Avoid a generator on Unix
-                        return (function () use ($deferred, $exitcode, $process) {
+                        $code = call(function () use ($exitcode, $process) {
                             $status = \proc_get_status($process);
 
                             while ($status["running"]) {
@@ -220,12 +221,12 @@ class Process {
                             }
 
                             $code = $exitcode !== -1 ? $exitcode : $status["exitcode"];
-                            $deferred->resolve((int) $code);
-                        })();
+                            return (int) $code;
+                        });
                     } elseif (!\is_resource($resource) || \feof($resource)) {
                         throw new ProcessException("Process ended unexpectedly");
                     } else {
-                        $code = \rtrim(@\stream_get_contents($resource));
+                        $code = (int) \rtrim(@\stream_get_contents($resource));
                     }
                 } finally {
                     if (\is_resource($resource)) {
@@ -237,7 +238,7 @@ class Process {
                 return;
             }
 
-            $deferred->resolve((int) $code);
+            $deferred->resolve($code);
         });
 
         Loop::unreference($this->watcher);
