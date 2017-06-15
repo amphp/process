@@ -7,6 +7,7 @@ use Amp\ByteStream\OutputStream;
 use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Deferred;
+use Amp\Delayed;
 use Amp\Loop;
 use Amp\Promise;
 
@@ -209,13 +210,18 @@ class Process {
             try {
                 try {
                     if (self::$onWindows) {
-                        $status = \proc_get_status($process);
-
-                        while ($status["running"]) {
+                        // Avoid a generator on Unix
+                        return (function () use ($deferred, $exitcode, $process) {
                             $status = \proc_get_status($process);
-                        }
 
-                        $code = $exitcode !== -1 ? $exitcode : $status["exitcode"];
+                            while ($status["running"]) {
+                                yield new Delayed(10);
+                                $status = \proc_get_status($process);
+                            }
+
+                            $code = $exitcode !== -1 ? $exitcode : $status["exitcode"];
+                            $deferred->resolve((int) $code);
+                        })();
                     } elseif (!\is_resource($resource) || \feof($resource)) {
                         throw new ProcessException("Process ended unexpectedly");
                     } else {
