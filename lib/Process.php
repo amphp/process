@@ -9,7 +9,6 @@ use Amp\ByteStream\ResourceOutputStream;
 use Amp\Deferred;
 use Amp\Loop;
 use Amp\Promise;
-use function Amp\call;
 
 class Process {
     /** @var bool */
@@ -97,6 +96,18 @@ class Process {
 
         if (\is_resource($this->process)) {
             \proc_close($this->process);
+        }
+
+        if ($this->stdin && \is_resource($resource = $this->stdin->getResource())) {
+            \fclose($resource);
+        }
+
+        if ($this->stdout && \is_resource($resource = $this->stdout->getResource())) {
+            \fclose($resource);
+        }
+
+        if ($this->stderr && \is_resource($resource = $this->stderr->getResource())) {
+            \fclose($resource);
         }
     }
 
@@ -227,19 +238,11 @@ class Process {
             throw new StatusError("The process is not running");
         }
 
-        return call(function () {
-            if ($this->watcher !== null && $this->running) {
-                Loop::reference($this->watcher);
-            }
+        if ($this->watcher !== null && $this->running) {
+            Loop::reference($this->watcher);
+        }
 
-            try {
-                return yield $this->deferred->promise();
-            } finally {
-                $this->stdin->close();
-                $this->stdout->close();
-                $this->stderr->close();
-            }
-        });
+        return $this->deferred->promise();
     }
 
     /**
