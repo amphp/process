@@ -6,14 +6,12 @@ use Amp\Process\StreamedProcess;
 
 Amp\Loop::run(function() {
     $process = new StreamedProcess("echo 1; sleep 1; echo 2; sleep 1; echo 3; exit 42");
-    $promise = $process->execute();
+    $process->start();
 
-    $stdout = $process->getStdout();
-
-    while (yield $stdout->advance()) {
-        echo $stdout->getCurrent();
+    while ($chunk = yield $process->read()) {
+        echo $chunk;
     }
 
-    $code = yield $promise;
+    $code = yield $process->join();
     echo "Process exited with {$code}.\n";
 });

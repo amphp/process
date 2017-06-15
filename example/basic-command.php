@@ -2,14 +2,15 @@
 
 include dirname(__DIR__) . "/vendor/autoload.php";
 
+use Amp\ByteStream\Message;
 use Amp\Process\StreamedProcess;
 
 Amp\Loop::run(function() {
     $process = new StreamedProcess("echo 'Hello, world!'");
-    $promise = $process->execute();
+    $process->start();
 
-    echo yield $process->getStdout();
+    echo yield new Message($process);
 
-    $code = yield $promise;
+    $code = yield $process->join();
     echo "Process exited with {$code}.\n";
 });

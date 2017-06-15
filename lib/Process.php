@@ -2,7 +2,9 @@
 
 namespace Amp\Process;
 
-use Amp\{ Deferred, Loop, Promise };
+use Amp\Deferred;
+use Amp\Loop;
+use Amp\Promise;
 
 class Process {
     /** @var bool */
