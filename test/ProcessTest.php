@@ -4,8 +4,9 @@ namespace Amp\Test\Process;
 
 use Amp\Loop;
 use Amp\Process\Process;
+use PHPUnit\Framework\TestCase;
 
-class ProcessTest extends \PHPUnit_Framework_TestCase {
+class ProcessTest extends TestCase {
     const CMD_PROCESS = 'echo foo';
 
     /**
