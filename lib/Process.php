@@ -2,8 +2,6 @@
 
 namespace Amp\Process;
 
-use Amp\ByteStream\InputStream;
-use Amp\ByteStream\OutputStream;
 use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Deferred;
@@ -357,11 +355,11 @@ class Process {
     /**
      * Gets the process input stream (STDIN).
      *
-     * @return \Amp\ByteStream\OutputStream
+     * @return \Amp\ByteStream\ResourceOutputStream
      *
      * @throws \Amp\Process\StatusError If the process is not running.
      */
-    public function getStdin(): OutputStream {
+    public function getStdin(): ResourceOutputStream {
         if ($this->stdin === null) {
             throw new StatusError("The process has not been started");
         }
@@ -372,11 +370,11 @@ class Process {
     /**
      * Gets the process output stream (STDOUT).
      *
-     * @return \Amp\ByteStream\InputStream
+     * @return \Amp\ByteStream\ResourceInputStream
      *
      * @throws \Amp\Process\StatusError If the process is not running.
      */
-    public function getStdout(): InputStream {
+    public function getStdout(): ResourceInputStream {
         if ($this->stdout === null) {
             throw new StatusError("The process has not been started");
         }
@@ -387,11 +385,11 @@ class Process {
     /**
      * Gets the process error stream (STDERR).
      *
-     * @return \Amp\ByteStream\InputStream
+     * @return \Amp\ByteStream\ResourceInputStream
      *
      * @throws \Amp\Process\StatusError If the process is not running.
      */
-    public function getStderr(): InputStream {
+    public function getStderr(): ResourceInputStream {
         if ($this->stderr === null) {
             throw new StatusError("The process has not been started");
         }
