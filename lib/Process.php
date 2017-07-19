@@ -7,6 +7,7 @@ use Amp\ByteStream\ResourceOutputStream;
 use Amp\Deferred;
 use Amp\Delayed;
 use Amp\Loop;
+use Amp\Process\Internal\Windows\StdioBridge;
 use Amp\Promise;
 use function Amp\call;
 
@@ -68,6 +69,7 @@ class Process {
         if (\is_array($command)) {
             $command = \implode(" ", \array_map("escapeshellarg", $command));
         }
+
         $this->command = $command;
         $this->cwd = $cwd ?? "";
 
@@ -141,17 +143,32 @@ class Process {
             ["pipe", "r"], // stdin
             ["pipe", "w"], // stdout
             ["pipe", "w"], // stderr
-            ["pipe", "w"], // exit code pipe
         ];
 
         if (self::$onWindows) {
-            $command = $this->command;
+            // Use a random process ID to make it harder to hijack the socket communication
+            $processId = \bin2hex(\random_bytes(32));
+            $stdio = new StdioBridge;
+
+            $command = \sprintf(
+                '"%s" --port=%d --process-id=%s',
+                __DIR__ . "/../windows/process-wrapper.exe",
+                \explode(":", $stdio->getAddress())[1],
+                $processId,
+                $this->command
+            );
+
+            if ($this->cwd !== null) {
+                $command .= ' "--cwd=' . \rtrim($this->cwd, '\\') . '"';
+            }
         } else {
             $command = \sprintf(
                 '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0;' .
                 'pid=$!; echo $pid >&3; wait $pid; RC=$?; echo $RC >&3; exit $RC',
                 $this->command
             );
+
+            $fd[] = ["pipe", "w"]; // exit code pipe
         }
 
         $this->process = @\proc_open($command, $fd, $pipes, $this->cwd ?: null, $this->env ?: null, $this->options);
@@ -176,6 +193,9 @@ class Process {
         }
 
         if (self::$onWindows) {
+            /** @var $stdio */
+            /** @var $processId */
+            $pipes = $stdio->accept($processId);
             $this->pid = $status["pid"];
             $exitcode = $status["exitcode"];
         } else {
@@ -189,12 +209,13 @@ class Process {
             }
 
             $this->pid = (int) $pid;
+
+            \stream_set_blocking($pipes[3], false);
         }
 
         $this->stdin = new ResourceOutputStream($pipes[0]);
         $this->stdout = new ResourceInputStream($pipes[1]);
         $this->stderr = new ResourceInputStream($pipes[2]);
-        \stream_set_blocking($pipes[3], false);
 
         $this->running = true;
 
