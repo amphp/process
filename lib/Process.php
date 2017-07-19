@@ -161,6 +161,8 @@ class Process {
             if ($this->cwd !== null) {
                 $command .= ' "--cwd=' . \rtrim($this->cwd, '\\') . '"';
             }
+
+            $command .= " {$this->command}";
         } else {
             $command = \sprintf(
                 '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0;' .
