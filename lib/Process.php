@@ -154,11 +154,10 @@ class Process {
                 '"%s" --port=%d --process-id=%s',
                 __DIR__ . "/../windows/process-wrapper.exe",
                 \explode(":", $stdio->getAddress())[1],
-                $processId,
-                $this->command
+                $processId
             );
 
-            if ($this->cwd !== null) {
+            if ($this->cwd !== "") {
                 $command .= ' "--cwd=' . \rtrim($this->cwd, '\\') . '"';
             }
 
