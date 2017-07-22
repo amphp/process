@@ -5,14 +5,15 @@ namespace Amp\Process;
 use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Deferred;
-use Amp\Delayed;
 use Amp\Loop;
 use Amp\Promise;
-use function Amp\call;
 
 class Process {
     /** @var bool */
     private static $onWindows;
+
+    /** @var bool */
+    private static $windowsProcessWrapperExePath = __DIR__ . '\\..\\bin/windows/ProcessWrapper.exe';
 
     /** @var resource|null */
     private $process;
@@ -59,6 +60,7 @@ class Process {
      *     PHP process.
      * @param   mixed[] $env Environment variables or use an empty array to inherit from the current PHP process.
      * @param   mixed[] $options Options for proc_open().
+     * @throws \Error
      */
     public function __construct($command, string $cwd = null, array $env = [], array $options = []) {
         if (self::$onWindows === null) {
@@ -126,6 +128,11 @@ class Process {
         $this->running = false;
     }
 
+    private function startWindowsWrapper()
+    {
+
+    }
+
     /**
      * @throws \Amp\Process\ProcessException If starting the process fails.
      * @throws \Amp\Process\StatusError If the process is already running.
@@ -137,6 +144,11 @@ class Process {
 
         $this->deferred = $deferred = new Deferred;
 
+        if (self::$onWindows) {
+            $this->startWindowsWrapper();
+            return;
+        }
+
         $fd = [
             ["pipe", "r"], // stdin
             ["pipe", "w"], // stdout
@@ -144,15 +156,11 @@ class Process {
             ["pipe", "w"], // exit code pipe
         ];
 
-        if (self::$onWindows) {
-            $command = $this->command;
-        } else {
-            $command = \sprintf(
-                '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0;' .
-                'pid=$!; echo $pid >&3; wait $pid; RC=$?; echo $RC >&3; exit $RC',
-                $this->command
-            );
-        }
+        $command = \sprintf(
+            '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0;' .
+            'pid=$!; echo $pid >&3; wait $pid; RC=$?; echo $RC >&3; exit $RC',
+            $this->command
+        );
 
         $this->process = @\proc_open($command, $fd, $pipes, $this->cwd ?: null, $this->env ?: null, $this->options);
 
@@ -175,21 +183,15 @@ class Process {
             return;
         }
 
-        if (self::$onWindows) {
-            $this->pid = $status["pid"];
-            $exitcode = $status["exitcode"];
-        } else {
-            // This blocking read will only block until the process scheduled, generally a few microseconds.
-            $pid = \rtrim(@\fgets($pipes[3]));
-            $exitcode = -1;
+        // This blocking read will only block until the process scheduled, generally a few microseconds.
+        $pid = \rtrim(@\fgets($pipes[3]));
 
-            if (!$pid || !\is_numeric($pid)) {
-                $deferred->fail(new ProcessException("Could not determine PID"));
-                return;
-            }
-
-            $this->pid = (int) $pid;
+        if (!$pid || !\is_numeric($pid)) {
+            $deferred->fail(new ProcessException("Could not determine PID"));
+            return;
         }
+
+        $this->pid = (int) $pid;
 
         $this->stdin = new ResourceOutputStream($pipes[0]);
         $this->stdout = new ResourceInputStream($pipes[1]);
@@ -198,39 +200,18 @@ class Process {
 
         $this->running = true;
 
-        $process = &$this->process;
         $running = &$this->running;
-        $this->watcher = Loop::onReadable($pipes[3], static function ($watcher, $resource) use (
-            &$process, &$running, $exitcode, $deferred
-        ) {
+        $this->watcher = Loop::onReadable($pipes[3], static function ($watcher, $resource) use (&$running, $deferred) {
             Loop::cancel($watcher);
             $running = false;
 
             try {
-                try {
-                    if (self::$onWindows) {
-                        // Avoid a generator on Unix
-                        $code = call(function () use ($exitcode, $process) {
-                            $status = \proc_get_status($process);
-
-                            while ($status["running"]) {
-                                yield new Delayed(10);
-                                $status = \proc_get_status($process);
-                            }
-
-                            $code = $exitcode !== -1 ? $exitcode : $status["exitcode"];
-                            return (int) $code;
-                        });
-                    } elseif (!\is_resource($resource) || \feof($resource)) {
-                        throw new ProcessException("Process ended unexpectedly");
-                    } else {
-                        $code = (int) \rtrim(@\stream_get_contents($resource));
-                    }
-                } finally {
-                    if (\is_resource($resource)) {
-                        \fclose($resource);
-                    }
+                if (!\is_resource($resource) || \feof($resource)) {
+                    throw new ProcessException("Process ended unexpectedly");
                 }
+
+                \fclose($resource);
+                $code = (int) \rtrim(@\stream_get_contents($resource));
             } catch (\Throwable $exception) {
                 $deferred->fail($exception);
                 return;
@@ -243,7 +224,8 @@ class Process {
     }
 
     /**
-     * @return \Amp\Promise<int> Succeeds with exit code of the process or fails if the process is killed.
+     * @return Promise <int> Succeeds with exit code of the process or fails if the process is killed.
+     * @throws StatusError
      */
     public function join(): Promise {
         if ($this->deferred === null) {
