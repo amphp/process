@@ -20,7 +20,7 @@ final class Handle extends ProcessHandle
     public $startDeferred;
 
     /** @var resource */
-    public $handle;
+    public $proc;
 
     /** @var resource[] */
     public $pipes;

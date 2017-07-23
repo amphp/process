@@ -22,7 +22,7 @@ final class Runner implements ProcessRunner
     /**
      * {@inheritdoc}
      */
-    public function join(ProcessHandle $process): Promise
+    public function join(ProcessHandle $handle): Promise
     {
         // TODO: Implement join() method.
     }
@@ -30,7 +30,7 @@ final class Runner implements ProcessRunner
     /**
      * {@inheritdoc}
      */
-    public function kill(ProcessHandle $process)
+    public function kill(ProcessHandle $handle)
     {
         // TODO: Implement kill() method.
     }
@@ -38,7 +38,7 @@ final class Runner implements ProcessRunner
     /**
      * {@inheritdoc}
      */
-    public function signal(ProcessHandle $process, int $signo)
+    public function signal(ProcessHandle $handle, int $signo)
     {
         throw new ProcessException('Signals are not supported on Windows');
     }
@@ -46,7 +46,7 @@ final class Runner implements ProcessRunner
     /**
      * {@inheritdoc}
      */
-    public function destroy(ProcessHandle $process)
+    public function destroy(ProcessHandle $handle)
     {
         // TODO: Implement destroy() method.
     }

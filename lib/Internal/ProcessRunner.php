@@ -21,35 +21,35 @@ interface ProcessRunner
     /**
      * Wait for the child process to end
      *
-     * @param ProcessHandle $process The process descriptor
+     * @param ProcessHandle $handle The process descriptor
      * @return Promise <int> Succeeds with exit code of the process or fails if the process is killed.
      */
-    function join(ProcessHandle $process): Promise;
+    function join(ProcessHandle $handle): Promise;
 
     /**
      * Forcibly end the child process
      *
-     * @param ProcessHandle $process The process descriptor
+     * @param ProcessHandle $handle The process descriptor
      * @return void
      * @throws \Amp\Process\ProcessException If terminating the process fails
      */
-    function kill(ProcessHandle $process);
+    function kill(ProcessHandle $handle);
 
     /**
      * Send a signal signal to the child process
      *
-     * @param ProcessHandle $process The process descriptor
+     * @param ProcessHandle $handle The process descriptor
      * @param int $signo Signal number to send to process.
      * @return void
      * @throws \Amp\Process\ProcessException If sending the signal fails.
      */
-    function signal(ProcessHandle $process, int $signo);
+    function signal(ProcessHandle $handle, int $signo);
 
     /**
      * Release all resources held by the process handle
      *
-     * @param ProcessHandle $process The process descriptor
+     * @param ProcessHandle $handle The process descriptor
      * @return void
      */
-    function destroy(ProcessHandle $process);
+    function destroy(ProcessHandle $handle);
 }
