@@ -5,15 +5,15 @@ namespace Amp\Process;
 use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Deferred;
-use Amp\Loop;
+use Amp\Process\Internal\Posix\Runner as PosixProcessRunner;
+use Amp\Process\Internal\ProcessHandle;
+use Amp\Process\Internal\ProcessRunner;
+use Amp\Process\Internal\Windows\Runner as WindowsProcessRunner;
 use Amp\Promise;
 
 class Process {
-    /** @var bool */
-    private static $onWindows;
-
-    /** @var bool */
-    private static $windowsProcessWrapperExePath = __DIR__ . '\\..\\bin/windows/ProcessWrapper.exe';
+    /** @var ProcessRunner */
+    private static $processRunner;
 
     /** @var resource|null */
     private $process;
@@ -30,29 +30,14 @@ class Process {
     /** @var array */
     private $options;
 
-    /** @var \Amp\ByteStream\ResourceOutputStream|null */
-    private $stdin;
-
-    /** @var \Amp\ByteStream\ResourceInputStream|null */
-    private $stdout;
-
-    /** @var \Amp\ByteStream\ResourceInputStream|null */
-    private $stderr;
-
-    /** @var int */
-    private $pid = 0;
-
-    /** @var int */
-    private $oid = 0;
-
-    /** @var \Amp\Deferred|null */
-    private $deferred;
-
-    /** @var string */
-    private $watcher;
+    /** @var ProcessHandle */
+    private $handle;
 
     /** @var bool */
-    private $running = false;
+    private $started = false;
+
+    /** @var Promise */
+    private $startPromise;
 
     /**
      * @param   string|array $command Command to run.
@@ -63,8 +48,10 @@ class Process {
      * @throws \Error
      */
     public function __construct($command, string $cwd = null, array $env = [], array $options = []) {
-        if (self::$onWindows === null) {
-            self::$onWindows = \strncasecmp(\PHP_OS, "WIN", 3) === 0;
+        if (self::$processRunner === null) {
+            self::$processRunner = \strncasecmp(\PHP_OS, "WIN", 3) !== 0
+                ? new WindowsProcessRunner()
+                : new PosixProcessRunner();
         }
 
         if (\is_array($command)) {
@@ -88,28 +75,8 @@ class Process {
      * Stops the process if it is still running.
      */
     public function __destruct() {
-        if (\getmypid() === $this->oid) {
-            $this->kill(); // Will only terminate if the process is still running.
-        }
-
-        if ($this->watcher !== null) {
-            Loop::cancel($this->watcher);
-        }
-
-        if ($this->stdin && \is_resource($resource = $this->stdin->getResource())) {
-            \fclose($resource);
-        }
-
-        if ($this->stdout && \is_resource($resource = $this->stdout->getResource())) {
-            \fclose($resource);
-        }
-
-        if ($this->stderr && \is_resource($resource = $this->stderr->getResource())) {
-            \fclose($resource);
-        }
-
-        if (\is_resource($this->process)) {
-            \proc_close($this->process);
+        if ($this->handle !== null) {
+            self::$processRunner->destroy($this->handle);
         }
     }
 
@@ -118,171 +85,114 @@ class Process {
      */
     public function __clone() {
         $this->process = null;
-        $this->deferred = null;
-        $this->watcher = null;
-        $this->pid = 0;
-        $this->oid = 0;
-        $this->stdin = null;
-        $this->stdout = null;
-        $this->stderr = null;
-        $this->running = false;
-    }
-
-    private function startWindowsWrapper()
-    {
-
+        $this->handle = null;
+        $this->startPromise = null;
+        $this->started = false;
     }
 
     /**
-     * @throws \Amp\Process\ProcessException If starting the process fails.
+     * Start the process.
+     *
+     * @return Promise Fails with a ProcessException if starting the process fails.
      * @throws \Amp\Process\StatusError If the process is already running.
+     * @throws \Amp\Process\ProcessException If starting the process fails.
      */
-    public function start() {
-        if ($this->deferred !== null) {
+    public function start(): Promise {
+        if ($this->started) {
             throw new StatusError("The process has already been started");
         }
 
-        $this->deferred = $deferred = new Deferred;
+        $this->started = true;
+        $deferred = new Deferred;
 
-        if (self::$onWindows) {
-            $this->startWindowsWrapper();
-            return;
-        }
-
-        $fd = [
-            ["pipe", "r"], // stdin
-            ["pipe", "w"], // stdout
-            ["pipe", "w"], // stderr
-            ["pipe", "w"], // exit code pipe
-        ];
-
-        $command = \sprintf(
-            '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0;' .
-            'pid=$!; echo $pid >&3; wait $pid; RC=$?; echo $RC >&3; exit $RC',
-            $this->command
-        );
-
-        $this->process = @\proc_open($command, $fd, $pipes, $this->cwd ?: null, $this->env ?: null, $this->options);
-
-        if (!\is_resource($this->process)) {
-            $message = "Could not start process";
-            if ($error = \error_get_last()) {
-                $message .= \sprintf(" Errno: %d; %s", $error["type"], $error["message"]);
-            }
-            $deferred->fail(new ProcessException($message));
-            return;
-        }
-
-        $this->oid = \getmypid();
-        $status = \proc_get_status($this->process);
-
-        if (!$status) {
-            \proc_close($this->process);
-            $this->process = null;
-            $deferred->fail(new ProcessException("Could not get process status"));
-            return;
-        }
-
-        // This blocking read will only block until the process scheduled, generally a few microseconds.
-        $pid = \rtrim(@\fgets($pipes[3]));
-
-        if (!$pid || !\is_numeric($pid)) {
-            $deferred->fail(new ProcessException("Could not determine PID"));
-            return;
-        }
-
-        $this->pid = (int) $pid;
-
-        $this->stdin = new ResourceOutputStream($pipes[0]);
-        $this->stdout = new ResourceInputStream($pipes[1]);
-        $this->stderr = new ResourceInputStream($pipes[2]);
-        \stream_set_blocking($pipes[3], false);
-
-        $this->running = true;
-
-        $running = &$this->running;
-        $this->watcher = Loop::onReadable($pipes[3], static function ($watcher, $resource) use (&$running, $deferred) {
-            Loop::cancel($watcher);
-            $running = false;
-
-            try {
-                if (!\is_resource($resource) || \feof($resource)) {
-                    throw new ProcessException("Process ended unexpectedly");
+        $info = &$this->handle;
+        self::$processRunner->start($this->command, $this->cwd, $this->env, $this->options)
+            ->onResolve(static function($error, $procInfo) use($deferred, &$info) {
+                if ($error) {
+                    $deferred->fail($error);
+                    return;
                 }
 
-                \fclose($resource);
-                $code = (int) \rtrim(@\stream_get_contents($resource));
-            } catch (\Throwable $exception) {
-                $deferred->fail($exception);
+                $info = $procInfo;
+                $deferred->resolve();
+            });
+
+        return $this->startPromise = $deferred->promise();
+    }
+
+    /**
+     * Wait for the process to end..
+     *
+     * @return Promise <int> Succeeds with process exit code or fails with a ProcessException if the process is killed.
+     * @throws \Amp\Process\StatusError If the process has not been started.
+     */
+    public function join(): Promise {
+        if (!$this->started) {
+            throw new StatusError("The process has not been started");
+        }
+
+        if ($this->isRunning()) {
+            return self::$processRunner->join($this->handle);
+        }
+
+        $deferred = new Deferred;
+
+        $info = &$this->handle;
+        $this->startPromise->onResolve(static function($error) use ($info, $deferred) {
+            if ($error) {
+                $deferred->fail($error);
                 return;
             }
 
-            $deferred->resolve($code);
+            $deferred->resolve(self::$processRunner->join($info));
         });
 
-        Loop::unreference($this->watcher);
+        return $deferred->promise();
     }
 
     /**
-     * @return Promise <int> Succeeds with exit code of the process or fails if the process is killed.
-     * @throws StatusError
+     * Forcibly end the process.
+     *
+     * @return void
+     * @throws \Amp\Process\StatusError If the process is not running.
+     * @throws \Amp\Process\ProcessException If terminating the process fails.
      */
-    public function join(): Promise {
-        if ($this->deferred === null) {
+    public function kill() {
+        if (!$this->isRunning()) {
             throw new StatusError("The process is not running");
         }
 
-        if ($this->watcher !== null && $this->running) {
-            Loop::reference($this->watcher);
-        }
-
-        return $this->deferred->promise();
+        self::$processRunner->kill($this->handle);
     }
 
     /**
-     * {@inheritdoc}
-     */
-    public function kill() {
-        if ($this->running && \is_resource($this->process)) {
-            $this->running = false;
-
-            // Forcefully kill the process using SIGKILL.
-            \proc_terminate($this->process, 9);
-
-            Loop::cancel($this->watcher);
-
-            $this->deferred->fail(new ProcessException("The process was killed"));
-        }
-    }
-
-    /**
-     * Sends the given signal to the process.
+     * Send a signal signal to the process.
      *
      * @param int $signo Signal number to send to process.
-     *
+     * @return void
      * @throws \Amp\Process\StatusError If the process is not running.
+     * @throws \Amp\Process\ProcessException If sending the signal fails.
      */
     public function signal(int $signo) {
         if (!$this->isRunning()) {
             throw new StatusError("The process is not running");
         }
 
-        \proc_terminate($this->process, $signo);
+        self::$processRunner->signal($this->handle, $signo);
     }
 
     /**
-     * Returns the PID of the child process. Value is only meaningful if PHP was not compiled with --enable-sigchild.
+     * Returns the PID of the child process.
      *
      * @return int
-     *
-     * @throws \Amp\Process\StatusError
+     * @throws \Amp\Process\StatusError If the process has not started.
      */
     public function getPid(): int {
-        if ($this->pid === 0) {
-            throw new StatusError("The process has not been started");
+        if ($this->handle === null) {
+            throw new StatusError("The process has not started");
         }
 
-        return $this->pid;
+        return $this->handle->pid;
     }
 
     /**
@@ -326,56 +236,62 @@ class Process {
     }
 
     /**
+     * Determines if the process has been started.
+     *
+     * @return bool
+     */
+    public function isStarted(): bool {
+        return $this->started;
+    }
+
+    /**
      * Determines if the process is still running.
      *
      * @return bool
      */
     public function isRunning(): bool {
-        return $this->running;
+        return ($this->handle->status ?? null) === ProcessHandle::STATUS_RUNNING;
     }
 
     /**
      * Gets the process input stream (STDIN).
      *
      * @return \Amp\ByteStream\ResourceOutputStream
-     *
      * @throws \Amp\Process\StatusError If the process is not running.
      */
     public function getStdin(): ResourceOutputStream {
-        if ($this->stdin === null) {
-            throw new StatusError("The process has not been started");
+        if (!$this->isRunning()) {
+            throw new StatusError("The process is not running");
         }
 
-        return $this->stdin;
+        return $this->handle->stdin;
     }
 
     /**
      * Gets the process output stream (STDOUT).
      *
      * @return \Amp\ByteStream\ResourceInputStream
-     *
      * @throws \Amp\Process\StatusError If the process is not running.
      */
     public function getStdout(): ResourceInputStream {
-        if ($this->stdout === null) {
-            throw new StatusError("The process has not been started");
+        if (!$this->isRunning()) {
+            throw new StatusError("The process is not running");
         }
 
-        return $this->stdout;
+        return $this->handle->stdout;
     }
 
     /**
      * Gets the process error stream (STDERR).
      *
      * @return \Amp\ByteStream\ResourceInputStream
-     *
      * @throws \Amp\Process\StatusError If the process is not running.
      */
     public function getStderr(): ResourceInputStream {
-        if ($this->stderr === null) {
-            throw new StatusError("The process has not been started");
+        if (!$this->isRunning()) {
+            throw new StatusError("The process is not running");
         }
 
-        return $this->stderr;
+        return $this->handle->stderr;
     }
 }
