@@ -8,7 +8,7 @@ use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
 use Amp\Promise;
-use const Amp\Process\BASE_DIR;
+use const Amp\Process\BIN_DIR;
 
 final class Runner implements ProcessRunner
 {
@@ -18,7 +18,7 @@ final class Runner implements ProcessRunner
         ["pipe", "w"], // stderr
         ["pipe", "w"], // exit code pipe
     ];
-    const WRAPPER_EXE_PATH = BASE_DIR . '\\bin\\windows\\ProcessWrapper.exe';
+    const WRAPPER_EXE_PATH = BIN_DIR . '\\windows\\ProcessWrapper.exe';
 
     private $socketConnector;
 

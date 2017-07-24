@@ -2,4 +2,4 @@
 
 namespace Amp\Process;
 
-const BASE_DIR = __DIR__ . DIRECTORY_SEPARATOR . '..';
+const BIN_DIR = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'bin';

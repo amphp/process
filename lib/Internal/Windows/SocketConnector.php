@@ -54,22 +54,20 @@ final class SocketConnector
     private function failClientHandshake($socket, int $code): void
     {
         \fwrite($socket, \chr(SignalCode::HANDSHAKE_ACK) . \chr($code));
-        \stream_socket_shutdown($socket, \STREAM_SHUT_WR);
         \fclose($socket);
         unset($this->pendingClients[(int)$socket]);
     }
 
-    private function failHandleStart(Handle $handle, string $message)
+    private function failHandleStart(Handle $handle, string $message, ...$args)
     {
         Loop::cancel($handle->connectTimeoutWatcher);
         unset($this->pendingProcesses[$handle->wrapperPid]);
 
         foreach ($handle->sockets as $socket) {
-            \stream_socket_shutdown($socket, \STREAM_SHUT_WR);
             \fclose($socket);
         }
 
-        $handle->startDeferred->fail(new ProcessException($message));
+        $handle->startDeferred->fail(new ProcessException(\vsprintf($message, $args)));
     }
 
     /**
@@ -87,7 +85,6 @@ final class SocketConnector
         $data = \fread($socket, $length);
 
         if ($data === false || $data === '') {
-            \stream_socket_shutdown($socket, \STREAM_SHUT_WR);
             \fclose($socket);
             Loop::cancel($state->readWatcher);
             Loop::cancel($state->timeoutWatcher);
@@ -140,13 +137,13 @@ final class SocketConnector
 
         if (isset($handle->sockets[$packet['stream_id']])) {
             $this->failClientHandshake($socket, HandshakeStatus::DUPLICATE_STREAM_ID);
-            $this->failHandleStart($handle, "Received duplicate socket for stream #{$packet['stream_id']}");
+            $this->failHandleStart($handle, "Received duplicate socket for stream #%d", $packet['stream_id']);
             return;
         }
 
         if ($packet['client_token'] !== $handle->securityTokens[$packet['stream_id']]) {
             $this->failClientHandshake($socket, HandshakeStatus::INVALID_CLIENT_TOKEN);
-            $this->failHandleStart($handle, "Invalid client security token for stream #{$packet['stream_id']}");
+            $this->failHandleStart($handle, "Invalid client security token for stream #%d", $packet['stream_id']);
             return;
         }
 
@@ -173,7 +170,6 @@ final class SocketConnector
 
         // can happen if the start promise was failed
         if (!isset($this->pendingProcesses[$pendingClient->pid])) {
-            \stream_socket_shutdown($socket, \STREAM_SHUT_WR);
             \fclose($socket);
             Loop::cancel($watcher);
             Loop::cancel($pendingClient->timeoutWatcher);
@@ -192,8 +188,8 @@ final class SocketConnector
 
         if ($packet['signal'] !== SignalCode::HANDSHAKE_ACK || $packet['status'] !== HandshakeStatus::SUCCESS) {
             $this->failHandleStart(
-                $handle,
-                "Client rejected handshake with code {$packet['status']} for stream #{$pendingClient->streamId}"
+                $handle, "Client rejected handshake with code %d for stream #%d",
+                $packet['status'], $pendingClient->streamId
             );
             return;
         }
@@ -212,9 +208,15 @@ final class SocketConnector
 
         $data = \fread($socket, 5);
 
-        if ($data === false || \strlen($data) !== 5) {
-            var_dump($data, \stream_get_contents($handle->wrapperStderrPipe));
+        if ($data === false || $data === '') {
             $this->failHandleStart($handle, 'Failed to read PID from wrapper');
+            return;
+        }
+
+        if (\strlen($data) !== 5) {
+            $this->failHandleStart(
+                $handle, 'Failed to read PID from wrapper: Recieved %d of 5 expected bytes', \strlen($data)
+            );
             return;
         }
 
@@ -222,7 +224,7 @@ final class SocketConnector
 
         if ($packet['signal'] !== SignalCode::CHILD_PID) {
             $this->failHandleStart(
-                $handle, "Failed to read PID from wrapper: Unexpected signal code {$packet['signal']}"
+                $handle, "Failed to read PID from wrapper: Unexpected signal code %d", $packet['signal']
             );
             return;
         }
@@ -258,7 +260,7 @@ final class SocketConnector
 
         if ($packet['signal'] !== SignalCode::EXIT_CODE) {
             $this->failHandleStart(
-                $handle, "Failed to read exit code from wrapper: Unexpected signal code {$packet['signal']}"
+                $handle, "Failed to read exit code from wrapper: Unexpected signal code %d", $packet['signal']
             );
             return;
         }
@@ -268,8 +270,6 @@ final class SocketConnector
     }
 
     public function onClientSocketConnectTimeout($watcher, $socket) {
-        \stream_socket_shutdown($socket, \STREAM_SHUT_WR);
-
         $id = (int)$socket;
 
         Loop::cancel($this->pendingClients[$id]->readWatcher);
@@ -304,7 +304,6 @@ final class SocketConnector
         \fclose($handle->wrapperStderrPipe);
         \proc_close($handle->proc);
         foreach ($handle->sockets as $socket) {
-            \stream_socket_shutdown($socket, \STREAM_SHUT_WR);
             \fclose($socket);
         }
 
