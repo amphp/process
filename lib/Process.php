@@ -97,7 +97,6 @@ class Process {
             ->onResolve(function($error, $handle) use($deferred, $command, $cwd, $env, $options) {
                 if ($error) {
                     $deferred->fail($error);
-                    return;
                 } else {
                     $deferred->resolve(new Process($command, $cwd, $env, $options, $handle));
                 }
