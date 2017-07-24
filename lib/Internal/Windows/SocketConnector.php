@@ -209,7 +209,7 @@ final class SocketConnector
         $data = \fread($socket, 5);
 
         if ($data === false || $data === '') {
-            $this->failHandleStart($handle, 'Failed to read PID from wrapper');
+            $this->failHandleStart($handle, 'Failed to read PID from wrapper: No data received');
             return;
         }
 
@@ -249,10 +249,17 @@ final class SocketConnector
 
         $data = \fread($socket, 5);
 
-        if ($data === false || \strlen($data) !== 5) {
-            var_dump($data, \stream_get_contents($handle->wrapperStderrPipe));
+        if ($data === false || $data === '') {
             $handle->status = ProcessStatus::ENDED;
-            $handle->endDeferred->fail(new ProcessException('Failed to read exit code from wrapper'));
+            $handle->endDeferred->fail(new ProcessException('Failed to read exit code from wrapper: No data received'));
+            return;
+        }
+
+        if (\strlen($data) !== 5) {
+            $handle->status = ProcessStatus::ENDED;
+            $handle->endDeferred->fail(new ProcessException(
+                \sprintf('Failed to read exit code from wrapper: Recieved %d of 5 expected bytes', \strlen($data))
+            ));
             return;
         }
 
