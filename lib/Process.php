@@ -152,10 +152,6 @@ class Process {
      * @throws \Amp\Process\StatusError If the process has not started.
      */
     public function getPid(): int {
-        if ($this->handle === null) {
-            throw new StatusError("The process has not started");
-        }
-
         return $this->handle->pid;
     }
 
@@ -205,7 +201,7 @@ class Process {
      * @return bool
      */
     public function isRunning(): bool {
-        return ($this->handle->status ?? null) === ProcessStatus::RUNNING;
+        return $this->handle->status === ProcessStatus::RUNNING;
     }
 
     /**
