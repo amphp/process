@@ -18,7 +18,9 @@ final class Runner implements ProcessRunner
         ["pipe", "w"], // stderr
         ["pipe", "w"], // exit code pipe
     ];
-    const WRAPPER_EXE_PATH = BIN_DIR . '\\windows\\ProcessWrapper.exe';
+    const WRAPPER_EXE_PATH = PHP_INT_SIZE === 8
+        ? BIN_DIR . '\\windows\\ProcessWrapper64.exe'
+        : BIN_DIR . '\\windows\\ProcessWrapper.exe';
 
     private $socketConnector;
 
