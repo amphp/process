@@ -31,19 +31,32 @@ class Process {
     /** @var ProcessHandle */
     private $handle;
 
+    /** @var Deferred */
+    private $startDeferred;
+
     /**
-     * @param string $command Command to run.
+     * @param string|string[] $command Command to run.
      * @param string $cwd Working directory of child process.
      * @param array $env Environment variables for child process.
      * @param array $options Options for proc_open().
-     * @param ProcessHandle $handle Handle for the created process.
+     * @throws \Error If the arguments are invalid.
      */
-    private function __construct(string $command, string $cwd, array $env, array $options, ProcessHandle $handle) {
-        $this->command = $command;
-        $this->cwd = $cwd;
-        $this->env = $env;
+    public function __construct($command, string $cwd = null, array $env = [], array $options = []) {
+        $this->command = \is_array($command)
+            ? \implode(" ", \array_map("escapeshellarg", $command))
+            : (string) $command;
+
+        $this->cwd = $cwd ?? "";
+
+        foreach ($env as $key => $value) {
+            if (\is_array($value)) {
+                throw new \Error("\$env cannot accept array values");
+            }
+
+            $this->env[(string) $key] = (string) $value;
+        }
+
         $this->options = $options;
-        $this->handle = $handle;
     }
 
     /**
@@ -58,47 +71,29 @@ class Process {
     /**
      * Resets process values.
      */
-    public function clone(): Promise {
-        return self::start($this->command, $this->cwd, $this->env, $this->options);
+    public function __clone() {
+        $this->handle = null;
     }
 
     /**
      * Start a new process.
      *
-     * @param   string|string[] $command Command to run.
-     * @param   string|null $cwd Working directory or use an empty string to use the working directory of the current
-     *     PHP process.
-     * @param   mixed[] $env Environment variables or use an empty array to inherit from the current PHP process.
-     * @param   mixed[] $options Options for proc_open().
-     * @return Promise <Process> Fails with a ProcessException if starting the process fails.
+     * @return Promise Fails with a ProcessException if starting the process fails.
      * @throws \Error If the arguments are invalid.
      * @throws \Amp\Process\StatusError If the process is already running.
      * @throws \Amp\Process\ProcessException If starting the process fails.
      */
-    public static function start($command, string $cwd = null, array $env = [], array $options = []): Promise {
-        $command = \is_array($command)
-            ? \implode(" ", \array_map("escapeshellarg", $command))
-            : (string) $command;
+    public function start(): Promise {
+        $this->startDeferred = $deferred = new Deferred;
+        $processHandle = &$this->handle;
 
-        $cwd = $cwd ?? "";
-
-        $envVars = [];
-        foreach ($env as $key => $value) {
-            if (\is_array($value)) {
-                throw new \Error("\$env cannot accept array values");
-            }
-
-            $envVars[(string) $key] = (string) $value;
-        }
-
-        $deferred = new Deferred;
-
-        self::$processRunner->start($command, $cwd, $env, $options)
-            ->onResolve(function($error, $handle) use($deferred, $command, $cwd, $env, $options) {
+        self::$processRunner->start($this->command, $this->cwd, $this->env, $this->options)
+            ->onResolve(static function($error, $handle) use($deferred, &$processHandle) {
                 if ($error) {
                     $deferred->fail($error);
                 } else {
-                    $deferred->resolve(new Process($command, $cwd, $env, $options, $handle));
+                    $processHandle = $handle;
+                    $deferred->resolve();
                 }
             });
 
@@ -111,7 +106,22 @@ class Process {
      * @return Promise <int> Succeeds with process exit code or fails with a ProcessException if the process is killed.
      */
     public function join(): Promise {
-        return self::$processRunner->join($this->handle);
+        if ($this->handle !== null) {
+            return self::$processRunner->join($this->handle);
+        }
+
+        $deferred = new Deferred;
+        $handle = &$this->handle;
+
+        $this->startDeferred->promise()->onResolve(static function($error) use($deferred, &$handle) {
+            if ($error) {
+                $deferred->fail($error);
+            } else {
+                $deferred->resolve(self::$processRunner->join($handle));
+            }
+        });
+
+        return $deferred->promise();
     }
 
     /**
