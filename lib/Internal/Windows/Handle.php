@@ -7,8 +7,19 @@ use Amp\Process\Internal\ProcessHandle;
 
 final class Handle extends ProcessHandle
 {
+    public function __construct() {
+        $this->startDeferred = new Deferred;
+        $this->endDeferred = new Deferred;
+    }
+
     /** @var Deferred */
     public $startDeferred;
+
+    /** @var Deferred */
+    public $endDeferred;
+
+    /** @var string */
+    public $exitCodeWatcher;
 
     /** @var resource */
     public $proc;

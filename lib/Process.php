@@ -8,6 +8,7 @@ use Amp\Deferred;
 use Amp\Process\Internal\Posix\Runner as PosixProcessRunner;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
+use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Internal\Windows\Runner as WindowsProcessRunner;
 use Amp\Promise;
 
@@ -205,7 +206,7 @@ class Process {
      * @return bool
      */
     public function isRunning(): bool {
-        return ($this->handle->status ?? null) === ProcessHandle::STATUS_RUNNING;
+        return ($this->handle->status ?? null) === ProcessStatus::RUNNING;
     }
 
     /**
@@ -253,7 +254,7 @@ class Process {
 
 (function() {
     /** @noinspection PhpUndefinedClassInspection */
-    self::$processRunner = \strncasecmp(\PHP_OS, "WIN", 3) !== 0
+    self::$processRunner = \strncasecmp(\PHP_OS, "WIN", 3) === 0
         ? new WindowsProcessRunner()
         : new PosixProcessRunner();
 })->bindTo(null, Process::class)();

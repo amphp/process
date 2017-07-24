@@ -7,6 +7,7 @@ use Amp\ByteStream\ResourceOutputStream;
 use Amp\Loop;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
+use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
 use Amp\Promise;
 
@@ -22,7 +23,7 @@ final class Runner implements ProcessRunner
     public function onProcessEndExtraDataPipeReadable($watcher, $stream, Handle $handle) {
         Loop::cancel($watcher);
 
-        $handle->status = ProcessHandle::STATUS_ENDED;
+        $handle->status = ProcessStatus::ENDED;
 
         if (!\is_resource($stream) || \feof($stream)) {
             $handle->endDeferred->fail(new ProcessException("Process ended unexpectedly"));
@@ -41,7 +42,7 @@ final class Runner implements ProcessRunner
             return;
         }
 
-        $handle->status = ProcessHandle::STATUS_RUNNING;
+        $handle->status = ProcessStatus::RUNNING;
         $handle->pid = (int) $pid;
         $handle->stdin = new ResourceOutputStream($handle->pipes[0]);
         $handle->stdout = new ResourceInputStream($handle->pipes[1]);
@@ -116,7 +117,7 @@ final class Runner implements ProcessRunner
         Loop::cancel($handle->extraDataPipeWatcher);
         $handle->extraDataPipeWatcher = null;
 
-        $handle->status = ProcessHandle::STATUS_ENDED;
+        $handle->status = ProcessStatus::ENDED;
 
         $handle->endDeferred->fail(new ProcessException("The process was killed"));
     }
@@ -138,7 +139,7 @@ final class Runner implements ProcessRunner
     public function destroy(ProcessHandle $handle) {
         /** @var Handle $handle */
 
-        if (\getmypid() === $handle->originalParentPid && $handle->status < ProcessHandle::STATUS_ENDED) {
+        if (\getmypid() === $handle->originalParentPid && $handle->status < ProcessStatus::ENDED) {
             $this->kill($handle);
         }
 
