@@ -50,6 +50,8 @@ final class Runner implements ProcessRunner
 
         $handle->extraDataPipeWatcher = Loop::onReadable($stream, [$this, 'onProcessEndExtraDataPipeReadable'], $handle);
         Loop::unreference($handle->extraDataPipeWatcher);
+
+        $handle->startDeferred->resolve($handle);
     }
 
     /**
