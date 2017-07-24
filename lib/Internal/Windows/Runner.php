@@ -115,9 +115,8 @@ final class Runner implements ProcessRunner
     public function kill(ProcessHandle $handle)
     {
         /** @var Handle $handle */
-        // todo: send a signal to the wrapper?
 
-        // Forcefully kill the process using SIGKILL.
+        // todo: send a signal to the wrapper to kill the child instead ?
         if (!\proc_terminate($handle->proc)) {
             throw new ProcessException("Terminating process failed");
         }
@@ -155,7 +154,6 @@ final class Runner implements ProcessRunner
 
         for ($i = 0; $i < 4; $i++) {
             if (\is_resource($handle->sockets[$i] ?? null)) {
-                \stream_socket_shutdown($handle->sockets[$i], \STREAM_SHUT_RDWR);
                 \fclose($handle->sockets[$i]);
             }
         }
