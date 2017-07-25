@@ -26,6 +26,7 @@
     "autoload": {
         "psr-4": {
             "Amp\\Process\\": "lib"
-        }
+        },
+        "files": ["lib/functions.php"]
     }
 }
