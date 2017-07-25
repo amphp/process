@@ -137,7 +137,12 @@ final class SocketConnector
 
         if (isset($handle->sockets[$packet['stream_id']])) {
             $this->failClientHandshake($socket, HandshakeStatus::DUPLICATE_STREAM_ID);
-            $this->failHandleStart($handle, "Received duplicate socket for stream #%d", $packet['stream_id']);
+            \trigger_error(\sprintf(
+                "%s: Received duplicate socket for process #%s stream #%d",
+                self::class,
+                $handle->pid,
+                $packet['stream_id']
+            ), E_USER_WARNING);
             return;
         }
 
