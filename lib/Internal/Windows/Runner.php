@@ -34,7 +34,7 @@ final class Runner implements ProcessRunner
         );
 
         if ($workingDirectory !== '') {
-            $result .= ' "--cwd=' . \rtrim($workingDirectory, '\\') . '"';
+            $result .= ' ' . \escapeshellarg('--cwd=' . \rtrim($workingDirectory, '\\'));
         }
 
         $result .= ' ' . $command;
