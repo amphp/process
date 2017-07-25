@@ -69,10 +69,12 @@ class Process {
     }
 
     /**
-     * Resets process values.
+     * Throw to prevent cloning
+     *
+     * @throws \Error
      */
     public function __clone() {
-        $this->handle = null;
+        throw new \Error(self::class . ' instances cannot be cloned');
     }
 
     /**
