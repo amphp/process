@@ -56,10 +56,12 @@ class Process {
     }
 
     /**
-     * Resets process values.
+     * Throw to prevent cloning
+     *
+     * @throws \Error
      */
-    public function clone(): Promise {
-        return self::start($this->command, $this->cwd, $this->env, $this->options);
+    public function __clone() {
+        throw new \Error(self::class . ' instances cannot be cloned');
     }
 
     /**
