@@ -2,22 +2,25 @@
 
 namespace Amp\Process\Internal\Windows;
 
+use Amp\Deferred;
 use Amp\Loop;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
+use Amp\Process\ProcessInputStream;
+use Amp\Process\ProcessOutputStream;
 use Amp\Promise;
 use const Amp\Process\BIN_DIR;
 
-final class Runner implements ProcessRunner
-{
+final class Runner implements ProcessRunner {
     const FD_SPEC = [
         ["pipe", "r"], // stdin
         ["pipe", "w"], // stdout
         ["pipe", "w"], // stderr
         ["pipe", "w"], // exit code pipe
     ];
+
     const WRAPPER_EXE_PATH = PHP_INT_SIZE === 8
         ? BIN_DIR . '\\windows\\ProcessWrapper64.exe'
         : BIN_DIR . '\\windows\\ProcessWrapper.exe';
@@ -26,8 +29,8 @@ final class Runner implements ProcessRunner
 
     private function makeCommand(string $command, string $workingDirectory): string {
         $result = sprintf(
-            '"%s" --address=%s --port=%d --token-size=%d',
-            self::WRAPPER_EXE_PATH,
+            '%s --address=%s --port=%d --token-size=%d',
+            \escapeshellarg(self::WRAPPER_EXE_PATH),
             $this->socketConnector->address,
             $this->socketConnector->port,
             SocketConnector::SECURITY_TOKEN_SIZE
@@ -46,11 +49,8 @@ final class Runner implements ProcessRunner
         $this->socketConnector = new SocketConnector;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function start(string $command, string $cwd = null, array $env = [], array $options = []): Promise
-    {
+    /** @inheritdoc */
+    public function start(string $command, string $cwd = null, array $env = [], array $options = []): ProcessHandle {
         $command = $this->makeCommand($command, $cwd ?? '');
 
         $options['bypass_shell'] = true;
@@ -90,33 +90,34 @@ final class Runner implements ProcessRunner
         $handle->wrapperPid = $status['pid'];
         $handle->wrapperStderrPipe = $pipes[2];
 
+        $stdinDeferred = new Deferred;
+        $handle->stdioDeferreds[] = new ProcessOutputStream($stdinDeferred->promise());
+
+        $stdoutDeferred = new Deferred;
+        $handle->stdioDeferreds[] = new ProcessInputStream($stdoutDeferred->promise());
+
+        $stderrDeferred = new Deferred;
+        $handle->stdioDeferreds[] = new ProcessInputStream($stderrDeferred->promise());
+
         $this->socketConnector->registerPendingProcess($handle);
 
-        return $handle->startDeferred->promise();
+        return $handle;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function join(ProcessHandle $handle): Promise
-    {
+    /** @inheritdoc */
+    public function join(ProcessHandle $handle): Promise {
         /** @var Handle $handle */
-
         if ($handle->exitCodeWatcher !== null) {
             Loop::reference($handle->exitCodeWatcher);
         }
 
-        return $handle->endDeferred->promise();
+        return $handle->joinDeferred->promise();
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function kill(ProcessHandle $handle)
-    {
+    /** @inheritdoc */
+    public function kill(ProcessHandle $handle) {
         /** @var Handle $handle */
-
-        // todo: send a signal to the wrapper to kill the child instead ?
+        // todo: send a signal to the wrapper to kill the child instead?
         if (!\proc_terminate($handle->proc)) {
             throw new ProcessException("Terminating process failed");
         }
@@ -125,25 +126,17 @@ final class Runner implements ProcessRunner
         $handle->exitCodeWatcher = null;
 
         $handle->status = ProcessStatus::ENDED;
-
-        $handle->endDeferred->fail(new ProcessException("The process was killed"));
+        $handle->joinDeferred->fail(new ProcessException("The process was killed"));
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function signal(ProcessHandle $handle, int $signo)
-    {
+    /** @inheritdoc */
+    public function signal(ProcessHandle $handle, int $signo) {
         throw new ProcessException('Signals are not supported on Windows');
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function destroy(ProcessHandle $handle)
-    {
+    /** @inheritdoc */
+    public function destroy(ProcessHandle $handle) {
         /** @var Handle $handle */
-
         if ($handle->status < ProcessStatus::ENDED) {
             $this->kill($handle);
         }

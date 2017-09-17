@@ -5,18 +5,13 @@ namespace Amp\Process\Internal\Windows;
 use Amp\Deferred;
 use Amp\Process\Internal\ProcessHandle;
 
-final class Handle extends ProcessHandle
-{
+final class Handle extends ProcessHandle {
     public function __construct() {
-        $this->startDeferred = new Deferred;
-        $this->endDeferred = new Deferred;
+        $this->joinDeferred = new Deferred;
     }
 
     /** @var Deferred */
-    public $startDeferred;
-
-    /** @var Deferred */
-    public $endDeferred;
+    public $joinDeferred;
 
     /** @var string */
     public $exitCodeWatcher;
@@ -32,6 +27,9 @@ final class Handle extends ProcessHandle
 
     /** @var resource[] */
     public $sockets;
+
+    /** @var Deferred[] */
+    public $stdioDeferreds;
 
     /** @var string */
     public $connectTimeoutWatcher;

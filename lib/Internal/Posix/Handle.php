@@ -5,25 +5,21 @@ namespace Amp\Process\Internal\Posix;
 use Amp\Deferred;
 use Amp\Process\Internal\ProcessHandle;
 
-final class Handle extends ProcessHandle
-{
+final class Handle extends ProcessHandle {
     public function __construct() {
-        $this->startDeferred = new Deferred;
-        $this->endDeferred = new Deferred;
+        $this->pidDeferred = new Deferred;
+        $this->joinDeferred = new Deferred;
         $this->originalParentPid = \getmypid();
     }
 
     /** @var Deferred */
-    public $endDeferred;
-
-    /** @var Deferred */
-    public $startDeferred;
+    public $joinDeferred;
 
     /** @var resource */
     public $proc;
 
-    /** @var resource[] */
-    public $pipes;
+    /** @var resource */
+    public $extraDataPipe;
 
     /** @var string */
     public $extraDataPipeWatcher;

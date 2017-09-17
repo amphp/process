@@ -2,22 +2,25 @@
 
 namespace Amp\Process\Internal;
 
-use Amp\ByteStream\ResourceInputStream;
-use Amp\ByteStream\ResourceOutputStream;
+use Amp\Deferred;
+use Amp\Process\ProcessInputStream;
+use Amp\Process\ProcessOutputStream;
+use Amp\Struct;
 
-abstract class ProcessHandle
-{
-    /** @var ResourceOutputStream */
+abstract class ProcessHandle {
+    use Struct;
+
+    /** @var ProcessOutputStream */
     public $stdin;
 
-    /** @var ResourceInputStream */
+    /** @var ProcessInputStream */
     public $stdout;
 
-    /** @var ResourceInputStream */
+    /** @var ProcessInputStream */
     public $stderr;
 
-    /** @var int */
-    public $pid = 0;
+    /** @var Deferred */
+    public $pidDeferred;
 
     /** @var bool */
     public $status = ProcessStatus::STARTING;
