@@ -200,14 +200,14 @@ final class SocketConnector {
     }
 
     public function onReadableChildPid($watcher, $socket, Handle $handle) {
-        Loop::cancel($watcher);
-        Loop::cancel($handle->connectTimeoutWatcher);
-
         $data = \fread($socket, 5);
 
         if ($data === false || $data === '') {
             return;
         }
+
+        Loop::cancel($watcher);
+        Loop::cancel($handle->connectTimeoutWatcher);
 
         if (\strlen($data) !== 5) {
             $this->failHandleStart(
