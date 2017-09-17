@@ -24,6 +24,7 @@ final class Runner implements ProcessRunner {
 
     public static function onProcessEndExtraDataPipeReadable($watcher, $stream, Handle $handle) {
         Loop::cancel($watcher);
+        $handle->extraDataPipeWatcher = null;
 
         $handle->status = ProcessStatus::ENDED;
 

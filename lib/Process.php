@@ -200,7 +200,7 @@ class Process {
      * @return ProcessOutputStream
      */
     public function getStdin(): ProcessOutputStream {
-        return $this->stdin;
+        return $this->handle->stdin;
     }
 
     /**
@@ -213,7 +213,7 @@ class Process {
             throw new StatusError("The process is not running");
         }
 
-        return $this->stdout;
+        return $this->handle->stdout;
     }
 
     /**
@@ -226,7 +226,7 @@ class Process {
             throw new StatusError("The process is not running");
         }
 
-        return $this->stderr;
+        return $this->handle->stderr;
     }
 }
 

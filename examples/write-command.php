@@ -6,7 +6,8 @@ use Amp\ByteStream\Message;
 use Amp\Process\Process;
 
 Amp\Loop::run(function () {
-    $process = yield Process::start('read ; echo "$REPLY"');
+    $process = new Process('read ; echo "$REPLY"');
+    $process->start();
 
     /* send to stdin */
     $process->getStdin()->write("abc\n");

@@ -6,11 +6,8 @@ use Amp\Process\Process;
 use Amp\Promise;
 use function Amp\Promise\all;
 
-function show_process_output(Promise $promise): \Generator
+function show_process_output(Process $process): \Generator
 {
-    /** @var Process $process */
-    $process = yield $promise;
-
     $stream = $process->getStdout();
     while ($chunk = yield $stream->read()) {
         echo $chunk;
@@ -27,7 +24,9 @@ Amp\Loop::run(function () {
     $promises = [];
 
     foreach ($hosts as $host) {
-        $promises[] = new \Amp\Coroutine(show_process_output(Process::start("ping {$host}")));
+        $process = new Process("ping {$host}");
+        $process->start();
+        $promises[] = new \Amp\Coroutine(show_process_output($process));
     }
 
     yield all($promises);
