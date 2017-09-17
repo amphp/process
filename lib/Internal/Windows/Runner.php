@@ -91,13 +91,16 @@ final class Runner implements ProcessRunner {
         $handle->wrapperStderrPipe = $pipes[2];
 
         $stdinDeferred = new Deferred;
-        $handle->stdioDeferreds[] = new ProcessOutputStream($stdinDeferred->promise());
+        $handle->stdioDeferreds[] = $stdinDeferred;
+        $handle->stdin = new ProcessOutputStream($stdinDeferred->promise());
 
         $stdoutDeferred = new Deferred;
-        $handle->stdioDeferreds[] = new ProcessInputStream($stdoutDeferred->promise());
+        $handle->stdioDeferreds[] = $stdoutDeferred;
+        $handle->stdout = new ProcessInputStream($stdoutDeferred->promise());
 
         $stderrDeferred = new Deferred;
-        $handle->stdioDeferreds[] = new ProcessInputStream($stderrDeferred->promise());
+        $handle->stdioDeferreds[] = $stderrDeferred;
+        $handle->stderr = new ProcessInputStream($stderrDeferred->promise());
 
         $this->socketConnector->registerPendingProcess($handle);
 
