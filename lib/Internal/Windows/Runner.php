@@ -127,8 +127,10 @@ final class Runner implements ProcessRunner {
             throw new ProcessException("Terminating process failed");
         }
 
-        Loop::cancel($handle->exitCodeWatcher);
-        $handle->exitCodeWatcher = null;
+        if ($this->exitCodeWatcher !== null) {
+            Loop::cancel($handle->exitCodeWatcher);
+            $handle->exitCodeWatcher = null;
+        }
 
         $handle->status = ProcessStatus::ENDED;
         $handle->joinDeferred->fail(new ProcessException("The process was killed"));
