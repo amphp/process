@@ -84,10 +84,6 @@ final class SocketConnector {
         $data = \fread($socket, $length);
 
         if ($data === false || $data === '') {
-            \fclose($socket);
-            Loop::cancel($state->readWatcher);
-            Loop::cancel($state->timeoutWatcher);
-            unset($this->pendingClients[(int) $socket]);
             return null;
         }
 
