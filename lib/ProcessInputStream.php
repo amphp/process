@@ -27,7 +27,9 @@ class ProcessInputStream implements InputStream {
         $resourceStreamPromise->onResolve(function ($error, $resourceStream) {
             if ($error) {
                 $this->error = new StreamException("Failed to launch process", 0, $error);
-                $this->initialRead->fail($this->error);
+                if ($this->initialRead) {
+                    $this->initialRead->fail($this->error);
+                }
                 return;
             }
 
