@@ -9,13 +9,14 @@ use function Amp\Promise\all;
 function show_process_output(Process $process): \Generator
 {
     $stream = $process->getStdout();
-    while ($chunk = yield $stream->read()) {
+    while (null !== $chunk = yield $stream->read()) {
         echo $chunk;
     }
 
     $code = yield $process->join();
+    $pid = yield $process->getPid();
 
-    echo "Process {$process->getPid()} exited with {$code}\n";
+    echo "Process {$pid} exited with {$code}\n";
 }
 
 Amp\Loop::run(function () {
