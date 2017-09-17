@@ -38,6 +38,7 @@ class ProcessTest extends TestCase {
         Loop::run(function () {
             $process = new Process("exit 42");
             $process->start();
+
             $code = yield $process->join();
 
             $this->assertSame(42, $code);
@@ -54,7 +55,7 @@ class ProcessTest extends TestCase {
             $completed = false;
             $promise->onResolve(function () use (&$completed) { $completed = true; });
             $this->assertFalse($completed);
-            $this->assertInternalType('int', $process->getPid());
+            $this->assertInternalType('int', yield $process->getPid());
         });
     }
 
@@ -70,7 +71,7 @@ class ProcessTest extends TestCase {
 
             $process->kill();
 
-            $code = yield $promise;
+            yield $promise;
         });
     }
 

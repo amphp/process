@@ -55,14 +55,13 @@ final class Runner implements ProcessRunner {
 
         $handle->status = ProcessStatus::RUNNING;
         $handle->pidDeferred->resolve((int) $pid);
-        $deferreds[0]->resolve(new ResourceOutputStream($pipes[0]));
-        $deferreds[1]->resolve(new ResourceInputStream($pipes[1]));
-        $deferreds[2]->resolve(new ResourceInputStream($pipes[2]));
+        $deferreds[0]->resolve($pipes[0]);
+        $deferreds[1]->resolve($pipes[1]);
+        $deferreds[2]->resolve($pipes[2]);
 
-        $handle->extraDataPipeWatcher = Loop::onReadable($stream, [self::class, 'onProcessEndExtraDataPipeReadable'], $handle);
-        Loop::unreference($handle->extraDataPipeWatcher);
-
-        $handle->sockets->resolve();
+        if ($handle->extraDataPipeWatcher !== null) {
+            Loop::enable($handle->extraDataPipeWatcher);
+        }
     }
 
     /** @inheritdoc */
@@ -104,9 +103,17 @@ final class Runner implements ProcessRunner {
 
         \stream_set_blocking($pipes[3], false);
 
-        Loop::onReadable($pipes[3], [self::class, 'onProcessStartExtraDataPipeReadable'], [$handle, $pipes, [
+        Loop::onReadable($pipes[3], [self::class, 'onProcessStartExtraDataPipeReadable'], [$handle, [
+            new ResourceOutputStream($pipes[0]),
+            new ResourceInputStream($pipes[1]),
+            new ResourceInputStream($pipes[2]),
+        ], [
             $stdinDeferred, $stdoutDeferred, $stderrDeferred
         ]]);
+
+        $handle->extraDataPipeWatcher = Loop::onReadable($pipes[3], [self::class, 'onProcessEndExtraDataPipeReadable'], $handle);
+        Loop::unreference($handle->extraDataPipeWatcher);
+        Loop::disable($handle->extraDataPipeWatcher);
 
         return $handle;
     }
@@ -128,8 +135,10 @@ final class Runner implements ProcessRunner {
             throw new ProcessException("Terminating process failed");
         }
 
-        Loop::cancel($handle->extraDataPipeWatcher);
-        $handle->extraDataPipeWatcher = null;
+        if ($handle->extraDataPipeWatcher !== null) {
+            Loop::cancel($handle->extraDataPipeWatcher);
+            $handle->extraDataPipeWatcher = null;
+        }
 
         $handle->status = ProcessStatus::ENDED;
         $handle->joinDeferred->fail(new ProcessException("The process was killed"));
