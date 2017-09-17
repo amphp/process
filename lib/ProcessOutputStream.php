@@ -12,7 +12,7 @@ use Amp\Promise;
 
 class ProcessOutputStream implements OutputStream {
     /** @var array */
-    private $queuedWrites;
+    private $queuedWrites = [];
 
     /** @var bool */
     private $shouldClose = false;

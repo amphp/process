@@ -27,7 +27,7 @@ final class Runner implements ProcessRunner {
 
     private $socketConnector;
 
-    private function makeCommand(string $command, string $workingDirectory): string {
+    private function makeCommand(string $workingDirectory): string {
         $result = sprintf(
             '%s --address=%s --port=%d --token-size=%d',
             \escapeshellarg(self::WRAPPER_EXE_PATH),
@@ -40,8 +40,6 @@ final class Runner implements ProcessRunner {
             $result .= ' ' . \escapeshellarg('--cwd=' . \rtrim($workingDirectory, '\\'));
         }
 
-        $result .= ' ' . $command;
-
         return $result;
     }
 
@@ -51,12 +49,14 @@ final class Runner implements ProcessRunner {
 
     /** @inheritdoc */
     public function start(string $command, string $cwd = null, array $env = [], array $options = []): ProcessHandle {
-        $command = $this->makeCommand($command, $cwd ?? '');
+        if (strpos($command, "\0") !== false) {
+            throw new ProcessException("Can't execute commands that contain null bytes.");
+        }
 
         $options['bypass_shell'] = true;
 
         $handle = new Handle;
-        $handle->proc = @\proc_open($command, self::FD_SPEC, $pipes, $cwd ?: null, $env ?: null, $options);
+        $handle->proc = @\proc_open($this->makeCommand($cwd ?? ''), self::FD_SPEC, $pipes, $cwd ?: null, $env ?: null, $options);
 
         if (!\is_resource($handle->proc)) {
             $message = "Could not start process";
@@ -74,16 +74,16 @@ final class Runner implements ProcessRunner {
         }
 
         $securityTokens = \random_bytes(SocketConnector::SECURITY_TOKEN_SIZE * 6);
-        $written = \fwrite($pipes[0], $securityTokens);
+        $written = \fwrite($pipes[0], $securityTokens . "\0" . $command . "\0");
 
         \fclose($pipes[0]);
         \fclose($pipes[1]);
 
-        if ($written !== SocketConnector::SECURITY_TOKEN_SIZE * 6) {
+        if ($written !== SocketConnector::SECURITY_TOKEN_SIZE * 6 + \strlen($command) + 2) {
             \fclose($pipes[2]);
             \proc_close($handle->proc);
 
-            throw new ProcessException("Could not send security tokens to process wrapper");
+            throw new ProcessException("Could not send security tokens / command to process wrapper");
         }
 
         $handle->securityTokens = \str_split($securityTokens, SocketConnector::SECURITY_TOKEN_SIZE);
@@ -91,13 +91,16 @@ final class Runner implements ProcessRunner {
         $handle->wrapperStderrPipe = $pipes[2];
 
         $stdinDeferred = new Deferred;
-        $handle->stdioDeferreds[] = new ProcessOutputStream($stdinDeferred->promise());
+        $handle->stdioDeferreds[] = $stdinDeferred;
+        $handle->stdin = new ProcessOutputStream($stdinDeferred->promise());
 
         $stdoutDeferred = new Deferred;
-        $handle->stdioDeferreds[] = new ProcessInputStream($stdoutDeferred->promise());
+        $handle->stdioDeferreds[] = $stdoutDeferred;
+        $handle->stdout = new ProcessInputStream($stdoutDeferred->promise());
 
         $stderrDeferred = new Deferred;
-        $handle->stdioDeferreds[] = new ProcessInputStream($stderrDeferred->promise());
+        $handle->stdioDeferreds[] = $stderrDeferred;
+        $handle->stderr = new ProcessInputStream($stderrDeferred->promise());
 
         $this->socketConnector->registerPendingProcess($handle);
 
@@ -107,6 +110,8 @@ final class Runner implements ProcessRunner {
     /** @inheritdoc */
     public function join(ProcessHandle $handle): Promise {
         /** @var Handle $handle */
+        $handle->exitCodeRequested = true;
+
         if ($handle->exitCodeWatcher !== null) {
             Loop::reference($handle->exitCodeWatcher);
         }
@@ -122,8 +127,10 @@ final class Runner implements ProcessRunner {
             throw new ProcessException("Terminating process failed");
         }
 
-        Loop::cancel($handle->exitCodeWatcher);
-        $handle->exitCodeWatcher = null;
+        if ($handle->exitCodeWatcher !== null) {
+            Loop::cancel($handle->exitCodeWatcher);
+            $handle->exitCodeWatcher = null;
+        }
 
         $handle->status = ProcessStatus::ENDED;
         $handle->joinDeferred->fail(new ProcessException("The process was killed"));
@@ -137,12 +144,17 @@ final class Runner implements ProcessRunner {
     /** @inheritdoc */
     public function destroy(ProcessHandle $handle) {
         /** @var Handle $handle */
-        if ($handle->status < ProcessStatus::ENDED) {
-            $this->kill($handle);
+        if ($handle->status < ProcessStatus::ENDED && \is_resource($handle->proc)) {
+            try {
+                $this->kill($handle);
+            } catch (ProcessException $e) {
+                // ignore
+            }
         }
 
         if ($handle->exitCodeWatcher !== null) {
             Loop::cancel($handle->exitCodeWatcher);
+            $handle->exitCodeWatcher = null;
         }
 
         for ($i = 0; $i < 4; $i++) {
@@ -151,8 +163,8 @@ final class Runner implements ProcessRunner {
             }
         }
 
-        \stream_get_contents($handle->wrapperStderrPipe);
-        \fclose($handle->wrapperStderrPipe);
+        @\stream_get_contents($handle->wrapperStderrPipe);
+        @\fclose($handle->wrapperStderrPipe);
 
         if (\is_resource($handle->proc)) {
             \proc_close($handle->proc);

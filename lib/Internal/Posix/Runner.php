@@ -24,6 +24,7 @@ final class Runner implements ProcessRunner {
 
     public static function onProcessEndExtraDataPipeReadable($watcher, $stream, Handle $handle) {
         Loop::cancel($watcher);
+        $handle->extraDataPipeWatcher = null;
 
         $handle->status = ProcessStatus::ENDED;
 
@@ -55,14 +56,13 @@ final class Runner implements ProcessRunner {
 
         $handle->status = ProcessStatus::RUNNING;
         $handle->pidDeferred->resolve((int) $pid);
-        $deferreds[0]->resolve(new ResourceOutputStream($pipes[0]));
-        $deferreds[1]->resolve(new ResourceInputStream($pipes[1]));
-        $deferreds[2]->resolve(new ResourceInputStream($pipes[2]));
+        $deferreds[0]->resolve($pipes[0]);
+        $deferreds[1]->resolve($pipes[1]);
+        $deferreds[2]->resolve($pipes[2]);
 
-        $handle->extraDataPipeWatcher = Loop::onReadable($stream, [self::class, 'onProcessEndExtraDataPipeReadable'], $handle);
-        Loop::unreference($handle->extraDataPipeWatcher);
-
-        $handle->sockets->resolve();
+        if ($handle->extraDataPipeWatcher !== null) {
+            Loop::enable($handle->extraDataPipeWatcher);
+        }
     }
 
     /** @inheritdoc */
@@ -104,9 +104,17 @@ final class Runner implements ProcessRunner {
 
         \stream_set_blocking($pipes[3], false);
 
-        Loop::onReadable($pipes[3], [self::class, 'onProcessStartExtraDataPipeReadable'], [$handle, $pipes, [
+        $handle->extraDataPipeStartWatcher = Loop::onReadable($pipes[3], [self::class, 'onProcessStartExtraDataPipeReadable'], [$handle, [
+            new ResourceOutputStream($pipes[0]),
+            new ResourceInputStream($pipes[1]),
+            new ResourceInputStream($pipes[2]),
+        ], [
             $stdinDeferred, $stdoutDeferred, $stderrDeferred
         ]]);
+
+        $handle->extraDataPipeWatcher = Loop::onReadable($pipes[3], [self::class, 'onProcessEndExtraDataPipeReadable'], $handle);
+        Loop::unreference($handle->extraDataPipeWatcher);
+        Loop::disable($handle->extraDataPipeWatcher);
 
         return $handle;
     }
@@ -124,12 +132,20 @@ final class Runner implements ProcessRunner {
     /** @inheritdoc */
     public function kill(ProcessHandle $handle) {
         /** @var Handle $handle */
+        if ($handle->extraDataPipeWatcher !== null) {
+            Loop::cancel($handle->extraDataPipeWatcher);
+            $handle->extraDataPipeWatcher = null;
+        }
+
+        /** @var Handle $handle */
+        if ($handle->extraDataPipeStartWatcher !== null) {
+            Loop::cancel($handle->extraDataPipeStartWatcher);
+            $handle->extraDataPipeStartWatcher = null;
+        }
+
         if (!\proc_terminate($handle->proc, 9)) { // Forcefully kill the process using SIGKILL.
             throw new ProcessException("Terminating process failed");
         }
-
-        Loop::cancel($handle->extraDataPipeWatcher);
-        $handle->extraDataPipeWatcher = null;
 
         $handle->status = ProcessStatus::ENDED;
         $handle->joinDeferred->fail(new ProcessException("The process was killed"));
@@ -147,11 +163,23 @@ final class Runner implements ProcessRunner {
     public function destroy(ProcessHandle $handle) {
         /** @var Handle $handle */
         if ($handle->status < ProcessStatus::ENDED && \getmypid() === $handle->originalParentPid) {
-            $this->kill($handle);
+            try {
+                $this->kill($handle);
+            } catch (ProcessException $e) {
+                // ignore
+            }
         }
 
+        /** @var Handle $handle */
         if ($handle->extraDataPipeWatcher !== null) {
             Loop::cancel($handle->extraDataPipeWatcher);
+            $handle->extraDataPipeWatcher = null;
+        }
+
+        /** @var Handle $handle */
+        if ($handle->extraDataPipeStartWatcher !== null) {
+            Loop::cancel($handle->extraDataPipeStartWatcher);
+            $handle->extraDataPipeStartWatcher = null;
         }
 
         if (\is_resource($handle->extraDataPipe)) {

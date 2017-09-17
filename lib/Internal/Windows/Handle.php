@@ -8,6 +8,7 @@ use Amp\Process\Internal\ProcessHandle;
 final class Handle extends ProcessHandle {
     public function __construct() {
         $this->joinDeferred = new Deferred;
+        $this->pidDeferred = new Deferred;
     }
 
     /** @var Deferred */
@@ -15,6 +16,9 @@ final class Handle extends ProcessHandle {
 
     /** @var string */
     public $exitCodeWatcher;
+
+    /** @var bool */
+    public $exitCodeRequested = false;
 
     /** @var resource */
     public $proc;
@@ -26,7 +30,7 @@ final class Handle extends ProcessHandle {
     public $wrapperStderrPipe;
 
     /** @var resource[] */
-    public $sockets;
+    public $sockets = [];
 
     /** @var Deferred[] */
     public $stdioDeferreds;
