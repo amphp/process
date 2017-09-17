@@ -16,6 +16,9 @@ final class Handle extends ProcessHandle {
     /** @var string */
     public $exitCodeWatcher;
 
+    /** @var bool */
+    public $exitCodeRequested = false;
+
     /** @var resource */
     public $proc;
 

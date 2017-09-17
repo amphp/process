@@ -110,6 +110,8 @@ final class Runner implements ProcessRunner {
     /** @inheritdoc */
     public function join(ProcessHandle $handle): Promise {
         /** @var Handle $handle */
+        $handle->exitCodeRequested = true;
+
         if ($handle->exitCodeWatcher !== null) {
             Loop::reference($handle->exitCodeWatcher);
         }

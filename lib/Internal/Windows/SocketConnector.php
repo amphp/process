@@ -236,8 +236,9 @@ final class SocketConnector {
         $handle->stdioDeferreds[1]->resolve(new ResourceInputStream($handle->sockets[1]));
         $handle->stdioDeferreds[2]->resolve(new ResourceInputStream($handle->sockets[2]));
 
-        if ($handle->exitCodeWatcher !== null) {
-            Loop::enable($handle->exitCodeWatcher);
+        $handle->exitCodeWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableExitCode'], $handle);
+        if (!$handle->exitCodeRequested) {
+            Loop::unreference($handle->exitCodeWatcher);
         }
 
         unset($this->pendingProcesses[$handle->wrapperPid]);
@@ -258,7 +259,7 @@ final class SocketConnector {
         if (\strlen($data) !== 5) {
             $handle->status = ProcessStatus::ENDED;
             $handle->joinDeferred->fail(new ProcessException(
-                \sprintf('Failed to read exit code from wrapper: Recieved %d of 5 expected bytes', \strlen($data))
+                \sprintf('Failed to read exit code from wrapper: Received %d of 5 expected bytes', \strlen($data))
             ));
             return;
         }
@@ -324,9 +325,5 @@ final class SocketConnector {
         $handle->connectTimeoutWatcher = Loop::delay(self::CONNECT_TIMEOUT, [$this, 'onProcessConnectTimeout'], $handle);
 
         $this->pendingProcesses[$handle->wrapperPid] = $handle;
-
-        $handle->exitCodeWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableExitCode'], $handle);
-        Loop::unreference($handle->exitCodeWatcher);
-        Loop::disable($handle->exitCodeWatcher);
     }
 }
