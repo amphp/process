@@ -240,14 +240,14 @@ final class SocketConnector {
     }
 
     public function onReadableExitCode($watcher, $socket, Handle $handle) {
-        $handle->exitCodeWatcher = null;
-        Loop::cancel($watcher);
-
         $data = \fread($socket, 5);
 
         if ($data === false || $data === '') {
             return;
         }
+
+        $handle->exitCodeWatcher = null;
+        Loop::cancel($watcher);
 
         if (\strlen($data) !== 5) {
             $handle->status = ProcessStatus::ENDED;
