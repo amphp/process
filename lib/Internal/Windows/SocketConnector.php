@@ -236,8 +236,9 @@ final class SocketConnector {
         $handle->stdioDeferreds[1]->resolve(new ResourceInputStream($handle->sockets[1]));
         $handle->stdioDeferreds[2]->resolve(new ResourceInputStream($handle->sockets[2]));
 
-        $handle->exitCodeWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableExitCode'], $handle);
-        Loop::unreference($handle->exitCodeWatcher);
+        if ($handle->exitCodeWatcher !== null) {
+            Loop::enable($handle->exitCodeWatcher);
+        }
 
         unset($this->pendingProcesses[$handle->wrapperPid]);
     }
@@ -323,5 +324,9 @@ final class SocketConnector {
         $handle->connectTimeoutWatcher = Loop::delay(self::CONNECT_TIMEOUT, [$this, 'onProcessConnectTimeout'], $handle);
 
         $this->pendingProcesses[$handle->wrapperPid] = $handle;
+
+        $handle->exitCodeWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableExitCode'], $handle);
+        Loop::unreference($handle->exitCodeWatcher);
+        Loop::disable($handle->exitCodeWatcher);
     }
 }
