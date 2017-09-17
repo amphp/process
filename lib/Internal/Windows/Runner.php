@@ -150,6 +150,7 @@ final class Runner implements ProcessRunner {
 
         if ($handle->exitCodeWatcher !== null) {
             Loop::cancel($handle->exitCodeWatcher);
+            $handle->exitCodeWatcher = null;
         }
 
         for ($i = 0; $i < 4; $i++) {

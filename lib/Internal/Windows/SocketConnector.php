@@ -206,7 +206,6 @@ final class SocketConnector {
         $data = \fread($socket, 5);
 
         if ($data === false || $data === '') {
-            $this->failHandleStart($handle, 'Failed to read PID from wrapper: No data received');
             return;
         }
 
@@ -247,8 +246,6 @@ final class SocketConnector {
         $data = \fread($socket, 5);
 
         if ($data === false || $data === '') {
-            $handle->status = ProcessStatus::ENDED;
-            $handle->joinDeferred->fail(new ProcessException('Failed to read exit code from wrapper: No data received'));
             return;
         }
 
