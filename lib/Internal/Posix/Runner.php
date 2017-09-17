@@ -103,7 +103,7 @@ final class Runner implements ProcessRunner {
 
         \stream_set_blocking($pipes[3], false);
 
-        Loop::onReadable($pipes[3], [self::class, 'onProcessStartExtraDataPipeReadable'], [$handle, [
+        $handle->extraDataPipeStartWatcher = Loop::onReadable($pipes[3], [self::class, 'onProcessStartExtraDataPipeReadable'], [$handle, [
             new ResourceOutputStream($pipes[0]),
             new ResourceInputStream($pipes[1]),
             new ResourceInputStream($pipes[2]),
@@ -131,13 +131,19 @@ final class Runner implements ProcessRunner {
     /** @inheritdoc */
     public function kill(ProcessHandle $handle) {
         /** @var Handle $handle */
-        if (!\proc_terminate($handle->proc, 9)) { // Forcefully kill the process using SIGKILL.
-            throw new ProcessException("Terminating process failed");
-        }
-
         if ($handle->extraDataPipeWatcher !== null) {
             Loop::cancel($handle->extraDataPipeWatcher);
             $handle->extraDataPipeWatcher = null;
+        }
+
+        /** @var Handle $handle */
+        if ($handle->extraDataPipeStartWatcher !== null) {
+            Loop::cancel($handle->extraDataPipeStartWatcher);
+            $handle->extraDataPipeStartWatcher = null;
+        }
+
+        if (!\proc_terminate($handle->proc, 9)) { // Forcefully kill the process using SIGKILL.
+            throw new ProcessException("Terminating process failed");
         }
 
         $handle->status = ProcessStatus::ENDED;
@@ -159,8 +165,16 @@ final class Runner implements ProcessRunner {
             $this->kill($handle);
         }
 
+        /** @var Handle $handle */
         if ($handle->extraDataPipeWatcher !== null) {
             Loop::cancel($handle->extraDataPipeWatcher);
+            $handle->extraDataPipeWatcher = null;
+        }
+
+        /** @var Handle $handle */
+        if ($handle->extraDataPipeStartWatcher !== null) {
+            Loop::cancel($handle->extraDataPipeStartWatcher);
+            $handle->extraDataPipeStartWatcher = null;
         }
 
         if (\is_resource($handle->extraDataPipe)) {

@@ -24,6 +24,9 @@ final class Handle extends ProcessHandle {
     /** @var string */
     public $extraDataPipeWatcher;
 
+    /** @var string */
+    public $extraDataPipeStartWatcher;
+
     /** @var int */
     public $originalParentPid;
 }
