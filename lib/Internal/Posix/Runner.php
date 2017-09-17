@@ -163,7 +163,11 @@ final class Runner implements ProcessRunner {
     public function destroy(ProcessHandle $handle) {
         /** @var Handle $handle */
         if ($handle->status < ProcessStatus::ENDED && \getmypid() === $handle->originalParentPid) {
-            $this->kill($handle);
+            try {
+                $this->kill($handle);
+            } catch (ProcessException $e) {
+                // ignore
+            }
         }
 
         /** @var Handle $handle */
