@@ -8,6 +8,7 @@ use Amp\Process\Internal\ProcessHandle;
 final class Handle extends ProcessHandle {
     public function __construct() {
         $this->joinDeferred = new Deferred;
+        $this->pidDeferred = new Deferred;
     }
 
     /** @var Deferred */
