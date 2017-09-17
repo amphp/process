@@ -144,7 +144,7 @@ final class Runner implements ProcessRunner {
     /** @inheritdoc */
     public function destroy(ProcessHandle $handle) {
         /** @var Handle $handle */
-        if ($handle->status < ProcessStatus::ENDED) {
+        if ($handle->status < ProcessStatus::ENDED && \is_resource($handle->proc)) {
             try {
                 $this->kill($handle);
             } catch (ProcessException $e) {
