@@ -163,8 +163,8 @@ final class Runner implements ProcessRunner {
             }
         }
 
-        \stream_get_contents($handle->wrapperStderrPipe);
-        \fclose($handle->wrapperStderrPipe);
+        @\stream_get_contents($handle->wrapperStderrPipe);
+        @\fclose($handle->wrapperStderrPipe);
 
         if (\is_resource($handle->proc)) {
             \proc_close($handle->proc);
