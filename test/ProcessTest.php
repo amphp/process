@@ -34,7 +34,6 @@ class ProcessTest extends TestCase {
         });
     }
 
-
     public function testExecuteResolvesToExitCode() {
         Loop::run(function () {
             $process = new Process("exit 42");

@@ -8,8 +8,7 @@ use Amp\Loop;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
 
-final class SocketConnector
-{
+final class SocketConnector {
     const SERVER_SOCKET_URI = 'tcp://127.0.0.1:0';
     const SECURITY_TOKEN_SIZE = 16;
     const CONNECT_TIMEOUT = 1000;
@@ -29,12 +28,9 @@ final class SocketConnector
     /** @var int */
     public $port;
 
-    public function __construct()     {
-        $this->server = \stream_socket_server(
-            self::SERVER_SOCKET_URI,
-            $errNo, $errStr,
-            \STREAM_SERVER_LISTEN | \STREAM_SERVER_BIND
-        );
+    public function __construct() {
+        $flags = \STREAM_SERVER_LISTEN | \STREAM_SERVER_BIND;
+        $this->server = \stream_socket_server(self::SERVER_SOCKET_URI, $errNo, $errStr, $flags);
 
         if (!$this->server) {
             throw new \Error("Failed to create TCP server socket for process wrapper: {$errNo}: {$errStr}");
@@ -45,61 +41,64 @@ final class SocketConnector
         }
 
         list($this->address, $this->port) = \explode(':', \stream_socket_get_name($this->server, false));
-        $this->port = (int)$this->port;
+        $this->port = (int) $this->port;
 
         Loop::unreference(Loop::onReadable($this->server, [$this, 'onServerSocketReadable']));
     }
 
-
-    private function failClientHandshake($socket, int $code): void
-    {
+    private function failClientHandshake($socket, int $code): void {
         \fwrite($socket, \chr(SignalCode::HANDSHAKE_ACK) . \chr($code));
         \fclose($socket);
-        unset($this->pendingClients[(int)$socket]);
+
+        unset($this->pendingClients[(int) $socket]);
     }
 
-    private function failHandleStart(Handle $handle, string $message, ...$args)
-    {
+    private function failHandleStart(Handle $handle, string $message, ...$args) {
         Loop::cancel($handle->connectTimeoutWatcher);
+
         unset($this->pendingProcesses[$handle->wrapperPid]);
 
         foreach ($handle->sockets as $socket) {
             \fclose($socket);
         }
 
-        $handle->startDeferred->fail(new ProcessException(\vsprintf($message, $args)));
+        $error = new ProcessException(\vsprintf($message, $args));
+
+        foreach ($handle->stdioDeferreds as $deferred) {
+            $deferred->fail($error);
+        }
     }
 
     /**
-     * Read data from a client socket
+     * Read data from a client socket.
      *
      * This method cleans up internal state as appropriate. Returns null if the read fails or needs to be repeated.
      *
-     * @param resource $socket
-     * @param int $length
+     * @param resource            $socket
+     * @param int                 $length
      * @param PendingSocketClient $state
+     *
      * @return string|null
      */
-    private function readDataFromPendingClient($socket, int $length, PendingSocketClient $state)
-    {
+    private function readDataFromPendingClient($socket, int $length, PendingSocketClient $state) {
         $data = \fread($socket, $length);
 
         if ($data === false || $data === '') {
             \fclose($socket);
             Loop::cancel($state->readWatcher);
             Loop::cancel($state->timeoutWatcher);
-            unset($this->pendingClients[(int)$socket]);
+            unset($this->pendingClients[(int) $socket]);
             return null;
         }
 
-        $data = $state->recievedDataBuffer . $data;
+        $data = $state->receivedDataBuffer . $data;
 
         if (\strlen($data) < $length) {
-            $state->recievedDataBuffer = $data;
+            $state->receivedDataBuffer = $data;
             return null;
         }
 
-        $state->recievedDataBuffer = '';
+        $state->receivedDataBuffer = '';
 
         Loop::cancel($state->readWatcher);
         Loop::cancel($state->timeoutWatcher);
@@ -107,8 +106,8 @@ final class SocketConnector
         return $data;
     }
 
-    public function onReadable_Handshake($watcher, $socket) {
-        $socketId = (int)$socket;
+    public function onReadableHandshake($watcher, $socket) {
+        $socketId = (int) $socket;
         $pendingClient = $this->pendingClients[$socketId];
 
         if (null === $data = $this->readDataFromPendingClient($socket, self::SECURITY_TOKEN_SIZE + 6, $pendingClient)) {
@@ -146,7 +145,7 @@ final class SocketConnector
             return;
         }
 
-        if ($packet['client_token'] !== $handle->securityTokens[$packet['stream_id']]) {
+        if (!\hash_equals($packet['client_token'], $handle->securityTokens[$packet['stream_id']])) {
             $this->failClientHandshake($socket, HandshakeStatus::INVALID_CLIENT_TOKEN);
             $this->failHandleStart($handle, "Invalid client security token for stream #%d", $packet['stream_id']);
             return;
@@ -164,13 +163,11 @@ final class SocketConnector
 
         $pendingClient->pid = $packet['pid'];
         $pendingClient->streamId = $packet['stream_id'];
-
-        $pendingClient->readWatcher = Loop::onReadable($socket, [$this, 'onReadable_HandshakeAck']);
+        $pendingClient->readWatcher = Loop::onReadable($socket, [$this, 'onReadableHandshakeAck']);
     }
 
-    public function onReadable_HandshakeAck($watcher, $socket)
-    {
-        $socketId = (int)$socket;
+    public function onReadableHandshakeAck($watcher, $socket) {
+        $socketId = (int) $socket;
         $pendingClient = $this->pendingClients[$socketId];
 
         // can happen if the start promise was failed
@@ -202,12 +199,11 @@ final class SocketConnector
         $handle->sockets[$pendingClient->streamId] = $socket;
 
         if (count($handle->sockets) === 3) {
-            $pendingClient->readWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadable_ChildPid'], $handle);
+            $pendingClient->readWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableChildPid'], $handle);
         }
     }
 
-    public function onReadable_ChildPid($watcher, $socket, Handle $handle)
-    {
+    public function onReadableChildPid($watcher, $socket, Handle $handle) {
         Loop::cancel($watcher);
         Loop::cancel($handle->connectTimeoutWatcher);
 
@@ -220,7 +216,7 @@ final class SocketConnector
 
         if (\strlen($data) !== 5) {
             $this->failHandleStart(
-                $handle, 'Failed to read PID from wrapper: Recieved %d of 5 expected bytes', \strlen($data)
+                $handle, 'Failed to read PID from wrapper: Received %d of 5 expected bytes', \strlen($data)
             );
             return;
         }
@@ -235,20 +231,18 @@ final class SocketConnector
         }
 
         $handle->status = ProcessStatus::RUNNING;
-        $handle->pid = $packet['pid'];
-        $handle->stdin = new ResourceOutputStream($handle->sockets[0]);
-        $handle->stdout = new ResourceInputStream($handle->sockets[1]);
-        $handle->stderr = new ResourceInputStream($handle->sockets[2]);
+        $handle->pidDeferred->resolve($packet['pid']);
+        $handle->stdioDeferreds[0]->resolve(new ResourceOutputStream($handle->sockets[0]));
+        $handle->stdioDeferreds[1]->resolve(new ResourceInputStream($handle->sockets[1]));
+        $handle->stdioDeferreds[2]->resolve(new ResourceInputStream($handle->sockets[2]));
 
-        $handle->exitCodeWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadable_ExitCode'], $handle);
+        $handle->exitCodeWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableExitCode'], $handle);
         Loop::unreference($handle->exitCodeWatcher);
 
         unset($this->pendingProcesses[$handle->wrapperPid]);
-        $handle->startDeferred->resolve($handle);
     }
 
-    public function onReadable_ExitCode($watcher, $socket, Handle $handle)
-    {
+    public function onReadableExitCode($watcher, $socket, Handle $handle) {
         $handle->exitCodeWatcher = null;
         Loop::cancel($watcher);
 
@@ -256,13 +250,13 @@ final class SocketConnector
 
         if ($data === false || $data === '') {
             $handle->status = ProcessStatus::ENDED;
-            $handle->endDeferred->fail(new ProcessException('Failed to read exit code from wrapper: No data received'));
+            $handle->joinDeferred->fail(new ProcessException('Failed to read exit code from wrapper: No data received'));
             return;
         }
 
         if (\strlen($data) !== 5) {
             $handle->status = ProcessStatus::ENDED;
-            $handle->endDeferred->fail(new ProcessException(
+            $handle->joinDeferred->fail(new ProcessException(
                 \sprintf('Failed to read exit code from wrapper: Recieved %d of 5 expected bytes', \strlen($data))
             ));
             return;
@@ -278,11 +272,11 @@ final class SocketConnector
         }
 
         $handle->status = ProcessStatus::ENDED;
-        $handle->endDeferred->resolve($packet['code']);
+        $handle->joinDeferred->resolve($packet['code']);
     }
 
     public function onClientSocketConnectTimeout($watcher, $socket) {
-        $id = (int)$socket;
+        $id = (int) $socket;
 
         Loop::cancel($this->pendingClients[$id]->readWatcher);
         unset($this->pendingClients[$id]);
@@ -298,10 +292,10 @@ final class SocketConnector
         }
 
         $pendingClient = new PendingSocketClient;
-        $pendingClient->readWatcher = Loop::onReadable($socket, [$this, 'onReadable_Handshake']);
+        $pendingClient->readWatcher = Loop::onReadable($socket, [$this, 'onReadableHandshake']);
         $pendingClient->timeoutWatcher = Loop::delay(self::CONNECT_TIMEOUT, [$this, 'onClientSocketConnectTimeout'], $socket);
 
-        $this->pendingClients[(int)$socket] = $pendingClient;
+        $this->pendingClients[(int) $socket] = $pendingClient;
     }
 
     public function onProcessConnectTimeout($watcher, Handle $handle) {
@@ -319,11 +313,13 @@ final class SocketConnector
             \fclose($socket);
         }
 
-        $handle->startDeferred->fail(new ProcessException(\trim($error)));
+        $error = new ProcessException(\trim($error));
+        foreach ($handle->stdioDeferreds as $deferred) {
+            $deferred->fail($error);
+        }
     }
 
-    public function registerPendingProcess(Handle $handle)
-    {
+    public function registerPendingProcess(Handle $handle) {
         $handle->connectTimeoutWatcher = Loop::delay(self::CONNECT_TIMEOUT, [$this, 'onProcessConnectTimeout'], $handle);
 
         $this->pendingProcesses[$handle->wrapperPid] = $handle;

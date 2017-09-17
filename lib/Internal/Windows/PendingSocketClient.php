@@ -2,11 +2,14 @@
 
 namespace Amp\Process\Internal\Windows;
 
-final class PendingSocketClient
-{
+use Amp\Struct;
+
+final class PendingSocketClient {
+    use Struct;
+
     public $readWatcher;
     public $timeoutWatcher;
-    public $recievedDataBuffer = '';
+    public $receivedDataBuffer = '';
     public $pid;
     public $streamId;
 }

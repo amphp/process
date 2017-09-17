@@ -2,9 +2,6 @@
 
 namespace Amp\Process;
 
-use Amp\ByteStream\ResourceInputStream;
-use Amp\ByteStream\ResourceOutputStream;
-use Amp\Deferred;
 use Amp\Process\Internal\Posix\Runner as PosixProcessRunner;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
@@ -32,52 +29,15 @@ class Process {
     private $handle;
 
     /**
-     * @param string $command Command to run.
-     * @param string $cwd Working directory of child process.
-     * @param array $env Environment variables for child process.
-     * @param array $options Options for proc_open().
-     * @param ProcessHandle $handle Handle for the created process.
-     */
-    private function __construct(string $command, string $cwd, array $env, array $options, ProcessHandle $handle) {
-        $this->command = $command;
-        $this->cwd = $cwd;
-        $this->env = $env;
-        $this->options = $options;
-        $this->handle = $handle;
-    }
-
-    /**
-     * Stops the process if it is still running.
-     */
-    public function __destruct() {
-        if ($this->handle !== null) {
-            self::$processRunner->destroy($this->handle);
-        }
-    }
-
-    /**
-     * Throw to prevent cloning
-     *
-     * @throws \Error
-     */
-    public function __clone() {
-        throw new \Error(self::class . ' instances cannot be cloned');
-    }
-
-    /**
-     * Start a new process.
-     *
      * @param   string|string[] $command Command to run.
-     * @param   string|null $cwd Working directory or use an empty string to use the working directory of the current
-     *     PHP process.
-     * @param   mixed[] $env Environment variables or use an empty array to inherit from the current PHP process.
-     * @param   mixed[] $options Options for proc_open().
-     * @return Promise <Process> Fails with a ProcessException if starting the process fails.
+     * @param   string|null     $cwd Working directory or use an empty string to use the working directory of the
+     *     parent.
+     * @param   mixed[]         $env Environment variables or use an empty array to inherit from the parent.
+     * @param   mixed[]         $options Options for `proc_open()`.
+     *
      * @throws \Error If the arguments are invalid.
-     * @throws \Amp\Process\StatusError If the process is already running.
-     * @throws \Amp\Process\ProcessException If starting the process fails.
      */
-    public static function start($command, string $cwd = null, array $env = [], array $options = []): Promise {
+    public function __construct($command, string $cwd = null, array $env = [], array $options = []) {
         $command = \is_array($command)
             ? \implode(" ", \array_map("escapeshellarg", $command))
             : (string) $command;
@@ -93,35 +53,58 @@ class Process {
             $envVars[(string) $key] = (string) $value;
         }
 
-        $deferred = new Deferred;
-
-        self::$processRunner->start($command, $cwd, $env, $options)
-            ->onResolve(function($error, $handle) use($deferred, $command, $cwd, $env, $options) {
-                if ($error) {
-                    $deferred->fail($error);
-                } else {
-                    $deferred->resolve(new Process($command, $cwd, $env, $options, $handle));
-                }
-            });
-
-        return $deferred->promise();
+        $this->command = $command;
+        $this->cwd = $cwd;
+        $this->env = $envVars;
+        $this->options = $options;
     }
 
     /**
-     * Wait for the process to end..
+     * Stops the process if it is still running.
+     */
+    public function __destruct() {
+        if ($this->handle !== null) {
+            self::$processRunner->destroy($this->handle);
+        }
+    }
+
+    public function __clone() {
+        throw new \Error("Cloning is not allowed!");
+    }
+
+    /**
+     * Start the process.
+     *
+     * @throws StatusError If the process has already been started.
+     */
+    public function start() {
+        if ($this->handle) {
+            throw new StatusError("Process has already been started.");
+        }
+
+        $this->handle = self::$processRunner->start($this->command, $this->cwd, $this->env, $this->options);
+    }
+
+    /**
+     * Wait for the process to end.
      *
      * @return Promise <int> Succeeds with process exit code or fails with a ProcessException if the process is killed.
+     *
+     * @throws StatusError If the process has already been started.
      */
     public function join(): Promise {
+        if (!$this->handle) {
+            throw new StatusError("Process has not been started.");
+        }
+
         return self::$processRunner->join($this->handle);
     }
 
     /**
      * Forcibly end the process.
      *
-     * @return void
-     * @throws \Amp\Process\StatusError If the process is not running.
-     * @throws \Amp\Process\ProcessException If terminating the process fails.
+     * @throws StatusError If the process is not running.
+     * @throws ProcessException If terminating the process fails.
      */
     public function kill() {
         if (!$this->isRunning()) {
@@ -135,9 +118,9 @@ class Process {
      * Send a signal signal to the process.
      *
      * @param int $signo Signal number to send to process.
-     * @return void
-     * @throws \Amp\Process\StatusError If the process is not running.
-     * @throws \Amp\Process\ProcessException If sending the signal fails.
+     *
+     * @throws StatusError If the process is not running.
+     * @throws ProcessException If sending the signal fails.
      */
     public function signal(int $signo) {
         if (!$this->isRunning()) {
@@ -150,11 +133,16 @@ class Process {
     /**
      * Returns the PID of the child process.
      *
-     * @return int
-     * @throws \Amp\Process\StatusError If the process has not started.
+     * @return Promise<int>
+     *
+     * @throws StatusError If the process has not started.
      */
-    public function getPid(): int {
-        return $this->handle->pid;
+    public function getPid(): Promise {
+        if (!$this->handle) {
+            throw new StatusError("The process has not been started");
+        }
+
+        return $this->handle->pidDeferred->promise();
     }
 
     /**
@@ -203,55 +191,48 @@ class Process {
      * @return bool
      */
     public function isRunning(): bool {
-        return $this->handle->status === ProcessStatus::RUNNING;
+        return $this->handle && $this->handle->status !== ProcessStatus::ENDED;
     }
 
     /**
      * Gets the process input stream (STDIN).
      *
-     * @return \Amp\ByteStream\ResourceOutputStream
-     * @throws \Amp\Process\StatusError If the process is not running.
+     * @return ProcessOutputStream
      */
-    public function getStdin(): ResourceOutputStream {
-        if (!$this->isRunning()) {
-            throw new StatusError("The process is not running");
-        }
-
-        return $this->handle->stdin;
+    public function getStdin(): ProcessOutputStream {
+        return $this->stdin;
     }
 
     /**
      * Gets the process output stream (STDOUT).
      *
-     * @return \Amp\ByteStream\ResourceInputStream
-     * @throws \Amp\Process\StatusError If the process is not running.
+     * @return ProcessInputStream
      */
-    public function getStdout(): ResourceInputStream {
+    public function getStdout(): ProcessInputStream {
         if (!$this->isRunning()) {
             throw new StatusError("The process is not running");
         }
 
-        return $this->handle->stdout;
+        return $this->stdout;
     }
 
     /**
      * Gets the process error stream (STDERR).
      *
-     * @return \Amp\ByteStream\ResourceInputStream
-     * @throws \Amp\Process\StatusError If the process is not running.
+     * @return ProcessInputStream
      */
-    public function getStderr(): ResourceInputStream {
+    public function getStderr(): ProcessInputStream {
         if (!$this->isRunning()) {
             throw new StatusError("The process is not running");
         }
 
-        return $this->handle->stderr;
+        return $this->stderr;
     }
 }
 
-(function() {
+(function () {
     /** @noinspection PhpUndefinedClassInspection */
     self::$processRunner = \strncasecmp(\PHP_OS, "WIN", 3) === 0
-        ? new WindowsProcessRunner()
-        : new PosixProcessRunner();
+        ? new WindowsProcessRunner
+        : new PosixProcessRunner;
 })->bindTo(null, Process::class)();

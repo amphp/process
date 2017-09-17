@@ -2,8 +2,7 @@
 
 namespace Amp\Process\Internal\Windows;
 
-final class HandshakeStatus
-{
+final class HandshakeStatus {
     const SUCCESS = 0;
     const SIGNAL_UNEXPECTED = 0x01;
     const INVALID_STREAM_ID = 0x02;
@@ -11,5 +10,7 @@ final class HandshakeStatus
     const DUPLICATE_STREAM_ID = 0x04;
     const INVALID_CLIENT_TOKEN = 0x05;
 
-    private function __construct() { }
+    private function __construct() {
+        // empty to prevent instances of this class
+    }
 }
