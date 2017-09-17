@@ -46,7 +46,7 @@ final class SocketConnector {
         Loop::unreference(Loop::onReadable($this->server, [$this, 'onServerSocketReadable']));
     }
 
-    private function failClientHandshake($socket, int $code): void {
+    private function failClientHandshake($socket, int $code) {
         \fwrite($socket, \chr(SignalCode::HANDSHAKE_ACK) . \chr($code));
         \fclose($socket);
 
@@ -84,10 +84,6 @@ final class SocketConnector {
         $data = \fread($socket, $length);
 
         if ($data === false || $data === '') {
-            \fclose($socket);
-            Loop::cancel($state->readWatcher);
-            Loop::cancel($state->timeoutWatcher);
-            unset($this->pendingClients[(int) $socket]);
             return null;
         }
 
@@ -204,15 +200,14 @@ final class SocketConnector {
     }
 
     public function onReadableChildPid($watcher, $socket, Handle $handle) {
-        Loop::cancel($watcher);
-        Loop::cancel($handle->connectTimeoutWatcher);
-
         $data = \fread($socket, 5);
 
         if ($data === false || $data === '') {
-            $this->failHandleStart($handle, 'Failed to read PID from wrapper: No data received');
             return;
         }
+
+        Loop::cancel($watcher);
+        Loop::cancel($handle->connectTimeoutWatcher);
 
         if (\strlen($data) !== 5) {
             $this->failHandleStart(
@@ -237,27 +232,27 @@ final class SocketConnector {
         $handle->stdioDeferreds[2]->resolve(new ResourceInputStream($handle->sockets[2]));
 
         $handle->exitCodeWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableExitCode'], $handle);
-        Loop::unreference($handle->exitCodeWatcher);
+        if (!$handle->exitCodeRequested) {
+            Loop::unreference($handle->exitCodeWatcher);
+        }
 
         unset($this->pendingProcesses[$handle->wrapperPid]);
     }
 
     public function onReadableExitCode($watcher, $socket, Handle $handle) {
-        $handle->exitCodeWatcher = null;
-        Loop::cancel($watcher);
-
         $data = \fread($socket, 5);
 
         if ($data === false || $data === '') {
-            $handle->status = ProcessStatus::ENDED;
-            $handle->joinDeferred->fail(new ProcessException('Failed to read exit code from wrapper: No data received'));
             return;
         }
+
+        $handle->exitCodeWatcher = null;
+        Loop::cancel($watcher);
 
         if (\strlen($data) !== 5) {
             $handle->status = ProcessStatus::ENDED;
             $handle->joinDeferred->fail(new ProcessException(
-                \sprintf('Failed to read exit code from wrapper: Recieved %d of 5 expected bytes', \strlen($data))
+                \sprintf('Failed to read exit code from wrapper: Received %d of 5 expected bytes', \strlen($data))
             ));
             return;
         }
@@ -317,6 +312,8 @@ final class SocketConnector {
         foreach ($handle->stdioDeferreds as $deferred) {
             $deferred->fail($error);
         }
+
+        $handle->joinDeferred->fail($error);
     }
 
     public function registerPendingProcess(Handle $handle) {

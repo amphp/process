@@ -6,7 +6,13 @@ use Amp\ByteStream\Message;
 use Amp\Process\Process;
 
 Amp\Loop::run(function () {
-    $process = yield Process::start('read ; echo "$REPLY"');
+    if (DIRECTORY_SEPARATOR === "\\") {
+        echo "This example doesn't work on Windows." . PHP_EOL;
+        exit(1);
+    }
+
+    $process = new Process('read; echo "$REPLY"');
+    $process->start();
 
     /* send to stdin */
     $process->getStdin()->write("abc\n");

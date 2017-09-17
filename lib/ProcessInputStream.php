@@ -17,6 +17,9 @@ class ProcessInputStream implements InputStream {
     /** @var bool */
     private $shouldClose = false;
 
+    /** @var bool */
+    private $referenced = true;
+
     /** @var ResourceInputStream */
     private $resourceStream;
 
@@ -27,11 +30,17 @@ class ProcessInputStream implements InputStream {
         $resourceStreamPromise->onResolve(function ($error, $resourceStream) {
             if ($error) {
                 $this->error = new StreamException("Failed to launch process", 0, $error);
-                $this->initialRead->fail($this->error);
+                if ($this->initialRead) {
+                    $this->initialRead->fail($this->error);
+                }
                 return;
             }
 
             $this->resourceStream = $resourceStream;
+
+            if (!$this->referenced) {
+                $this->resourceStream->unreference();
+            }
 
             if ($this->shouldClose) {
                 $this->resourceStream->close();
@@ -68,6 +77,22 @@ class ProcessInputStream implements InputStream {
         $this->initialRead = new Deferred;
 
         return $this->initialRead->promise();
+    }
+
+    public function reference() {
+        $this->referenced = true;
+
+        if ($this->resourceStream) {
+            $this->resourceStream->reference();
+        }
+    }
+
+    public function unreference() {
+        $this->referenced = false;
+
+        if ($this->resourceStream) {
+            $this->resourceStream->unreference();
+        }
     }
 
     public function close() {
