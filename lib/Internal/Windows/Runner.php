@@ -152,6 +152,11 @@ final class Runner implements ProcessRunner {
             }
         }
 
+        if ($handle->childPidWatcher !== null) {
+            Loop::cancel($handle->childPidWatcher);
+            $handle->childPidWatcher = null;
+        }
+
         if ($handle->exitCodeWatcher !== null) {
             Loop::cancel($handle->exitCodeWatcher);
             $handle->exitCodeWatcher = null;

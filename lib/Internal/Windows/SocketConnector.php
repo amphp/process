@@ -311,8 +311,6 @@ final class SocketConnector {
         }
         $error = $error ?: 'Process did not connect to server before timeout elapsed';
 
-        \fclose($handle->wrapperStderrPipe);
-        \proc_close($handle->proc);
         foreach ($handle->sockets as $socket) {
             \fclose($socket);
         }
@@ -321,6 +319,9 @@ final class SocketConnector {
         foreach ($handle->stdioDeferreds as $deferred) {
             $deferred->fail($error);
         }
+
+        \fclose($handle->wrapperStderrPipe);
+        \proc_close($handle->proc);
 
         $handle->joinDeferred->fail($error);
     }
