@@ -268,6 +268,14 @@ final class SocketConnector {
 
         $handle->status = ProcessStatus::ENDED;
         $handle->joinDeferred->resolve($packet['code']);
+        $handle->stdin->close();
+        $handle->stdout->close();
+        $handle->stderr->close();
+
+        // Explicitly \fclose() sockets, as resource streams shut only one side down.
+        foreach ($handle->sockets as $sock) {
+            @\fclose($sock);
+        }
     }
 
     public function onClientSocketConnectTimeout($watcher, $socket) {
