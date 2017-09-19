@@ -196,6 +196,9 @@ final class SocketConnector {
 
         if (count($handle->sockets) === 3) {
             $pendingClient->readWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableChildPid'], $handle);
+            $handle->stdioDeferreds[0]->resolve(new ResourceOutputStream($handle->sockets[0]));
+            $handle->stdioDeferreds[1]->resolve(new ResourceInputStream($handle->sockets[1]));
+            $handle->stdioDeferreds[2]->resolve(new ResourceInputStream($handle->sockets[2]));
         }
     }
 
@@ -227,11 +230,8 @@ final class SocketConnector {
 
         $handle->status = ProcessStatus::RUNNING;
         $handle->pidDeferred->resolve($packet['pid']);
-        $handle->stdioDeferreds[0]->resolve(new ResourceOutputStream($handle->sockets[0]));
-        $handle->stdioDeferreds[1]->resolve(new ResourceInputStream($handle->sockets[1]));
-        $handle->stdioDeferreds[2]->resolve(new ResourceInputStream($handle->sockets[2]));
-
         $handle->exitCodeWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableExitCode'], $handle);
+
         if (!$handle->exitCodeRequested) {
             Loop::unreference($handle->exitCodeWatcher);
         }
