@@ -30,7 +30,7 @@ final class Handle extends ProcessHandle {
     public $wrapperStderrPipe;
 
     /** @var resource[] */
-    public $sockets;
+    public $sockets = [];
 
     /** @var Deferred[] */
     public $stdioDeferreds;
