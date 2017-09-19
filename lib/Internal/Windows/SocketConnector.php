@@ -312,6 +312,8 @@ final class SocketConnector {
         foreach ($handle->stdioDeferreds as $deferred) {
             $deferred->fail($error);
         }
+
+        $handle->joinDeferred->fail($error);
     }
 
     public function registerPendingProcess(Handle $handle) {
