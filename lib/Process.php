@@ -2,6 +2,7 @@
 
 namespace Amp\Process;
 
+use Amp\Loop;
 use Amp\Process\Internal\Posix\Runner as PosixProcessRunner;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
@@ -11,7 +12,7 @@ use Amp\Promise;
 
 class Process {
     /** @var ProcessRunner */
-    private static $processRunner;
+    private $processRunner;
 
     /** @var string */
     private $command;
@@ -57,6 +58,16 @@ class Process {
         $this->cwd = $cwd;
         $this->env = $envVars;
         $this->options = $options;
+
+        $this->processRunner = Loop::getState(self::class);
+
+        if ($this->processRunner === null) {
+            $this->processRunner = \strncasecmp(\PHP_OS, "WIN", 3) === 0
+                ? new WindowsProcessRunner
+                : new PosixProcessRunner;
+
+            Loop::setState(self::class, $this->processRunner);
+        }
     }
 
     /**
@@ -64,7 +75,7 @@ class Process {
      */
     public function __destruct() {
         if ($this->handle !== null) {
-            self::$processRunner->destroy($this->handle);
+            $this->processRunner->destroy($this->handle);
         }
     }
 
@@ -82,7 +93,7 @@ class Process {
             throw new StatusError("Process has already been started.");
         }
 
-        $this->handle = self::$processRunner->start($this->command, $this->cwd, $this->env, $this->options);
+        $this->handle = $this->processRunner->start($this->command, $this->cwd, $this->env, $this->options);
     }
 
     /**
@@ -97,7 +108,7 @@ class Process {
             throw new StatusError("Process has not been started.");
         }
 
-        return self::$processRunner->join($this->handle);
+        return $this->processRunner->join($this->handle);
     }
 
     /**
@@ -111,7 +122,7 @@ class Process {
             throw new StatusError("The process is not running");
         }
 
-        self::$processRunner->kill($this->handle);
+        $this->processRunner->kill($this->handle);
     }
 
     /**
@@ -127,7 +138,7 @@ class Process {
             throw new StatusError("The process is not running");
         }
 
-        self::$processRunner->signal($this->handle, $signo);
+        $this->processRunner->signal($this->handle, $signo);
     }
 
     /**
@@ -229,10 +240,3 @@ class Process {
         return $this->handle->stderr;
     }
 }
-
-(function () {
-    /** @noinspection PhpUndefinedClassInspection */
-    self::$processRunner = \strncasecmp(\PHP_OS, "WIN", 3) === 0
-        ? new WindowsProcessRunner
-        : new PosixProcessRunner;
-})->bindTo(null, Process::class)();
