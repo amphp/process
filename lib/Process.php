@@ -211,6 +211,10 @@ class Process {
      * @return ProcessOutputStream
      */
     public function getStdin(): ProcessOutputStream {
+        if (!$this->handle) {
+            throw new StatusError("The process has not been started");
+        }
+
         return $this->handle->stdin;
     }
 
@@ -220,8 +224,8 @@ class Process {
      * @return ProcessInputStream
      */
     public function getStdout(): ProcessInputStream {
-        if (!$this->isRunning()) {
-            throw new StatusError("The process is not running");
+        if (!$this->handle) {
+            throw new StatusError("The process has not been started");
         }
 
         return $this->handle->stdout;
@@ -233,8 +237,8 @@ class Process {
      * @return ProcessInputStream
      */
     public function getStderr(): ProcessInputStream {
-        if (!$this->isRunning()) {
-            throw new StatusError("The process is not running");
+        if (!$this->handle) {
+            throw new StatusError("The process has not been started");
         }
 
         return $this->handle->stderr;
