@@ -157,6 +157,10 @@ final class Runner implements ProcessRunner {
             $handle->exitCodeWatcher = null;
         }
 
+        $handle->stdin->close();
+        $handle->stdout->close();
+        $handle->stderr->close();
+
         for ($i = 0; $i < 4; $i++) {
             if (\is_resource($handle->sockets[$i] ?? null)) {
                 \fclose($handle->sockets[$i]);
