@@ -21,6 +21,8 @@ class ProcessTest extends TestCase {
     }
 
     public function testIsRunning() {
+        $this->addToAssertionCount(2);
+
         Loop::run(function () {
             $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
             $process->start();
@@ -35,6 +37,8 @@ class ProcessTest extends TestCase {
     }
 
     public function testExecuteResolvesToExitCode() {
+        $this->addToAssertionCount(2);
+
         Loop::run(function () {
             $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
             $process->start();
@@ -47,6 +51,8 @@ class ProcessTest extends TestCase {
     }
 
     public function testCommandCanRun() {
+        $this->addToAssertionCount(2);
+
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             $process->start();
