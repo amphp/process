@@ -7,7 +7,7 @@ use Amp\Process\Process;
 use PHPUnit\Framework\TestCase;
 
 class ProcessTest extends TestCase {
-    const CMD_PROCESS = 'echo foo';
+    const CMD_PROCESS = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c echo foo" : "echo foo";
 
     /**
      * @expectedException \Amp\Process\StatusError
@@ -22,7 +22,7 @@ class ProcessTest extends TestCase {
 
     public function testIsRunning() {
         Loop::run(function () {
-            $process = new Process("exit 42");
+            $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
             $process->start();
             $promise = $process->join();
 
@@ -36,7 +36,7 @@ class ProcessTest extends TestCase {
 
     public function testExecuteResolvesToExitCode() {
         Loop::run(function () {
-            $process = new Process("exit 42");
+            $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
             $process->start();
 
             $code = yield $process->join();
