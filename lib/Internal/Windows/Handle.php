@@ -36,6 +36,9 @@ final class Handle extends ProcessHandle {
     public $stdioDeferreds;
 
     /** @var string */
+    public $childPidWatcher;
+
+    /** @var string */
     public $connectTimeoutWatcher;
 
     /** @var string[] */

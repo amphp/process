@@ -97,7 +97,6 @@ final class SocketConnector {
         $state->receivedDataBuffer = '';
 
         Loop::cancel($state->readWatcher);
-        Loop::cancel($state->timeoutWatcher);
 
         return $data;
     }
@@ -179,6 +178,8 @@ final class SocketConnector {
             return;
         }
 
+        Loop::cancel($pendingClient->timeoutWatcher);
+
         unset($this->pendingClients[$socketId]);
         $handle = $this->pendingProcesses[$pendingClient->pid];
 
@@ -195,7 +196,7 @@ final class SocketConnector {
         $handle->sockets[$pendingClient->streamId] = $socket;
 
         if (count($handle->sockets) === 3) {
-            $pendingClient->readWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableChildPid'], $handle);
+            $handle->childPidWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableChildPid'], $handle);
             $handle->stdioDeferreds[0]->resolve(new ResourceOutputStream($handle->sockets[0]));
             $handle->stdioDeferreds[1]->resolve(new ResourceInputStream($handle->sockets[1]));
             $handle->stdioDeferreds[2]->resolve(new ResourceInputStream($handle->sockets[2]));
@@ -209,7 +210,7 @@ final class SocketConnector {
             return;
         }
 
-        Loop::cancel($watcher);
+        Loop::cancel($handle->childPidWatcher);
         Loop::cancel($handle->connectTimeoutWatcher);
 
         if (\strlen($data) !== 5) {
