@@ -22,6 +22,6 @@ abstract class ProcessHandle {
     /** @var Deferred */
     public $pidDeferred;
 
-    /** @var bool */
+    /** @var int */
     public $status = ProcessStatus::STARTING;
 }

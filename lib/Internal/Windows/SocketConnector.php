@@ -166,7 +166,7 @@ final class SocketConnector {
         $pendingClient = $this->pendingClients[$socketId];
 
         // can happen if the start promise was failed
-        if (!isset($this->pendingProcesses[$pendingClient->pid])) {
+        if (!isset($this->pendingProcesses[$pendingClient->pid]) || $this->pendingProcesses[$pendingClient->pid]->status === ProcessStatus::ENDED) {
             \fclose($socket);
             Loop::cancel($watcher);
             Loop::cancel($pendingClient->timeoutWatcher);
@@ -247,8 +247,8 @@ final class SocketConnector {
             return;
         }
 
+        Loop::cancel($handle->exitCodeWatcher);
         $handle->exitCodeWatcher = null;
-        Loop::cancel($watcher);
 
         if (\strlen($data) !== 5) {
             $handle->status = ProcessStatus::ENDED;
