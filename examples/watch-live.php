@@ -9,6 +9,7 @@ Amp\Loop::run(function () {
     $process->start();
 
     $stream = $process->getStdout();
+
     while (null !== $chunk = yield $stream->read()) {
         echo $chunk;
     }

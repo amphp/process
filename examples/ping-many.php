@@ -9,6 +9,7 @@ use function Amp\Promise\all;
 function show_process_output(Process $process): \Generator
 {
     $stream = $process->getStdout();
+
     while (null !== $chunk = yield $stream->read()) {
         echo $chunk;
     }

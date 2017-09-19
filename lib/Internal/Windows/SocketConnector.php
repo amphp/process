@@ -46,7 +46,7 @@ final class SocketConnector {
         Loop::unreference(Loop::onReadable($this->server, [$this, 'onServerSocketReadable']));
     }
 
-    private function failClientHandshake($socket, int $code): void {
+    private function failClientHandshake($socket, int $code) {
         \fwrite($socket, \chr(SignalCode::HANDSHAKE_ACK) . \chr($code));
         \fclose($socket);
 
