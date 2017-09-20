@@ -187,8 +187,10 @@ final class SocketConnector {
 
         if ($packet['signal'] !== SignalCode::HANDSHAKE_ACK || $packet['status'] !== HandshakeStatus::SUCCESS) {
             $this->failHandleStart(
-                $handle, "Client rejected handshake with code %d for stream #%d",
-                $packet['status'], $pendingClient->streamId
+                $handle,
+                "Client rejected handshake with code %d for stream #%d",
+                $packet['status'],
+                $pendingClient->streamId
             );
             return;
         }
@@ -215,7 +217,9 @@ final class SocketConnector {
 
         if (\strlen($data) !== 5) {
             $this->failHandleStart(
-                $handle, 'Failed to read PID from wrapper: Received %d of 5 expected bytes', \strlen($data)
+                $handle,
+                'Failed to read PID from wrapper: Received %d of 5 expected bytes',
+                \strlen($data)
             );
             return;
         }
@@ -224,7 +228,9 @@ final class SocketConnector {
 
         if ($packet['signal'] !== SignalCode::CHILD_PID) {
             $this->failHandleStart(
-                $handle, "Failed to read PID from wrapper: Unexpected signal code %d", $packet['signal']
+                $handle,
+                "Failed to read PID from wrapper: Unexpected signal code %d",
+                $packet['signal']
             );
             return;
         }
@@ -266,7 +272,9 @@ final class SocketConnector {
 
         if ($packet['signal'] !== SignalCode::EXIT_CODE) {
             $this->failHandleStart(
-                $handle, "Failed to read exit code from wrapper: Unexpected signal code %d", $packet['signal']
+                $handle,
+                "Failed to read exit code from wrapper: Unexpected signal code %d",
+                $packet['signal']
             );
             return;
         }

@@ -5,6 +5,7 @@ language: php
 php:
   - 7.0
   - 7.1
+  - 7.2
   - nightly
 
 matrix:
@@ -19,7 +20,6 @@ install:
 
 script:
   - phpdbg -qrr vendor/bin/phpunit --coverage-text --coverage-clover build/logs/clover.xml
-  - php vendor/bin/fqn-check lib
   - PHP_CS_FIXER_IGNORE_ENV=1 php vendor/bin/php-cs-fixer --diff --dry-run -v fix
 
 after_script:

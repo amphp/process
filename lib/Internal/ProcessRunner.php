@@ -39,7 +39,7 @@ interface ProcessRunner {
     public function kill(ProcessHandle $handle);
 
     /**
-     * Send a signal signal to the child process
+     * Send a signal signal to the child process.
      *
      * @param ProcessHandle $handle The process descriptor.
      * @param int           $signo Signal number to send to process.
