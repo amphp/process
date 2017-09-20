@@ -28,7 +28,7 @@ final class Runner implements ProcessRunner {
     private $socketConnector;
 
     private function makeCommand(string $workingDirectory): string {
-        $result = sprintf(
+        $result = \sprintf(
             '%s --address=%s --port=%d --token-size=%d',
             \escapeshellarg(self::WRAPPER_EXE_PATH),
             $this->socketConnector->address,
@@ -49,7 +49,7 @@ final class Runner implements ProcessRunner {
 
     /** @inheritdoc */
     public function start(string $command, string $cwd = null, array $env = [], array $options = []): ProcessHandle {
-        if (strpos($command, "\0") !== false) {
+        if (\strpos($command, "\0") !== false) {
             throw new ProcessException("Can't execute commands that contain null bytes.");
         }
 

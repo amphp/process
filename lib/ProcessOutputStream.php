@@ -28,7 +28,7 @@ class ProcessOutputStream implements OutputStream {
             if ($error) {
                 $this->error = new StreamException("Failed to launch process", 0, $error);
 
-                while ($write = array_shift($this->queuedWrites)) {
+                while ($write = \array_shift($this->queuedWrites)) {
                     /** @var $deferred Deferred */
                     list(, $deferred) = $write;
                     $deferred->fail($this->error);
