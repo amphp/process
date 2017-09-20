@@ -229,12 +229,16 @@ final class SocketConnector {
             return;
         }
 
-        $handle->status = ProcessStatus::RUNNING;
         $handle->pidDeferred->resolve($packet['pid']);
-        $handle->exitCodeWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableExitCode'], $handle);
 
-        if (!$handle->exitCodeRequested) {
-            Loop::unreference($handle->exitCodeWatcher);
+        // Required, because a process might be destroyed while starting
+        if ($handle->status === ProcessStatus::STARTING) {
+            $handle->status = ProcessStatus::RUNNING;
+            $handle->exitCodeWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableExitCode'], $handle);
+
+            if (!$handle->exitCodeRequested) {
+                Loop::unreference($handle->exitCodeWatcher);
+            }
         }
 
         unset($this->pendingProcesses[$handle->wrapperPid]);
