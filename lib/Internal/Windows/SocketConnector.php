@@ -197,7 +197,7 @@ final class SocketConnector {
 
         $handle->sockets[$pendingClient->streamId] = $socket;
 
-        if (count($handle->sockets) === 3) {
+        if (\count($handle->sockets) === 3) {
             $handle->childPidWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableChildPid'], $handle);
             $handle->stdioDeferreds[0]->resolve(new ResourceOutputStream($handle->sockets[0]));
             $handle->stdioDeferreds[1]->resolve(new ResourceInputStream($handle->sockets[1]));
