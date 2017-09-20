@@ -1,6 +1,7 @@
 /.idea
-build
-composer.lock
-phpunit.xml
-vendor
-.php_cs.cache
+/coverage
+/build
+/composer.lock
+/phpunit.xml
+/vendor
+/.php_cs.cache
