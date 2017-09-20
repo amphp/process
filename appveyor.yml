@@ -42,4 +42,6 @@ environment:
 test_script:
   - cd c:\projects\amphp
   - phpdbg -qrr vendor/phpunit/phpunit/phpunit --colors=always --coverage-text --coverage-clover build/logs/clover.xml
-  - vendor/bin/coveralls -v
+  # Disable for now, because it can't be combined and files can't be shown on coveralls.io
+  # https://github.com/php-coveralls/php-coveralls/issues/234  
+  # - vendor/bin/coveralls -v
