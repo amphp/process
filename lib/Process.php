@@ -185,7 +185,7 @@ class Process {
             $exitcode = -1;
 
             if (!$pid || !\is_numeric($pid)) {
-                $deferred->fail(new ProcessException("Could not determine PID"));
+                $deferred->fail(new ProcessException("Could not determine PID: " . \stream_get_contents($pipes[2])));
                 return;
             }
 
