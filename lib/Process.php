@@ -148,6 +148,7 @@ class Process {
             $command = $this->command;
         } else {
             $command = \sprintf(
+                'for fd in $(ls /proc/$$/fd); do case "$fd" in 0|1|2|3) ;; *) eval "exec $fd>&-" ;; esac; done; ' .
                 '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0;' .
                 'pid=$!; echo $pid >&3; wait $pid; RC=$?; echo $RC >&3; exit $RC',
                 $this->command
