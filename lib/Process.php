@@ -147,8 +147,13 @@ class Process {
         if (self::$onWindows) {
             $command = $this->command;
         } else {
+            // See https://stackoverflow.com/a/918469/2373138.
             $command = \sprintf(
-                'for fd in $(ls /proc/$$/fd); do case "$fd" in 0|1|2|3) ;; *) eval "exec $fd>&-" 2>&1 >/dev/null ;; esac; done; ' .
+                'if [ -d "/dev/$$/fd/" ]; then ' .
+                'for fd in $(ls /proc/$$/fd); do case "$fd" in 0|1|2|3) ;; *) eval "exec $fd>&-" ;; esac; done;' .
+                'else ' .
+                'for fd in $(ls /dev/fd); do case "$fd" in 0|1|2|3) ;; *) eval "exec $fd>&-" ;; esac; done;' .
+                'fi; ' . 
                 '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0;' .
                 'pid=$!; echo $pid >&3; wait $pid; RC=$?; echo $RC >&3; exit $RC',
                 $this->command
