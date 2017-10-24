@@ -111,7 +111,7 @@ class ProcessTest extends TestCase {
     public function testGetStdinIsCustomized() {
         Loop::run(function () {
             $process = new Process([self::CMD_PROCESS], null, [], [
-                new ResourceInputStream(fopen(__DIR__.'/../composer.json', 'r')),
+                new ResourceInputStream(fopen(__DIR__.'/../stream', 'r')),
             ]);
             $process->start();
             $promise = $process->join();
@@ -124,7 +124,7 @@ class ProcessTest extends TestCase {
     public function testGetStdoutIsCustomized() {
         Loop::run(function () {
             $process = new Process([self::CMD_PROCESS], null, [], [
-                new ResourceOutputStream(fopen(__DIR__.'/../composer.json', 'w')),
+                new ResourceOutputStream(fopen(__DIR__.'/../stream', 'w')),
             ]);
             $process->start();
             $promise = $process->join();
@@ -137,7 +137,7 @@ class ProcessTest extends TestCase {
     public function testGetStderrIsCustomized() {
         Loop::run(function () {
             $process = new Process([self::CMD_PROCESS], null, [], [
-                new ResourceOutputStream(fopen(__DIR__.'/../composer.json', 'w')),
+                new ResourceOutputStream(fopen(__DIR__.'/../stream', 'w')),
             ]);
             $process->start();
             $promise = $process->join();
