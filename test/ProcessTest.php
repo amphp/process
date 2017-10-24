@@ -2,9 +2,9 @@
 
 namespace Amp\Test\Process;
 
-use Amp\Loop;
 use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\ResourceOutputStream;
+use Amp\Loop;
 use Amp\Process\Process;
 use PHPUnit\Framework\TestCase;
 
