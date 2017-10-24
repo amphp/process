@@ -11,6 +11,10 @@ use PHPUnit\Framework\TestCase;
 class ProcessTest extends TestCase {
     const CMD_PROCESS = 'echo foo';
 
+    protected function setUp() {
+        file_exists(__DIR__.'/../stream') ? null:touch(__DIR__.'/../stream');
+    }
+
     /**
      * @expectedException \Amp\Process\StatusError
      */
@@ -265,5 +269,9 @@ class ProcessTest extends TestCase {
     public function testOptions() {
         $process = new Process(self::CMD_PROCESS);
         $this->assertSame([], $process->getOptions());
+    }
+
+    public function tearDown() {
+        @unlink(__DIR__.'/../stream');
     }
 }
