@@ -67,7 +67,7 @@ class ProcessTest extends TestCase {
 
     public function testCommandArray() {
         Loop::run(function () {
-            $process = new Process([self::CMD_PROCESS]);
+            $process = new Process(['echo', 'foo']);
             $process->start();
             $promise = $process->join();
 
@@ -180,7 +180,7 @@ class ProcessTest extends TestCase {
      * @expectedException \Amp\Process\StatusError
      * @expectedExceptionMessage The process has not been started
      */
-    public function testGetStdinIsNull() {
+    public function testGetStdinIsStatusError() {
         $process = new Process([self::CMD_PROCESS], null, []);
         $process->getStdin();
     }
@@ -189,7 +189,7 @@ class ProcessTest extends TestCase {
      * @expectedException \Amp\Process\StatusError
      * @expectedExceptionMessage The process has not been started
      */
-    public function testGetStdoutIsNull() {
+    public function testGetStdoutIsStatusError() {
         $process = new Process([self::CMD_PROCESS], null, []);
         $process->getStdout();
     }
@@ -198,7 +198,7 @@ class ProcessTest extends TestCase {
      * @expectedException \Amp\Process\StatusError
      * @expectedExceptionMessage The process has not been started
      */
-    public function testGetStderrIsNull() {
+    public function testGetStderrIsStatusError() {
         $process = new Process([self::CMD_PROCESS], null, []);
         $process->getStderr();
     }
