@@ -9,7 +9,7 @@ use Amp\Process\Process;
 use PHPUnit\Framework\TestCase;
 
 class ProcessTest extends TestCase {
-    const CMD_PROCESS = 'echo foo';
+    const CMD_PROCESS = ['echo', 'foo'];
 
     protected function setUp() {
         file_exists(__DIR__.'/../stream') ? null:touch(__DIR__.'/../stream');
@@ -67,7 +67,7 @@ class ProcessTest extends TestCase {
 
     public function testCommandArray() {
         Loop::run(function () {
-            $process = new Process(['echo', 'foo']);
+            $process = new Process(self::CMD_PROCESS);
             $process->start();
             $promise = $process->join();
 
@@ -80,7 +80,7 @@ class ProcessTest extends TestCase {
 
     public function testProcessCanTerminate() {
         Loop::run(function () {
-            $process = new Process([self::CMD_PROCESS]);
+            $process = new Process(self::CMD_PROCESS);
             $process->start();
             $promise = $process->join();
 
@@ -93,28 +93,28 @@ class ProcessTest extends TestCase {
 
     public function testGetWorkingDirectoryIsDefault() {
         Loop::run(function () {
-            $process = new Process([self::CMD_PROCESS]);
+            $process = new Process(self::CMD_PROCESS);
             $this->assertSame(getcwd(), $process->getWorkingDirectory());
         });
     }
 
     public function testGetWorkingDirectoryIsCustomized() {
         Loop::run(function () {
-            $process = new Process([self::CMD_PROCESS], __DIR__);
+            $process = new Process(self::CMD_PROCESS, __DIR__);
             $this->assertSame(__DIR__, $process->getWorkingDirectory());
         });
     }
 
     public function testGetEnv() {
         Loop::run(function () {
-            $process = new Process([self::CMD_PROCESS], null, []);
+            $process = new Process(self::CMD_PROCESS, null, []);
             $this->assertCount(0, $process->getEnv());
         });
     }
 
     public function testGetStdinIsCustomized() {
         Loop::run(function () {
-            $process = new Process([self::CMD_PROCESS], null, [], [
+            $process = new Process(self::CMD_PROCESS, null, [], [
                 new ResourceInputStream(fopen(__DIR__.'/../stream', 'r')),
             ]);
             $process->start();
@@ -127,7 +127,7 @@ class ProcessTest extends TestCase {
 
     public function testGetStdoutIsCustomized() {
         Loop::run(function () {
-            $process = new Process([self::CMD_PROCESS], null, [], [
+            $process = new Process(self::CMD_PROCESS, null, [], [
                 new ResourceOutputStream(fopen(__DIR__.'/../stream', 'w')),
             ]);
             $process->start();
@@ -140,7 +140,7 @@ class ProcessTest extends TestCase {
 
     public function testGetStderrIsCustomized() {
         Loop::run(function () {
-            $process = new Process([self::CMD_PROCESS], null, [], [
+            $process = new Process(self::CMD_PROCESS, null, [], [
                 new ResourceOutputStream(fopen(__DIR__.'/../stream', 'w')),
             ]);
             $process->start();
@@ -152,7 +152,7 @@ class ProcessTest extends TestCase {
     }
 
     public function testProcessEnvIsValid() {
-        $process = new Process([self::CMD_PROCESS], null, [
+        $process = new Process(self::CMD_PROCESS, null, [
             'env_value'
         ]);
         $process->start();
@@ -171,7 +171,7 @@ class ProcessTest extends TestCase {
      * @expectedException \Error
      */
     public function testProcessEnvIsInvalid() {
-        $process = new Process([self::CMD_PROCESS], null, [
+        $process = new Process(self::CMD_PROCESS, null, [
             ['error_value']
         ]);
     }
@@ -181,7 +181,7 @@ class ProcessTest extends TestCase {
      * @expectedExceptionMessage The process has not been started
      */
     public function testGetStdinIsStatusError() {
-        $process = new Process([self::CMD_PROCESS], null, []);
+        $process = new Process(self::CMD_PROCESS, null, []);
         $process->getStdin();
     }
 
@@ -190,7 +190,7 @@ class ProcessTest extends TestCase {
      * @expectedExceptionMessage The process has not been started
      */
     public function testGetStdoutIsStatusError() {
-        $process = new Process([self::CMD_PROCESS], null, []);
+        $process = new Process(self::CMD_PROCESS, null, []);
         $process->getStdout();
     }
 
@@ -199,7 +199,7 @@ class ProcessTest extends TestCase {
      * @expectedExceptionMessage The process has not been started
      */
     public function testGetStderrIsStatusError() {
-        $process = new Process([self::CMD_PROCESS], null, []);
+        $process = new Process(self::CMD_PROCESS, null, []);
         $process->getStderr();
     }
 
@@ -263,7 +263,7 @@ class ProcessTest extends TestCase {
 
     public function testCommand() {
         $process = new Process(self::CMD_PROCESS);
-        $this->assertSame(self::CMD_PROCESS, $process->getCommand());
+        $this->assertSame(\implode(" ", \array_map("escapeshellarg", self::CMD_PROCESS)), $process->getCommand());
     }
 
     public function testOptions() {
