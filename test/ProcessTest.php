@@ -12,7 +12,7 @@ class ProcessTest extends TestCase {
     const CMD_PROCESS = ['echo', 'foo'];
 
     protected function setUp() {
-        file_exists(__DIR__.'/../stream') ? null:touch(__DIR__.'/../stream');
+        file_exists(__DIR__.'/../stream') ? null : touch(__DIR__.'/../stream');
     }
 
     /**
@@ -108,7 +108,7 @@ class ProcessTest extends TestCase {
     public function testGetEnv() {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS, null, []);
-            $this->assertCount(0, $process->getEnv());
+            $this->assertSame([], $process->getEnv());
         });
     }
 
@@ -119,8 +119,6 @@ class ProcessTest extends TestCase {
             ]);
             $process->start();
             $promise = $process->join();
-            $completed = false;
-            $promise->onResolve(function () use (&$completed) { $completed = true; });
             $this->assertInstanceOf(ResourceOutputStream::class, $process->getStdin());
         });
     }
@@ -132,8 +130,6 @@ class ProcessTest extends TestCase {
             ]);
             $process->start();
             $promise = $process->join();
-            $completed = false;
-            $promise->onResolve(function () use (&$completed) { $completed = true; });
             $this->assertInstanceOf(ResourceInputStream::class, $process->getStdout());
         });
     }
@@ -145,8 +141,6 @@ class ProcessTest extends TestCase {
             ]);
             $process->start();
             $promise = $process->join();
-            $completed = false;
-            $promise->onResolve(function () use (&$completed) { $completed = true; });
             $this->assertInstanceOf(ResourceInputStream::class, $process->getStderr());
         });
     }
@@ -157,14 +151,7 @@ class ProcessTest extends TestCase {
         ]);
         $process->start();
         $promise = $process->join();
-        $completed = false;
-        $promise->onResolve(function () use (&$completed) { $completed = true; });
         $this->assertSame('env_value', $process->getEnv()[0]);
-    }
-
-    public function testProcessDeferredIsFailed() {
-        $process = new Process(new \Exception());
-        $this->assertNull($process->start());
     }
 
     /**
@@ -203,16 +190,11 @@ class ProcessTest extends TestCase {
         $process->getStderr();
     }
 
-    /**
-     * @expectedException \Amp\Process\StatusError
-     * @expectedExceptionMessage The process has not been started
-     */
     public function testProcessCanReset() {
+        $this->expectException(\Amp\Process\StatusError::class);
         $process = new Process(self::CMD_PROCESS);
         $process->start();
         $promise = $process->join();
-        $completed = false;
-        $promise->onResolve(function () use (&$completed) { $completed = true; });
         $processReset = clone $process;
         $processReset->getPid();
     }
