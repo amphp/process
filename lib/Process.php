@@ -238,6 +238,21 @@ class Process {
 
             $deferred->resolve($code);
         });
+        
+        // Close all streams when process is closed
+        $deferred->promise()->onResolve(function() {
+            if ($this->stdin !== null) {
+                $this->stdin->close();
+            }
+
+            if ($this->stdout !== null) {
+                $this->stdout->close();
+            }
+
+            if ($this->stderr !== null) {
+                $this->stderr->close();
+            }
+        });
 
         Loop::unreference($this->watcher);
     }
