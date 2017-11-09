@@ -147,7 +147,13 @@ class Process {
         if (self::$onWindows) {
             $command = $this->command;
         } else {
+            // See https://stackoverflow.com/a/918469/2373138.
             $command = \sprintf(
+                'if [ -d "/dev/$$/fd/" ]; then ' .
+                'for fd in $(ls /proc/$$/fd); do case "$fd" in 0|1|2|3) ;; *) eval "exec $fd>&-" ;; esac; done;' .
+                'else ' .
+                'for fd in $(ls /dev/fd); do case "$fd" in 0|1|2|3) ;; *) eval "exec $fd>&-" ;; esac; done;' .
+                'fi; ' . 
                 '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0;' .
                 'pid=$!; echo $pid >&3; wait $pid; RC=$?; echo $RC >&3; exit $RC',
                 $this->command
@@ -184,7 +190,7 @@ class Process {
             $exitcode = -1;
 
             if (!$pid || !\is_numeric($pid)) {
-                $deferred->fail(new ProcessException("Could not determine PID"));
+                $deferred->fail(new ProcessException("Could not determine PID: " . \stream_get_contents($pipes[2])));
                 return;
             }
 
