@@ -94,16 +94,16 @@ class Process {
             Loop::cancel($this->watcher);
         }
 
-        if ($this->stdin && \is_resource($resource = $this->stdin->getResource())) {
-            \fclose($resource);
+        if ($this->stdin) {
+            $this->stdin->close();
         }
 
-        if ($this->stdout && \is_resource($resource = $this->stdout->getResource())) {
-            \fclose($resource);
+        if ($this->stdout) {
+            $this->stdout->close();
         }
 
-        if ($this->stderr && \is_resource($resource = $this->stderr->getResource())) {
-            \fclose($resource);
+        if ($this->stderr) {
+            $this->stderr->close();
         }
 
         if (\is_resource($this->process)) {
