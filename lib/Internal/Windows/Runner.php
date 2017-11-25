@@ -13,6 +13,10 @@ use Amp\Process\ProcessOutputStream;
 use Amp\Promise;
 use const Amp\Process\BIN_DIR;
 
+/**
+ * @internal
+ * @codeCoverageIgnore Windows only.
+ */
 final class Runner implements ProcessRunner {
     const FD_SPEC = [
         ["pipe", "r"], // stdin

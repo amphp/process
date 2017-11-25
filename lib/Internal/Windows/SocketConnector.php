@@ -8,6 +8,10 @@ use Amp\Loop;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
 
+/**
+ * @internal
+ * @codeCoverageIgnore Windows only.
+ */
 final class SocketConnector {
     const SERVER_SOCKET_URI = 'tcp://127.0.0.1:0';
     const SECURITY_TOKEN_SIZE = 16;

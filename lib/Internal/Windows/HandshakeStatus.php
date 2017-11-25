@@ -2,6 +2,10 @@
 
 namespace Amp\Process\Internal\Windows;
 
+/**
+ * @internal
+ * @codeCoverageIgnore Windows only.
+ */
 final class HandshakeStatus {
     const SUCCESS = 0;
     const SIGNAL_UNEXPECTED = 0x01;

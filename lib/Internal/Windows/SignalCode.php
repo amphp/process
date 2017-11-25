@@ -2,6 +2,10 @@
 
 namespace Amp\Process\Internal\Windows;
 
+/**
+ * @internal
+ * @codeCoverageIgnore Windows only.
+ */
 final class SignalCode {
     const HANDSHAKE = 0x01;
     const HANDSHAKE_ACK = 0x02;

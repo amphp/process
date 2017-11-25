@@ -14,6 +14,7 @@ use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
 use Amp\Promise;
 
+/** @internal */
 final class Runner implements ProcessRunner {
     const FD_SPEC = [
         ["pipe", "r"], // stdin
