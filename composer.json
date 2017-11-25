@@ -31,6 +31,6 @@
         "psr-4": {
             "Amp\\Process\\": "lib"
         },
-        "files": ["lib/functions.php"]
+        "files": ["lib/constants.php"]
     }
 }
