@@ -24,9 +24,9 @@ Amp\Loop::run(function () {
     $promises = [];
 
     foreach ($hosts as $host) {
-        $process = new Process("ping {$host}");
+        $process = new Process("ping -c 5 {$host}");
         $process->start();
-        $promises[] = new \Amp\Coroutine(show_process_output($process));
+        $promises[] = new Amp\Coroutine(show_process_output($process));
     }
 
     yield all($promises);
