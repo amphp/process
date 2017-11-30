@@ -9,11 +9,7 @@ use Amp\Process\Process;
 use PHPUnit\Framework\TestCase;
 
 class ProcessTest extends TestCase {
-    const CMD_PROCESS = ['echo', 'foo'];
-
-    protected function setUp() {
-        file_exists(__DIR__.'/../stream') ? null : touch(__DIR__.'/../stream');
-    }
+    const CMD_PROCESS = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c echo foo" : "echo foo";
 
     /**
      * @expectedException \Amp\Process\StatusError
@@ -28,7 +24,7 @@ class ProcessTest extends TestCase {
 
     public function testIsRunning() {
         Loop::run(function () {
-            $process = new Process("exit 42");
+            $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
             $process->start();
             $promise = $process->join();
 
@@ -40,11 +36,11 @@ class ProcessTest extends TestCase {
         });
     }
 
-
     public function testExecuteResolvesToExitCode() {
         Loop::run(function () {
-            $process = new Process("exit 42");
+            $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
             $process->start();
+
             $code = yield $process->join();
 
             $this->assertSame(42, $code);
@@ -61,7 +57,7 @@ class ProcessTest extends TestCase {
             $completed = false;
             $promise->onResolve(function () use (&$completed) { $completed = true; });
             $this->assertFalse($completed);
-            $this->assertInternalType('int', $process->getPid());
+            $this->assertInternalType('int', yield $process->getPid());
         });
     }
 
@@ -239,7 +235,7 @@ class ProcessTest extends TestCase {
 
             $process->kill();
 
-            $code = yield $promise;
+            yield $promise;
         });
     }
 
