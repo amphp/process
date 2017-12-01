@@ -56,7 +56,6 @@ class ProcessTest extends TestCase {
             $process->start();
             $promise = $process->join();
 
-            $promise->onResolve(function () use (&$completed) { $completed = true; });
             $this->assertInternalType('int', yield $process->getPid());
         });
     }
@@ -67,7 +66,6 @@ class ProcessTest extends TestCase {
             $process->start();
             $promise = $process->join();
 
-            $promise->onResolve(function () use (&$completed) { $completed = true; });
             $this->assertInternalType('object', $process->getPid());
         });
     }
@@ -78,7 +76,6 @@ class ProcessTest extends TestCase {
             $process->start();
             $promise = $process->join();
 
-            $promise->onResolve(function () use (&$completed) { $completed = true; });
             $process->signal(0);
             $this->assertInternalType('object', $process->getPid());
         });
@@ -200,7 +197,6 @@ class ProcessTest extends TestCase {
         $process = new Process(self::CMD_PROCESS);
         $process->start();
         $promise = $process->join();
-        $promise->onResolve(function () use (&$completed) { $completed = true; });
         $processReset = clone $process;
         $processReset->join();
     }
@@ -213,7 +209,6 @@ class ProcessTest extends TestCase {
         $process = new Process(self::CMD_PROCESS);
         $process->start();
         $promise = $process->join();
-        $promise->onResolve(function () use (&$completed) { $completed = true; });
         $processReset = clone $process;
         $processReset->signal(1);
     }
