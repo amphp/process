@@ -14,8 +14,7 @@ matrix:
   fast_finish: true
 
 install:
-  # --ignore-platform-reqs, because https://github.com/FriendsOfPHP/PHP-CS-Fixer/pull/2722
-  - composer update -n --prefer-dist --ignore-platform-reqs
+  - composer update -n --prefer-dist
   - composer require satooshi/php-coveralls dev-master --ignore-platform-reqs
 
 script:

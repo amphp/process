@@ -32,5 +32,10 @@
             "Amp\\Process\\": "lib"
         },
         "files": ["lib/constants.php"]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Amp\\Test\\Process\\": "test"
+        }
     }
 }
