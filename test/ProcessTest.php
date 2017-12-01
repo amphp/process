@@ -6,6 +6,8 @@ use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Loop;
 use Amp\Process\Process;
+use Amp\Process\ProcessInputStream;
+use Amp\Process\ProcessOutputStream;
 use PHPUnit\Framework\TestCase;
 
 class ProcessTest extends TestCase {
@@ -54,9 +56,7 @@ class ProcessTest extends TestCase {
             $process->start();
             $promise = $process->join();
 
-            $completed = false;
             $promise->onResolve(function () use (&$completed) { $completed = true; });
-            $this->assertFalse($completed);
             $this->assertInternalType('int', yield $process->getPid());
         });
     }
@@ -67,10 +67,8 @@ class ProcessTest extends TestCase {
             $process->start();
             $promise = $process->join();
 
-            $completed = false;
             $promise->onResolve(function () use (&$completed) { $completed = true; });
-            $this->assertFalse($completed);
-            $this->assertInternalType('int', $process->getPid());
+            $this->assertInternalType('object', $process->getPid());
         });
     }
 
@@ -80,10 +78,9 @@ class ProcessTest extends TestCase {
             $process->start();
             $promise = $process->join();
 
-            $completed = false;
             $promise->onResolve(function () use (&$completed) { $completed = true; });
             $process->signal(0);
-            $this->assertInternalType('int', $process->getPid());
+            $this->assertInternalType('object', $process->getPid());
         });
     }
 
@@ -111,11 +108,11 @@ class ProcessTest extends TestCase {
     public function testGetStdinIsCustomized() {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS, null, [], [
-                new ResourceInputStream(fopen(__DIR__.'/../stream', 'r')),
+                new ResourceInputStream(fopen(__DIR__.'/../stream', 'a+')),
             ]);
             $process->start();
             $promise = $process->join();
-            $this->assertInstanceOf(ResourceOutputStream::class, $process->getStdin());
+            $this->assertInstanceOf(ProcessOutputStream::class, $process->getStdin());
         });
     }
 
@@ -126,7 +123,7 @@ class ProcessTest extends TestCase {
             ]);
             $process->start();
             $promise = $process->join();
-            $this->assertInstanceOf(ResourceInputStream::class, $process->getStdout());
+            $this->assertInstanceOf(ProcessInputStream::class, $process->getStdout());
         });
     }
 
@@ -137,7 +134,7 @@ class ProcessTest extends TestCase {
             ]);
             $process->start();
             $promise = $process->join();
-            $this->assertInstanceOf(ResourceInputStream::class, $process->getStderr());
+            $this->assertInstanceOf(ProcessInputStream::class, $process->getStderr());
         });
     }
 
@@ -161,7 +158,7 @@ class ProcessTest extends TestCase {
 
     /**
      * @expectedException \Amp\Process\StatusError
-     * @expectedExceptionMessage The process has not been started
+     * @expectedExceptionMessage Process has not been started.
      */
     public function testGetStdinIsStatusError() {
         $process = new Process(self::CMD_PROCESS, null, []);
@@ -170,7 +167,7 @@ class ProcessTest extends TestCase {
 
     /**
      * @expectedException \Amp\Process\StatusError
-     * @expectedExceptionMessage The process has not been started
+     * @expectedExceptionMessage Process has not been started.
      */
     public function testGetStdoutIsStatusError() {
         $process = new Process(self::CMD_PROCESS, null, []);
@@ -179,7 +176,7 @@ class ProcessTest extends TestCase {
 
     /**
      * @expectedException \Amp\Process\StatusError
-     * @expectedExceptionMessage The process has not been started
+     * @expectedExceptionMessage Process has not been started.
      */
     public function testGetStderrIsStatusError() {
         $process = new Process(self::CMD_PROCESS, null, []);
@@ -187,7 +184,7 @@ class ProcessTest extends TestCase {
     }
 
     public function testProcessCanReset() {
-        $this->expectException(\Amp\Process\StatusError::class);
+        $this->expectException(\Error::class);
         $process = new Process(self::CMD_PROCESS);
         $process->start();
         $promise = $process->join();
@@ -196,28 +193,26 @@ class ProcessTest extends TestCase {
     }
 
     /**
-     * @expectedException \Amp\Process\StatusError
-     * @expectedExceptionMessage The process is not running
+     * @expectedException \Error
+     * @expectedExceptionMessage Cloning is not allowed!
      */
     public function testProcessResetDeferredIsNull() {
         $process = new Process(self::CMD_PROCESS);
         $process->start();
         $promise = $process->join();
-        $completed = false;
         $promise->onResolve(function () use (&$completed) { $completed = true; });
         $processReset = clone $process;
         $processReset->join();
     }
 
     /**
-     * @expectedException \Amp\Process\StatusError
-     * @expectedExceptionMessage The process is not running
+     * @expectedException \Error
+     * @expectedExceptionMessage Cloning is not allowed!
      */
     public function testProcessResetSignalIsNotRunning() {
         $process = new Process(self::CMD_PROCESS);
         $process->start();
         $promise = $process->join();
-        $completed = false;
         $promise->onResolve(function () use (&$completed) { $completed = true; });
         $processReset = clone $process;
         $processReset->signal(1);
@@ -239,9 +234,76 @@ class ProcessTest extends TestCase {
         });
     }
 
+    /**
+     * @expectedException \Amp\Process\StatusError
+     * @expectedExceptionMessage Process has not been started.
+     */
+    public function testProcessHasNotBeenStartedWithJoin() {
+        Loop::run(function () {
+            $process = new Process(self::CMD_PROCESS);
+            $promise = $process->join();
+
+            yield $promise;
+        });
+    }
+
+    /**
+     * @expectedException \Amp\Process\StatusError
+     * @expectedExceptionMessage Process has not been started.
+     */
+    public function testProcessHasNotBeenStartedWithGetPid() {
+        Loop::run(function () {
+            $process = new Process(self::CMD_PROCESS);
+            $promise = $process->getPid();
+
+            yield $promise;
+        });
+    }
+
+    /**
+     * @expectedException \Amp\Process\StatusError
+     * @expectedExceptionMessage Process is not running.
+     */
+    public function testProcessIsNotRunningWithKill() {
+        Loop::run(function () {
+            $process = new Process(self::CMD_PROCESS);
+
+            $process->kill();
+
+            yield $promise;
+        });
+    }
+
+    /**
+     * @expectedException \Amp\Process\StatusError
+     * @expectedExceptionMessage Process is not running.
+     */
+    public function testProcessIsNotRunningWithSignal() {
+        Loop::run(function () {
+            $process = new Process(self::CMD_PROCESS);
+
+            $process->signal(0);
+
+            yield $promise;
+        });
+    }
+
+    /**
+     * @expectedException \Amp\Process\StatusError
+     * @expectedExceptionMessage Process has not been started.
+     */
+    public function testProcessHasBeenStarted() {
+        Loop::run(function () {
+            $process = new Process(self::CMD_PROCESS);
+            $promise = $process->join();
+
+            yield $promise;
+        });
+    }
+
     public function testCommand() {
-        $process = new Process(self::CMD_PROCESS);
-        $this->assertSame(\implode(" ", \array_map("escapeshellarg", self::CMD_PROCESS)), $process->getCommand());
+        $process = new Process([self::CMD_PROCESS]);
+        $this->assertSame(\implode(" ", \array_map("escapeshellarg", [self::CMD_PROCESS])), $process->getCommand());
     }
 
     public function testOptions() {
