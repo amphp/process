@@ -33,6 +33,11 @@
         },
         "files": ["lib/constants.php"]
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Amp\\Process\\Test\\": "test"
+        }
+    },
     "config": {
         "platform": {
             "php": "7.0.0"

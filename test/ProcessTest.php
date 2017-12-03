@@ -1,6 +1,6 @@
 <?php
 
-namespace Amp\Test\Process;
+namespace Amp\Process\Test;
 
 use Amp\Loop;
 use Amp\Process\Process;
