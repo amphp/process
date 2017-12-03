@@ -32,7 +32,7 @@ install:
   - cd c:\projects\amphp
   - appveyor DownloadFile https://getcomposer.org/composer.phar
   - php composer.phar install --prefer-dist --no-progress
-  - php composer.phar require satooshi/php-coveralls dev-master
+  - php composer.phar require php-coveralls/php-coveralls ^1.0.2
 
 # https://ci.appveyor.com/tools/encrypt
 environment:
