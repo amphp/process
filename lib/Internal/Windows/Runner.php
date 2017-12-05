@@ -136,6 +136,7 @@ final class Runner implements ProcessRunner {
         if ($handle->childPidWatcher !== null) {
             Loop::cancel($handle->childPidWatcher);
             $handle->childPidWatcher = null;
+            $handle->pidDeferred->fail(new ProcessException("The process was killed"));
             $failStart = true;
         }
 

@@ -72,7 +72,6 @@ final class SocketConnector {
             $deferred->fail($error);
         }
 
-        $handle->pidDeferred->fail($error);
         $handle->joinDeferred->fail($error);
     }
 
