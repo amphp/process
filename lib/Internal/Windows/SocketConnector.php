@@ -57,7 +57,7 @@ final class SocketConnector {
         unset($this->pendingClients[(int) $socket]);
     }
 
-    private function failHandleStart(Handle $handle, string $message, ...$args) {
+    public function failHandleStart(Handle $handle, string $message, ...$args) {
         Loop::cancel($handle->connectTimeoutWatcher);
 
         unset($this->pendingProcesses[$handle->wrapperPid]);

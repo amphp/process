@@ -131,9 +131,12 @@ final class Runner implements ProcessRunner {
             throw new ProcessException("Terminating process failed");
         }
 
+        $failStart = false;
+
         if ($handle->childPidWatcher !== null) {
             Loop::cancel($handle->childPidWatcher);
             $handle->childPidWatcher = null;
+            $failStart = true;
         }
 
         if ($handle->exitCodeWatcher !== null) {
@@ -142,7 +145,12 @@ final class Runner implements ProcessRunner {
         }
 
         $handle->status = ProcessStatus::ENDED;
-        $handle->joinDeferred->fail(new ProcessException("The process was killed"));
+
+        if ($failStart || $handle->stdioDeferreds) {
+            $this->socketConnector->failHandleStart($handle, "The process was killed");
+        } else {
+            $handle->joinDeferred->fail(new ProcessException("The process was killed"));
+        }
     }
 
     /** @inheritdoc */
