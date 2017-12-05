@@ -68,11 +68,13 @@ final class SocketConnector {
 
         $error = new ProcessException(\vsprintf($message, $args));
 
-        foreach ($handle->stdioDeferreds as $deferred) {
+        $deferreds = $handle->stdioDeferreds;
+        $deferreds[] = $handle->joinDeferred;
+        $handle->stdioDeferreds = [];
+
+        foreach ($deferreds as $deferred) {
             $deferred->fail($error);
         }
-
-        $handle->joinDeferred->fail($error);
     }
 
     /**
@@ -205,10 +207,13 @@ final class SocketConnector {
 
         if (\count($handle->sockets) === 3) {
             $handle->childPidWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableChildPid'], $handle);
-            $handle->stdioDeferreds[0]->resolve(new ResourceOutputStream($handle->sockets[0]));
-            $handle->stdioDeferreds[1]->resolve(new ResourceInputStream($handle->sockets[1]));
-            $handle->stdioDeferreds[2]->resolve(new ResourceInputStream($handle->sockets[2]));
+
+            $deferreds = $handle->stdioDeferreds;
             $handle->stdioDeferreds = []; // clear, so there's no double resolution if process spawn fails
+
+            $deferreds[0]->resolve(new ResourceOutputStream($handle->sockets[0]));
+            $deferreds[1]->resolve(new ResourceInputStream($handle->sockets[1]));
+            $deferreds[2]->resolve(new ResourceInputStream($handle->sockets[2]));
         }
     }
 

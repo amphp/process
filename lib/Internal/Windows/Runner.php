@@ -143,14 +143,13 @@ final class Runner implements ProcessRunner {
         if ($handle->exitCodeWatcher !== null) {
             Loop::cancel($handle->exitCodeWatcher);
             $handle->exitCodeWatcher = null;
+            $handle->joinDeferred->fail(new ProcessException("The process was killed"));
         }
 
         $handle->status = ProcessStatus::ENDED;
 
         if ($failStart || $handle->stdioDeferreds) {
             $this->socketConnector->failHandleStart($handle, "The process was killed");
-        } else {
-            $handle->joinDeferred->fail(new ProcessException("The process was killed"));
         }
     }
 
