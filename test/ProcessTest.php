@@ -124,10 +124,12 @@ class ProcessTest extends TestCase {
     public function testProcessEnvIsValid() {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS, null, [
-                'env_name' => 'env_value'
+                'test' => 'foobar',
+                'PATH' => \getenv('PATH'),
+                'SystemRoot' => \getenv('SystemRoot') ?: '', // required on Windows for process wrapper
             ]);
             $process->start();
-            $this->assertSame('env_value', $process->getEnv()['env_name']);
+            $this->assertSame('foobar', $process->getEnv()['test']);
             yield $process->join();
         });
     }
