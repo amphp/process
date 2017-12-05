@@ -71,6 +71,10 @@ class ProcessTest extends TestCase {
     }
 
     public function testProcessCanTerminate() {
+        if (\DIRECTORY_SEPARATOR === "\\") {
+            $this->markTestSkipped("Signals are not supported on Windows");
+        }
+
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             $process->start();
@@ -137,11 +141,11 @@ class ProcessTest extends TestCase {
 
     public function testProcessEnvIsValid() {
         $process = new Process(self::CMD_PROCESS, null, [
-            'env_value'
+            'env_name' => 'env_value'
         ]);
         $process->start();
         $promise = $process->join();
-        $this->assertSame('env_value', $process->getEnv()[0]);
+        $this->assertSame('env_value', $process->getEnv()['env_name']);
     }
 
     /**
