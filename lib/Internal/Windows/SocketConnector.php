@@ -222,6 +222,8 @@ final class SocketConnector {
         Loop::cancel($handle->childPidWatcher);
         Loop::cancel($handle->connectTimeoutWatcher);
 
+        $handle->childPidWatcher = null;
+
         if (\strlen($data) !== 5) {
             $this->failHandleStart(
                 $handle,
