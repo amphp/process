@@ -329,10 +329,10 @@ final class SocketConnector {
     }
 
     public function onProcessConnectTimeout($watcher, Handle $handle) {
-        $status = \proc_get_status($handle->proc);
+        $running = \is_resource($handle->proc) && \proc_get_status($handle->proc)['running'];
 
         $error = null;
-        if (!$status['running']) {
+        if (!$running) {
             $error = \stream_get_contents($handle->wrapperStderrPipe);
         }
         $error = $error ?: 'Process did not connect to server before timeout elapsed';
