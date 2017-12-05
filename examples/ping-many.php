@@ -26,7 +26,7 @@ Amp\Loop::run(function () {
     foreach ($hosts as $host) {
         $command = \DIRECTORY_SEPARATOR === "\\"
             ? "ping -n 5 {$host}"
-            : "ping -c 5 {$host}"
+            : "ping -c 5 {$host}";
         $process = new Process($command);
         $process->start();
         $promises[] = new Amp\Coroutine(show_process_output($process));
