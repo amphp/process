@@ -6,10 +6,12 @@ use Amp\Loop;
 use Amp\Process\Process;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
+use Amp\Promise;
 use PHPUnit\Framework\TestCase;
 
 class ProcessTest extends TestCase {
     const CMD_PROCESS = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c echo foo" : "echo foo";
+    const CMD_PROCESS_SLOW = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c ping -n 3 127.0.0.1 > nul" : "sleep 2";
 
     /**
      * @expectedException \Amp\Process\StatusError
@@ -52,9 +54,9 @@ class ProcessTest extends TestCase {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             $process->start();
-            $promise = $process->join();
 
             $this->assertInternalType('int', yield $process->getPid());
+            yield $process->join();
         });
     }
 
@@ -64,12 +66,11 @@ class ProcessTest extends TestCase {
         }
 
         Loop::run(function () {
-            $process = new Process(self::CMD_PROCESS);
+            $process = new Process(self::CMD_PROCESS_SLOW);
             $process->start();
-            $promise = $process->join();
-
             $process->signal(0);
-            $this->assertInternalType('object', $process->getPid());
+            $this->assertInstanceOf(Promise::class, $process->getPid());
+            yield $process->join();
         });
     }
 
@@ -170,37 +171,13 @@ class ProcessTest extends TestCase {
         $process->getStderr();
     }
 
-    public function testProcessCanReset() {
-        $this->expectException(\Error::class);
-        $process = new Process(self::CMD_PROCESS);
-        $process->start();
-        $promise = $process->join();
-        $processReset = clone $process;
-        $processReset->getPid();
-    }
-
     /**
      * @expectedException \Error
      * @expectedExceptionMessage Cloning is not allowed!
      */
-    public function testProcessResetDeferredIsNull() {
+    public function testProcessCantBeCloned() {
         $process = new Process(self::CMD_PROCESS);
-        $process->start();
-        $promise = $process->join();
-        $processReset = clone $process;
-        $processReset->join();
-    }
-
-    /**
-     * @expectedException \Error
-     * @expectedExceptionMessage Cloning is not allowed!
-     */
-    public function testProcessResetSignalIsNotRunning() {
-        $process = new Process(self::CMD_PROCESS);
-        $process->start();
-        $promise = $process->join();
-        $processReset = clone $process;
-        $processReset->signal(1);
+        clone $process;
     }
 
     /**
@@ -209,13 +186,11 @@ class ProcessTest extends TestCase {
      */
     public function testKillSignals() {
         Loop::run(function () {
-            $process = new Process(self::CMD_PROCESS);
+            $process = new Process(self::CMD_PROCESS_SLOW);
             $process->start();
-            $promise = $process->join();
-
             $process->kill();
 
-            yield $promise;
+            yield $process->join();
         });
     }
 
@@ -226,9 +201,7 @@ class ProcessTest extends TestCase {
     public function testProcessHasNotBeenStartedWithJoin() {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
-            $promise = $process->join();
-
-            yield $promise;
+            yield $process->join();
         });
     }
 
@@ -239,9 +212,7 @@ class ProcessTest extends TestCase {
     public function testProcessHasNotBeenStartedWithGetPid() {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
-            $promise = $process->getPid();
-
-            yield $promise;
+            yield $process->getPid();
         });
     }
 
@@ -252,10 +223,7 @@ class ProcessTest extends TestCase {
     public function testProcessIsNotRunningWithKill() {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
-
             $process->kill();
-
-            yield $promise;
         });
     }
 
@@ -266,10 +234,7 @@ class ProcessTest extends TestCase {
     public function testProcessIsNotRunningWithSignal() {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
-
             $process->signal(0);
-
-            yield $promise;
         });
     }
 
@@ -280,9 +245,7 @@ class ProcessTest extends TestCase {
     public function testProcessHasBeenStarted() {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
-            $promise = $process->join();
-
-            yield $promise;
+            yield $process->join();
         });
     }
 
