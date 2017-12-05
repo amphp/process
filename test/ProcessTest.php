@@ -2,8 +2,6 @@
 
 namespace Amp\Process\Test;
 
-use Amp\ByteStream\ResourceInputStream;
-use Amp\ByteStream\ResourceOutputStream;
 use Amp\Loop;
 use Amp\Process\Process;
 use Amp\Process\ProcessInputStream;
@@ -60,16 +58,6 @@ class ProcessTest extends TestCase {
         });
     }
 
-    public function testCommandArray() {
-        Loop::run(function () {
-            $process = new Process(self::CMD_PROCESS);
-            $process->start();
-            $promise = $process->join();
-
-            $this->assertInternalType('object', $process->getPid());
-        });
-    }
-
     public function testProcessCanTerminate() {
         if (\DIRECTORY_SEPARATOR === "\\") {
             $this->markTestSkipped("Signals are not supported on Windows");
@@ -101,51 +89,47 @@ class ProcessTest extends TestCase {
 
     public function testGetEnv() {
         Loop::run(function () {
-            $process = new Process(self::CMD_PROCESS, null, []);
+            $process = new Process(self::CMD_PROCESS);
             $this->assertSame([], $process->getEnv());
         });
     }
 
-    public function testGetStdinIsCustomized() {
+    public function testGetStdin() {
         Loop::run(function () {
-            $process = new Process(self::CMD_PROCESS, null, [], [
-                new ResourceInputStream(fopen(__DIR__.'/../stream', 'a+')),
-            ]);
+            $process = new Process(self::CMD_PROCESS);
             $process->start();
-            $promise = $process->join();
             $this->assertInstanceOf(ProcessOutputStream::class, $process->getStdin());
+            yield $process->join();
         });
     }
 
-    public function testGetStdoutIsCustomized() {
+    public function testGetStdout() {
         Loop::run(function () {
-            $process = new Process(self::CMD_PROCESS, null, [], [
-                new ResourceOutputStream(fopen(__DIR__.'/../stream', 'w')),
-            ]);
+            $process = new Process(self::CMD_PROCESS);
             $process->start();
-            $promise = $process->join();
             $this->assertInstanceOf(ProcessInputStream::class, $process->getStdout());
+            yield $process->join();
         });
     }
 
-    public function testGetStderrIsCustomized() {
+    public function testGetStderr() {
         Loop::run(function () {
-            $process = new Process(self::CMD_PROCESS, null, [], [
-                new ResourceOutputStream(fopen(__DIR__.'/../stream', 'w')),
-            ]);
+            $process = new Process(self::CMD_PROCESS);
             $process->start();
-            $promise = $process->join();
             $this->assertInstanceOf(ProcessInputStream::class, $process->getStderr());
+            yield $process->join();
         });
     }
 
     public function testProcessEnvIsValid() {
-        $process = new Process(self::CMD_PROCESS, null, [
-            'env_name' => 'env_value'
-        ]);
-        $process->start();
-        $promise = $process->join();
-        $this->assertSame('env_value', $process->getEnv()['env_name']);
+        Loop::run(function () {
+            $process = new Process(self::CMD_PROCESS, null, [
+                'env_name' => 'env_value'
+            ]);
+            $process->start();
+            $this->assertSame('env_value', $process->getEnv()['env_name']);
+            yield $process->join();
+        });
     }
 
     /**
@@ -308,9 +292,5 @@ class ProcessTest extends TestCase {
     public function testOptions() {
         $process = new Process(self::CMD_PROCESS);
         $this->assertSame([], $process->getOptions());
-    }
-
-    public function tearDown() {
-        @unlink(__DIR__.'/../stream');
     }
 }
