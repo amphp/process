@@ -119,7 +119,7 @@ class Process {
      */
     public function kill() {
         if (!$this->isRunning()) {
-            throw new StatusError("The process is not running");
+            throw new StatusError("Process is not running.");
         }
 
         $this->processRunner->kill($this->handle);
@@ -135,7 +135,7 @@ class Process {
      */
     public function signal(int $signo) {
         if (!$this->isRunning()) {
-            throw new StatusError("The process is not running");
+            throw new StatusError("Process is not running.");
         }
 
         $this->processRunner->signal($this->handle, $signo);
@@ -150,7 +150,7 @@ class Process {
      */
     public function getPid(): Promise {
         if (!$this->handle) {
-            throw new StatusError("The process has not been started");
+            throw new StatusError("Process has not been started.");
         }
 
         return $this->handle->pidDeferred->promise();
@@ -212,7 +212,7 @@ class Process {
      */
     public function getStdin(): ProcessOutputStream {
         if (!$this->handle) {
-            throw new StatusError("The process has not been started");
+            throw new StatusError("Process has not been started.");
         }
 
         return $this->handle->stdin;
@@ -225,7 +225,7 @@ class Process {
      */
     public function getStdout(): ProcessInputStream {
         if (!$this->handle) {
-            throw new StatusError("The process has not been started");
+            throw new StatusError("Process has not been started.");
         }
 
         return $this->handle->stdout;
@@ -238,7 +238,7 @@ class Process {
      */
     public function getStderr(): ProcessInputStream {
         if (!$this->handle) {
-            throw new StatusError("The process has not been started");
+            throw new StatusError("Process has not been started.");
         }
 
         return $this->handle->stderr;
