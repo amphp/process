@@ -49,7 +49,7 @@ class ProcessInputStream implements InputStream {
             if ($this->initialRead) {
                 $initialRead = $this->initialRead;
                 $this->initialRead = null;
-                $initialRead->resolve($this->shouldClose ? null : "");
+                $initialRead->resolve($this->shouldClose ? null : $this->resourceStream->read());
             }
         });
     }
