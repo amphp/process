@@ -8,21 +8,21 @@ platform:
 clone_folder: c:\projects\amphp
 
 cache:
-  - c:\tools\php71 -> appveyor.yml
+  - c:\tools\php72 -> appveyor.yml
 
 init:
-  - SET PATH=C:\Program Files\OpenSSL;c:\tools\php71;%PATH%
+  - SET PATH=C:\Program Files\OpenSSL;c:\tools\php72;%PATH%
   - SET COMPOSER_NO_INTERACTION=1
   - SET PHP=1
   - SET ANSICON=121x90 (121x90)
 
 install:
-  - IF EXIST c:\tools\php71 (SET PHP=0)
+  - IF EXIST c:\tools\php72 (SET PHP=0)
   - IF %PHP%==1 sc config wuauserv start= auto
   - IF %PHP%==1 net start wuauserv
   - IF %PHP%==1 cinst -y OpenSSL.Light
   - IF %PHP%==1 cinst -y php
-  - cd c:\tools\php71
+  - cd c:\tools\php72
   - IF %PHP%==1 copy php.ini-production php.ini /Y
   - IF %PHP%==1 echo date.timezone="UTC" >> php.ini
   - IF %PHP%==1 echo extension_dir=ext >> php.ini
@@ -32,12 +32,6 @@ install:
   - cd c:\projects\amphp
   - appveyor DownloadFile https://getcomposer.org/composer.phar
   - php composer.phar install --prefer-dist --no-progress
-  - php composer.phar require php-coveralls/php-coveralls ^1.0.2
-
-# https://ci.appveyor.com/tools/encrypt
-environment:
-  COVERALLS_REPO_TOKEN:
-    secure: bptM5yHwiBe6iQvBP769zMJa3nXikraEbWEuSOQ/rnl8fb0EgB6F7uQarfNXv5T0
 
 test_script:
   - cd c:\projects\amphp
