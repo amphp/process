@@ -71,6 +71,9 @@ final class SocketConnector {
         foreach ($handle->stdioDeferreds as $deferred) {
             $deferred->fail($error);
         }
+
+        $handle->pidDeferred->fail($error);
+        $handle->joinDeferred->fail($error);
     }
 
     /**
