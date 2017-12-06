@@ -258,4 +258,33 @@ class ProcessTest extends TestCase {
         $process = new Process(self::CMD_PROCESS);
         $this->assertSame([], $process->getOptions());
     }
+
+    public function getProcessCounts(): array {
+        return \array_map(function (int $count): array {
+            return [$count];
+        }, \range(1, 31, 2));
+    }
+
+    /**
+     * @dataProvider getProcessCounts
+     *
+     * @param int $count
+     */
+    public function testSpawnMultipleProcesses(int $count) {
+        Loop::run(function () use ($count) {
+            $processes = [];
+            for ($i = 0; $i < $count; ++$i) {
+                $command = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit $i" : "exit $i";
+                $processes[] = new Process(self::CMD_PROCESS_SLOW . " && " . $command);
+            }
+
+            $promises = [];
+            foreach ($processes as $process) {
+                $process->start();
+                $promises[] = $process->join();
+            }
+
+            $this->assertSame(\range(0, $count - 1), yield $promises);
+        });
+    }
 }
