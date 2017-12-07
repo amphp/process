@@ -151,6 +151,8 @@ final class Runner implements ProcessRunner {
         if ($failStart || $handle->stdioDeferreds) {
             $this->socketConnector->failHandleStart($handle, "The process was killed");
         }
+
+        $this->free($handle);
     }
 
     /** @inheritdoc */
@@ -169,6 +171,10 @@ final class Runner implements ProcessRunner {
             }
         }
 
+        $this->free($handle);
+    }
+
+    private function free(Handle $handle) {
         if ($handle->childPidWatcher !== null) {
             Loop::cancel($handle->childPidWatcher);
             $handle->childPidWatcher = null;

@@ -155,6 +155,8 @@ final class Runner implements ProcessRunner {
             $handle->status = ProcessStatus::ENDED;
             $handle->joinDeferred->fail(new ProcessException("The process was killed"));
         }
+
+        $this->free($handle);
     }
 
     /** @inheritdoc */
@@ -176,6 +178,10 @@ final class Runner implements ProcessRunner {
             }
         }
 
+        $this->free($handle);
+    }
+
+    private function free(Handle $handle) {
         /** @var Handle $handle */
         if ($handle->extraDataPipeWatcher !== null) {
             Loop::cancel($handle->extraDataPipeWatcher);

@@ -190,6 +190,8 @@ class ProcessTest extends TestCase {
             $process->start();
             $process->kill();
 
+            $this->assertNull(yield $process->getStdout()->read());
+
             yield $process->join();
         });
     }
@@ -262,7 +264,7 @@ class ProcessTest extends TestCase {
     public function getProcessCounts(): array {
         return \array_map(function (int $count): array {
             return [$count];
-        }, \range(1, 31, 2));
+        }, \range(2, 32, 2));
     }
 
     /**

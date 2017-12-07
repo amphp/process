@@ -11,7 +11,7 @@ use Amp\Failure;
 use Amp\Promise;
 
 class ProcessOutputStream implements OutputStream {
-    /** @var array */
+    /** @var \SplQueue */
     private $queuedWrites = [];
 
     /** @var bool */
@@ -24,27 +24,29 @@ class ProcessOutputStream implements OutputStream {
     private $error;
 
     public function __construct(Promise $resourceStreamPromise) {
+        $this->queuedWrites = new \SplQueue;
         $resourceStreamPromise->onResolve(function ($error, $resourceStream) {
             if ($error) {
                 $this->error = new StreamException("Failed to launch process", 0, $error);
 
-                while ($write = \array_shift($this->queuedWrites)) {
-                    /** @var $deferred Deferred */
-                    list(, $deferred) = $write;
+                while (!$this->queuedWrites->isEmpty()) {
+                    list(, $deferred) = $this->queuedWrites->shift();
                     $deferred->fail($this->error);
                 }
 
                 return;
             }
 
-            $this->resourceStream = $resourceStream;
-
-            $queue = $this->queuedWrites;
-            $this->queuedWrites = [];
-
-            foreach ($queue as list($data, $deferred)) {
-                $deferred->resolve($this->resourceStream->write($data));
+            while (!$this->queuedWrites->isEmpty()) {
+                /**
+                 * @var string $data
+                 * @var \Amp\Deferred $deferred
+                 */
+                list($data, $deferred) = $this->queuedWrites->shift();
+                $deferred->resolve($resourceStream->write($data));
             }
+
+            $this->resourceStream = $resourceStream;
 
             if ($this->shouldClose) {
                 $this->resourceStream->close();
@@ -67,7 +69,7 @@ class ProcessOutputStream implements OutputStream {
         }
 
         $deferred = new Deferred;
-        $this->queuedWrites[] = [$data, $deferred];
+        $this->queuedWrites->push([$data, $deferred]);
 
         return $deferred->promise();
     }
@@ -87,7 +89,7 @@ class ProcessOutputStream implements OutputStream {
         }
 
         $deferred = new Deferred;
-        $this->queuedWrites[] = [$finalData, $deferred];
+        $this->queuedWrites->push([$finalData, $deferred]);
 
         $this->shouldClose = true;
 
@@ -99,6 +101,12 @@ class ProcessOutputStream implements OutputStream {
 
         if ($this->resourceStream) {
             $this->resourceStream->close();
+        } elseif (!$this->queuedWrites->isEmpty()) {
+            $error = new ClosedException("Stream closed.");
+            do {
+                list(, $deferred) = $this->queuedWrites->shift();
+                $deferred->fail($error);
+            } while (!$this->queuedWrites->isEmpty());
         }
     }
 }
