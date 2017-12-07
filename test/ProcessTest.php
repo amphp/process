@@ -2,6 +2,7 @@
 
 namespace Amp\Process\Test;
 
+use Amp\Delayed;
 use Amp\Loop;
 use Amp\Process\Process;
 use Amp\Process\ProcessInputStream;
@@ -56,7 +57,7 @@ class ProcessTest extends TestCase {
             $process->start();
 
             $this->assertInternalType('int', yield $process->getPid());
-            yield $process->join();
+            $this->assertSame(0, yield $process->join());
         });
     }
 
@@ -70,7 +71,7 @@ class ProcessTest extends TestCase {
             $process->start();
             $process->signal(0);
             $this->assertInstanceOf(Promise::class, $process->getPid());
-            yield $process->join();
+            $this->assertSame(0, yield $process->join());
         });
     }
 
@@ -184,10 +185,26 @@ class ProcessTest extends TestCase {
      * @expectedException \Amp\Process\ProcessException
      * @expectedExceptionMessage The process was killed
      */
-    public function testKillSignals() {
+    public function testKillImmediately() {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS_SLOW);
             $process->start();
+            $process->kill();
+            yield $process->join();
+        });
+    }
+
+    /**
+     * @expectedException \Amp\Process\ProcessException
+     * @expectedExceptionMessage The process was killed
+     */
+    public function testKillThenReadStdout() {
+        Loop::run(function () {
+            $process = new Process(self::CMD_PROCESS_SLOW);
+            $process->start();
+
+            yield new Delayed(100); // Give process a chance to start, otherwise a different error is thrown.
+
             $process->kill();
 
             $this->assertNull(yield $process->getStdout()->read());
@@ -195,6 +212,7 @@ class ProcessTest extends TestCase {
             yield $process->join();
         });
     }
+
 
     /**
      * @expectedException \Amp\Process\StatusError
