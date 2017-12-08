@@ -1,10 +1,15 @@
-# Process
-An async process dispatcher built on the amp concurrency framework
+<p align="center">
+<a href="https://amphp.org/process"><img src="https://raw.githubusercontent.com/amphp/logo/master/repos/process.png?v=12-07-2017" alt="process"/></a>
+</p>
 
-[![Build Status](https://img.shields.io/travis/amphp/process/master.svg?style=flat-square)](https://travis-ci.org/amphp/process)
-[![Coverage Status](https://img.shields.io/coveralls/amphp/process/master.svg?style=flat-square)](https://coveralls.io/github/amphp/process?branch=master)
-[![Semantic Version](https://img.shields.io/github/release/amphp/process.svg?style=flat-square)](http://semver.org)
-![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)
+<p align="center">
+<a href="https://travis-ci.org/amphp/process"><img src="https://img.shields.io/travis/amphp/process/master.svg?style=flat-square" alt="Build Status"/></a>
+<a href="https://coveralls.io/github/amphp/process?branch=master"><img src="https://img.shields.io/coveralls/amphp/process/master.svg?style=flat-square" alt="Code Coverage"/></a>
+<a href="https://github.com/amphp/process/releases"><img src="https://img.shields.io/github/release/amphp/process.svg?style=flat-square" alt="Release"/></a>
+<a href="https://github.com/amphp/process/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License"/></a>
+</p>
+
+<p align="center"><strong>Async process dispatcher built on the Amp concurrency framework.</strong></p>
 
 ## Installation
 
