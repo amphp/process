@@ -210,10 +210,12 @@ final class SocketConnector {
 
             $deferreds = $handle->stdioDeferreds;
             $handle->stdioDeferreds = []; // clear, so there's no double resolution if process spawn fails
+            $sockets = $handle->sockets;
+            $handle->sockets = [];
 
-            $deferreds[0]->resolve(new ResourceOutputStream($handle->sockets[0]));
-            $deferreds[1]->resolve(new ResourceInputStream($handle->sockets[1]));
-            $deferreds[2]->resolve(new ResourceInputStream($handle->sockets[2]));
+            $deferreds[0]->resolve(new ResourceOutputStream($sockets[0]));
+            $deferreds[1]->resolve(new ResourceInputStream($sockets[1]));
+            $deferreds[2]->resolve(new ResourceInputStream($sockets[2]));
         }
     }
 
