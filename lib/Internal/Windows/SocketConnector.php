@@ -211,7 +211,7 @@ final class SocketConnector {
             $deferreds = $handle->stdioDeferreds;
             $handle->stdioDeferreds = []; // clear, so there's no double resolution if process spawn fails
             $sockets = $handle->sockets;
-            $handle->sockets = [];
+            $handle->sockets = [$sockets[0]]; // Leave stdin in array.
 
             $deferreds[0]->resolve(new ResourceOutputStream($sockets[0]));
             $deferreds[1]->resolve(new ResourceInputStream($sockets[1]));
