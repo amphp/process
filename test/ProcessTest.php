@@ -2,6 +2,7 @@
 
 namespace Amp\Process\Test;
 
+use Amp\ByteStream\Message;
 use Amp\Delayed;
 use Amp\Loop;
 use Amp\Process\Process;
@@ -313,8 +314,21 @@ class ProcessTest extends TestCase {
             $process = new Process(["php", __DIR__ . "/bin/worker.php"]);
             $process->start();
 
-            $process->getStdin()->write("exit");
-            $this->assertSame("ok", yield $process->getStdout()->read());
+            $process->getStdin()->write("exit 2");
+            $this->assertSame("..", yield $process->getStdout()->read());
+
+            $this->assertSame(0, yield $process->join());
+        });
+    }
+
+    public function testReadOutputAfterExitWithLongOutput() {
+        Loop::run(function () {
+            $process = new Process(["php", __DIR__ . "/bin/worker.php"]);
+            $process->start();
+
+            $count = 128 * 1024 + 1;
+            $process->getStdin()->write("exit " . $count);
+            $this->assertSame(str_repeat(".", $count), yield new Message($process->getStdout()));
 
             $this->assertSame(0, yield $process->join());
         });
