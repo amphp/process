@@ -307,4 +307,16 @@ class ProcessTest extends TestCase {
             $this->assertSame(\range(0, $count - 1), yield $promises);
         });
     }
+
+    public function testReadOutputAfterExit() {
+        Loop::run(function () {
+            $process = new Process(["php", __DIR__ . "/bin/worker.php"]);
+            $process->start();
+
+            $process->getStdin()->write("exit");
+            $this->assertSame("ok", yield $process->getStdout()->read());
+
+            $this->assertSame(0, yield $process->join());
+        });
+    }
 }
