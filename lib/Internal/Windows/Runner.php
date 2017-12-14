@@ -166,6 +166,7 @@ final class Runner implements ProcessRunner {
         if ($handle->status < ProcessStatus::ENDED && \is_resource($handle->proc)) {
             try {
                 $this->kill($handle);
+                return;
             } catch (ProcessException $e) {
                 // ignore
             }
@@ -189,10 +190,8 @@ final class Runner implements ProcessRunner {
         $handle->stdout->close();
         $handle->stderr->close();
 
-        for ($i = 0; $i < 4; $i++) {
-            if (\is_resource($handle->sockets[$i] ?? null)) {
-                \fclose($handle->sockets[$i]);
-            }
+        foreach ($handle->sockets as $socket) {
+            @\fclose($socket);
         }
 
         @\stream_get_contents($handle->wrapperStderrPipe);

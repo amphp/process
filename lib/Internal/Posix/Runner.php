@@ -173,6 +173,7 @@ final class Runner implements ProcessRunner {
         if ($handle->status < ProcessStatus::ENDED && \getmypid() === $handle->originalParentPid) {
             try {
                 $this->kill($handle);
+                return;
             } catch (ProcessException $e) {
                 // ignore
             }
