@@ -15,7 +15,7 @@ use Amp\Process\ProcessException;
 final class SocketConnector {
     const SERVER_SOCKET_URI = 'tcp://127.0.0.1:0';
     const SECURITY_TOKEN_SIZE = 16;
-    const CONNECT_TIMEOUT = 1000;
+    const CONNECT_TIMEOUT = 30000;
 
     /** @var resource */
     private $server;
