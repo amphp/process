@@ -353,7 +353,15 @@ final class SocketConnector {
     }
 
     public function registerPendingProcess(Handle $handle) {
-        $handle->connectTimeoutWatcher = Loop::delay(self::CONNECT_TIMEOUT, [$this, 'onProcessConnectTimeout'], $handle);
+        // Use Loop::defer() to start the timeout only after the loop has ticked once. This prevents issues with many
+        // things started at once, see https://github.com/amphp/process/issues/21.
+        $handle->connectTimeoutWatcher = Loop::defer(function () use ($handle) {
+            $handle->connectTimeoutWatcher = Loop::delay(
+                self::CONNECT_TIMEOUT,
+                [$this, 'onProcessConnectTimeout'],
+                $handle
+            );
+        });
 
         $this->pendingProcesses[$handle->wrapperPid] = $handle;
     }
