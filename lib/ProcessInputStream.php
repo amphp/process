@@ -32,7 +32,9 @@ class ProcessInputStream implements InputStream {
             if ($error) {
                 $this->error = new StreamException("Failed to launch process", 0, $error);
                 if ($this->initialRead) {
-                    $this->initialRead->fail($this->error);
+                    $initialRead = $this->initialRead;
+                    $this->initialRead = null;
+                    $initialRead->fail($this->error);
                 }
                 return;
             }
