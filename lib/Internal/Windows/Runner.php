@@ -29,12 +29,30 @@ final class Runner implements ProcessRunner {
         ? BIN_DIR . '\\windows\\ProcessWrapper64.exe'
         : BIN_DIR . '\\windows\\ProcessWrapper.exe';
 
+    private static $pharWrapperPath;
+
     private $socketConnector;
 
     private function makeCommand(string $workingDirectory): string {
+        $wrapperPath = self::WRAPPER_EXE_PATH;
+
+        // We can't execute the exe from within the PHAR, so copy it out...
+        if (strncmp($wrapperPath, "phar://", 7) === 0) {
+            if (self::$pharWrapperPath === null) {
+                self::$pharWrapperPath = \tempnam(\sys_get_temp_dir(), "amphp-process-wrapper-");
+                \copy(self::WRAPPER_EXE_PATH, self::$pharWrapperPath);
+
+                \register_shutdown_function(static function () {
+                    @\unlink(self::$pharWrapperPath);
+                });
+            }
+
+            $wrapperPath = self::$pharWrapperPath;
+        }
+
         $result = \sprintf(
             '%s --address=%s --port=%d --token-size=%d',
-            \escapeshellarg(self::WRAPPER_EXE_PATH),
+            \escapeshellarg($wrapperPath),
             $this->socketConnector->address,
             $this->socketConnector->port,
             SocketConnector::SECURITY_TOKEN_SIZE
