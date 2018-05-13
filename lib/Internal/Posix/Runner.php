@@ -84,6 +84,8 @@ final class Runner implements ProcessRunner {
             $message = "Could not start process";
             if ($error = \error_get_last()) {
                 $message .= \sprintf(" Errno: %d; %s", $error["type"], $error["message"]);
+            } elseif (!function_exists('proc_open')) {
+                $message .= "because proc_open() does not exist. Make sure its not disabled via 'disable_functions' in your php.ini";
             }
             throw new ProcessException($message);
         }
