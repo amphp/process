@@ -235,8 +235,8 @@ class Process
      */
     public function getStdin(): ProcessOutputStream
     {
-        if (!$this->handle) {
-            throw new StatusError("Process has not been started.");
+        if (!$this->handle || $this->handle->status === ProcessStatus::STARTING) {
+            throw new StatusError("Process has not been started or has not completed starting.");
         }
 
         return $this->handle->stdin;
@@ -249,8 +249,8 @@ class Process
      */
     public function getStdout(): ProcessInputStream
     {
-        if (!$this->handle) {
-            throw new StatusError("Process has not been started.");
+        if (!$this->handle || $this->handle->status === ProcessStatus::STARTING) {
+            throw new StatusError("Process has not been started or has not completed starting.");
         }
 
         return $this->handle->stdout;
@@ -263,8 +263,8 @@ class Process
      */
     public function getStderr(): ProcessInputStream
     {
-        if (!$this->handle) {
-            throw new StatusError("Process has not been started.");
+        if (!$this->handle || $this->handle->status === ProcessStatus::STARTING) {
+            throw new StatusError("Process has not been started or has not completed starting.");
         }
 
         return $this->handle->stderr;

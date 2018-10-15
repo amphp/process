@@ -31,7 +31,7 @@ class ProcessTest extends TestCase
     {
         Loop::run(function () {
             $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
-            $process->start();
+            yield $process->start();
             $promise = $process->join();
 
             $this->assertTrue($process->isRunning());
@@ -46,7 +46,7 @@ class ProcessTest extends TestCase
     {
         Loop::run(function () {
             $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
-            $process->start();
+            yield $process->start();
 
             $code = yield $process->join();
 
@@ -106,7 +106,7 @@ class ProcessTest extends TestCase
     {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
-            $process->start();
+            yield $process->start();
             $this->assertInstanceOf(ProcessOutputStream::class, $process->getStdin());
             yield $process->join();
         });
@@ -116,7 +116,7 @@ class ProcessTest extends TestCase
     {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
-            $process->start();
+            yield $process->start();
             $this->assertInstanceOf(ProcessInputStream::class, $process->getStdout());
             yield $process->join();
         });
@@ -126,7 +126,7 @@ class ProcessTest extends TestCase
     {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
-            $process->start();
+            yield $process->start();
             $this->assertInstanceOf(ProcessInputStream::class, $process->getStderr());
             yield $process->join();
         });
@@ -140,7 +140,7 @@ class ProcessTest extends TestCase
                 'PATH' => \getenv('PATH'),
                 'SystemRoot' => \getenv('SystemRoot') ?: '', // required on Windows for process wrapper
             ]);
-            $process->start();
+            yield $process->start();
             $this->assertSame('foobar', $process->getEnv()['test']);
             yield $process->join();
         });
@@ -158,7 +158,7 @@ class ProcessTest extends TestCase
 
     /**
      * @expectedException \Amp\Process\StatusError
-     * @expectedExceptionMessage Process has not been started.
+     * @expectedExceptionMessage Process has not been started or has not completed starting.
      */
     public function testGetStdinIsStatusError()
     {
@@ -168,7 +168,7 @@ class ProcessTest extends TestCase
 
     /**
      * @expectedException \Amp\Process\StatusError
-     * @expectedExceptionMessage Process has not been started.
+     * @expectedExceptionMessage Process has not been started or has not completed starting.
      */
     public function testGetStdoutIsStatusError()
     {
@@ -178,7 +178,7 @@ class ProcessTest extends TestCase
 
     /**
      * @expectedException \Amp\Process\StatusError
-     * @expectedExceptionMessage Process has not been started.
+     * @expectedExceptionMessage Process has not been started or has not completed starting.
      */
     public function testGetStderrIsStatusError()
     {
@@ -336,7 +336,7 @@ class ProcessTest extends TestCase
     {
         Loop::run(function () {
             $process = new Process(["php", __DIR__ . "/bin/worker.php"]);
-            $process->start();
+            yield $process->start();
 
             $process->getStdin()->write("exit 2");
             $this->assertSame("..", yield $process->getStdout()->read());
@@ -349,7 +349,7 @@ class ProcessTest extends TestCase
     {
         Loop::run(function () {
             $process = new Process(["php", __DIR__ . "/bin/worker.php"]);
-            $process->start();
+            yield $process->start();
 
             $count = 128 * 1024 + 1;
             $process->getStdin()->write("exit " . $count);
