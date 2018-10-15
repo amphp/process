@@ -9,6 +9,7 @@ use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Internal\Windows\Runner as WindowsProcessRunner;
 use Amp\Promise;
+use function Amp\call;
 
 class Process
 {
@@ -29,6 +30,9 @@ class Process
 
     /** @var ProcessHandle */
     private $handle;
+
+    /** @var int|null */
+    private $pid;
 
     /**
      * @param   string|string[] $command Command to run.
@@ -90,15 +94,20 @@ class Process
     /**
      * Start the process.
      *
+     * @return Promise<int> Resolves with the PID.
+     *
      * @throws StatusError If the process has already been started.
      */
-    public function start()
+    public function start(): Promise
     {
         if ($this->handle) {
             throw new StatusError("Process has already been started.");
         }
 
-        $this->handle = $this->processRunner->start($this->command, $this->cwd, $this->env, $this->options);
+        return call(function () {
+            $this->handle = $this->processRunner->start($this->command, $this->cwd, $this->env, $this->options);
+            return $this->pid = yield $this->handle->pidDeferred->promise();
+        });
     }
 
     /**
@@ -152,17 +161,17 @@ class Process
     /**
      * Returns the PID of the child process.
      *
-     * @return Promise<int>
+     * @return int
      *
-     * @throws StatusError If the process has not started.
+     * @throws StatusError If the process has not started or has not completed starting.
      */
-    public function getPid(): Promise
+    public function getPid(): int
     {
-        if (!$this->handle) {
-            throw new StatusError("Process has not been started.");
+        if (!$this->pid) {
+            throw new StatusError("Process has not been started or has not completed starting.");
         }
 
-        return $this->handle->pidDeferred->promise();
+        return $this->pid;
     }
 
     /**

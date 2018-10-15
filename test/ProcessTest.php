@@ -8,7 +8,6 @@ use Amp\Loop;
 use Amp\Process\Process;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
-use Amp\Promise;
 use PHPUnit\Framework\TestCase;
 
 class ProcessTest extends TestCase
@@ -60,9 +59,7 @@ class ProcessTest extends TestCase
     {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
-            $process->start();
-
-            $this->assertInternalType('int', yield $process->getPid());
+            $this->assertInternalType('int', yield $process->start());
             $this->assertSame(0, yield $process->join());
         });
     }
@@ -75,9 +72,8 @@ class ProcessTest extends TestCase
 
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS_SLOW);
-            $process->start();
+            yield $process->start();
             $process->signal(0);
-            $this->assertInstanceOf(Promise::class, $process->getPid());
             $this->assertSame(0, yield $process->join());
         });
     }
@@ -249,14 +245,12 @@ class ProcessTest extends TestCase
 
     /**
      * @expectedException \Amp\Process\StatusError
-     * @expectedExceptionMessage Process has not been started.
+     * @expectedExceptionMessage Process has not been started or has not completed starting.
      */
     public function testProcessHasNotBeenStartedWithGetPid()
     {
-        Loop::run(function () {
-            $process = new Process(self::CMD_PROCESS);
-            yield $process->getPid();
-        });
+        $process = new Process(self::CMD_PROCESS);
+        $process->getPid();
     }
 
     /**
