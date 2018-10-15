@@ -5,7 +5,8 @@ namespace Amp\Process\Internal;
 use Amp\Process\ProcessException;
 use Amp\Promise;
 
-interface ProcessRunner {
+interface ProcessRunner
+{
     /**
      * Start a process using the supplied parameters.
      *

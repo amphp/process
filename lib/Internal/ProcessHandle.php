@@ -7,7 +7,8 @@ use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
 use Amp\Struct;
 
-abstract class ProcessHandle {
+abstract class ProcessHandle
+{
     use Struct;
 
     /** @var ProcessOutputStream */

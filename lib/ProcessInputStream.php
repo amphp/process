@@ -11,7 +11,8 @@ use Amp\Failure;
 use Amp\Promise;
 use Amp\Success;
 
-class ProcessInputStream implements InputStream {
+class ProcessInputStream implements InputStream
+{
     /** @var Deferred */
     private $initialRead;
 
@@ -27,7 +28,8 @@ class ProcessInputStream implements InputStream {
     /** @var StreamException|null */
     private $error;
 
-    public function __construct(Promise $resourceStreamPromise) {
+    public function __construct(Promise $resourceStreamPromise)
+    {
         $resourceStreamPromise->onResolve(function ($error, $resourceStream) {
             if ($error) {
                 $this->error = new StreamException("Failed to launch process", 0, $error);
@@ -64,7 +66,8 @@ class ProcessInputStream implements InputStream {
      *
      * @throws PendingReadError Thrown if another read operation is still pending.
      */
-    public function read(): Promise {
+    public function read(): Promise
+    {
         if ($this->initialRead) {
             throw new PendingReadError;
         }
@@ -86,7 +89,8 @@ class ProcessInputStream implements InputStream {
         return $this->initialRead->promise();
     }
 
-    public function reference() {
+    public function reference()
+    {
         $this->referenced = true;
 
         if ($this->resourceStream) {
@@ -94,7 +98,8 @@ class ProcessInputStream implements InputStream {
         }
     }
 
-    public function unreference() {
+    public function unreference()
+    {
         $this->referenced = false;
 
         if ($this->resourceStream) {
@@ -102,7 +107,8 @@ class ProcessInputStream implements InputStream {
         }
     }
 
-    public function close() {
+    public function close()
+    {
         $this->shouldClose = true;
 
         if ($this->initialRead) {

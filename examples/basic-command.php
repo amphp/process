@@ -1,6 +1,6 @@
 <?php
 
-include dirname(__DIR__) . "/vendor/autoload.php";
+include \dirname(__DIR__) . "/vendor/autoload.php";
 
 use Amp\ByteStream\Message;
 use Amp\Process\Process;

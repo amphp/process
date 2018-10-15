@@ -1,11 +1,12 @@
 <?php
 
-include dirname(__DIR__) . "/vendor/autoload.php";
+include \dirname(__DIR__) . "/vendor/autoload.php";
 
 use Amp\Process\Process;
 use function Amp\Promise\all;
 
-function show_process_output(Process $process): \Generator {
+function show_process_output(Process $process): \Generator
+{
     $stream = $process->getStdout();
 
     while (null !== $chunk = yield $stream->read()) {

@@ -10,7 +10,8 @@ use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Internal\Windows\Runner as WindowsProcessRunner;
 use Amp\Promise;
 
-class Process {
+class Process
+{
     /** @var ProcessRunner */
     private $processRunner;
 
@@ -38,7 +39,8 @@ class Process {
      *
      * @throws \Error If the arguments are invalid.
      */
-    public function __construct($command, string $cwd = null, array $env = [], array $options = []) {
+    public function __construct($command, string $cwd = null, array $env = [], array $options = [])
+    {
         $command = \is_array($command)
             ? \implode(" ", \array_map("escapeshellarg", $command))
             : (string) $command;
@@ -73,13 +75,15 @@ class Process {
     /**
      * Stops the process if it is still running.
      */
-    public function __destruct() {
+    public function __destruct()
+    {
         if ($this->handle !== null) {
             $this->processRunner->destroy($this->handle);
         }
     }
 
-    public function __clone() {
+    public function __clone()
+    {
         throw new \Error("Cloning is not allowed!");
     }
 
@@ -88,7 +92,8 @@ class Process {
      *
      * @throws StatusError If the process has already been started.
      */
-    public function start() {
+    public function start()
+    {
         if ($this->handle) {
             throw new StatusError("Process has already been started.");
         }
@@ -103,7 +108,8 @@ class Process {
      *
      * @throws StatusError If the process has already been started.
      */
-    public function join(): Promise {
+    public function join(): Promise
+    {
         if (!$this->handle) {
             throw new StatusError("Process has not been started.");
         }
@@ -117,7 +123,8 @@ class Process {
      * @throws StatusError If the process is not running.
      * @throws ProcessException If terminating the process fails.
      */
-    public function kill() {
+    public function kill()
+    {
         if (!$this->isRunning()) {
             throw new StatusError("Process is not running.");
         }
@@ -133,7 +140,8 @@ class Process {
      * @throws StatusError If the process is not running.
      * @throws ProcessException If sending the signal fails.
      */
-    public function signal(int $signo) {
+    public function signal(int $signo)
+    {
         if (!$this->isRunning()) {
             throw new StatusError("Process is not running.");
         }
@@ -148,7 +156,8 @@ class Process {
      *
      * @throws StatusError If the process has not started.
      */
-    public function getPid(): Promise {
+    public function getPid(): Promise
+    {
         if (!$this->handle) {
             throw new StatusError("Process has not been started.");
         }
@@ -161,7 +170,8 @@ class Process {
      *
      * @return string The command to execute.
      */
-    public function getCommand(): string {
+    public function getCommand(): string
+    {
         return $this->command;
     }
 
@@ -170,7 +180,8 @@ class Process {
      *
      * @return string The current working directory an empty string if inherited from the current PHP process.
      */
-    public function getWorkingDirectory(): string {
+    public function getWorkingDirectory(): string
+    {
         if ($this->cwd === "") {
             return \getcwd() ?: "";
         }
@@ -183,7 +194,8 @@ class Process {
      *
      * @return string[] Array of environment variables.
      */
-    public function getEnv(): array {
+    public function getEnv(): array
+    {
         return $this->env;
     }
 
@@ -192,7 +204,8 @@ class Process {
      *
      * @return mixed[] Array of options.
      */
-    public function getOptions(): array {
+    public function getOptions(): array
+    {
         return $this->options;
     }
 
@@ -201,7 +214,8 @@ class Process {
      *
      * @return bool
      */
-    public function isRunning(): bool {
+    public function isRunning(): bool
+    {
         return $this->handle && $this->handle->status !== ProcessStatus::ENDED;
     }
 
@@ -210,7 +224,8 @@ class Process {
      *
      * @return ProcessOutputStream
      */
-    public function getStdin(): ProcessOutputStream {
+    public function getStdin(): ProcessOutputStream
+    {
         if (!$this->handle) {
             throw new StatusError("Process has not been started.");
         }
@@ -223,7 +238,8 @@ class Process {
      *
      * @return ProcessInputStream
      */
-    public function getStdout(): ProcessInputStream {
+    public function getStdout(): ProcessInputStream
+    {
         if (!$this->handle) {
             throw new StatusError("Process has not been started.");
         }
@@ -236,7 +252,8 @@ class Process {
      *
      * @return ProcessInputStream
      */
-    public function getStderr(): ProcessInputStream {
+    public function getStderr(): ProcessInputStream
+    {
         if (!$this->handle) {
             throw new StatusError("Process has not been started.");
         }

@@ -9,8 +9,10 @@ use Amp\Process\Internal\ProcessHandle;
  * @internal
  * @codeCoverageIgnore Windows only.
  */
-final class Handle extends ProcessHandle {
-    public function __construct() {
+final class Handle extends ProcessHandle
+{
+    public function __construct()
+    {
         $this->joinDeferred = new Deferred;
         $this->pidDeferred = new Deferred;
     }

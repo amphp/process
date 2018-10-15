@@ -8,7 +8,8 @@ use Amp\Struct;
  * @internal
  * @codeCoverageIgnore Windows only.
  */
-final class PendingSocketClient {
+final class PendingSocketClient
+{
     use Struct;
 
     public $readWatcher;

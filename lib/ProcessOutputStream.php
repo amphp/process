@@ -10,7 +10,8 @@ use Amp\Deferred;
 use Amp\Failure;
 use Amp\Promise;
 
-class ProcessOutputStream implements OutputStream {
+class ProcessOutputStream implements OutputStream
+{
     /** @var \SplQueue */
     private $queuedWrites;
 
@@ -23,7 +24,8 @@ class ProcessOutputStream implements OutputStream {
     /** @var StreamException|null */
     private $error;
 
-    public function __construct(Promise $resourceStreamPromise) {
+    public function __construct(Promise $resourceStreamPromise)
+    {
         $this->queuedWrites = new \SplQueue;
         $resourceStreamPromise->onResolve(function ($error, $resourceStream) {
             if ($error) {
@@ -55,7 +57,8 @@ class ProcessOutputStream implements OutputStream {
     }
 
     /** @inheritdoc */
-    public function write(string $data): Promise {
+    public function write(string $data): Promise
+    {
         if ($this->resourceStream) {
             return $this->resourceStream->write($data);
         }
@@ -75,7 +78,8 @@ class ProcessOutputStream implements OutputStream {
     }
 
     /** @inheritdoc */
-    public function end(string $finalData = ""): Promise {
+    public function end(string $finalData = ""): Promise
+    {
         if ($this->resourceStream) {
             return $this->resourceStream->end($finalData);
         }
@@ -96,7 +100,8 @@ class ProcessOutputStream implements OutputStream {
         return $deferred->promise();
     }
 
-    public function close() {
+    public function close()
+    {
         $this->shouldClose = true;
 
         if ($this->resourceStream) {

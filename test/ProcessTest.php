@@ -11,14 +11,16 @@ use Amp\Process\ProcessOutputStream;
 use Amp\Promise;
 use PHPUnit\Framework\TestCase;
 
-class ProcessTest extends TestCase {
+class ProcessTest extends TestCase
+{
     const CMD_PROCESS = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c echo foo" : "echo foo";
     const CMD_PROCESS_SLOW = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c ping -n 3 127.0.0.1 > nul" : "sleep 2";
 
     /**
      * @expectedException \Amp\Process\StatusError
      */
-    public function testMultipleExecution() {
+    public function testMultipleExecution()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             $process->start();
@@ -26,7 +28,8 @@ class ProcessTest extends TestCase {
         });
     }
 
-    public function testIsRunning() {
+    public function testIsRunning()
+    {
         Loop::run(function () {
             $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
             $process->start();
@@ -40,7 +43,8 @@ class ProcessTest extends TestCase {
         });
     }
 
-    public function testExecuteResolvesToExitCode() {
+    public function testExecuteResolvesToExitCode()
+    {
         Loop::run(function () {
             $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
             $process->start();
@@ -52,7 +56,8 @@ class ProcessTest extends TestCase {
         });
     }
 
-    public function testCommandCanRun() {
+    public function testCommandCanRun()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             $process->start();
@@ -62,7 +67,8 @@ class ProcessTest extends TestCase {
         });
     }
 
-    public function testProcessCanTerminate() {
+    public function testProcessCanTerminate()
+    {
         if (\DIRECTORY_SEPARATOR === "\\") {
             $this->markTestSkipped("Signals are not supported on Windows");
         }
@@ -76,28 +82,32 @@ class ProcessTest extends TestCase {
         });
     }
 
-    public function testGetWorkingDirectoryIsDefault() {
+    public function testGetWorkingDirectoryIsDefault()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
-            $this->assertSame(getcwd(), $process->getWorkingDirectory());
+            $this->assertSame(\getcwd(), $process->getWorkingDirectory());
         });
     }
 
-    public function testGetWorkingDirectoryIsCustomized() {
+    public function testGetWorkingDirectoryIsCustomized()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS, __DIR__);
             $this->assertSame(__DIR__, $process->getWorkingDirectory());
         });
     }
 
-    public function testGetEnv() {
+    public function testGetEnv()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             $this->assertSame([], $process->getEnv());
         });
     }
 
-    public function testGetStdin() {
+    public function testGetStdin()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             $process->start();
@@ -106,7 +116,8 @@ class ProcessTest extends TestCase {
         });
     }
 
-    public function testGetStdout() {
+    public function testGetStdout()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             $process->start();
@@ -115,7 +126,8 @@ class ProcessTest extends TestCase {
         });
     }
 
-    public function testGetStderr() {
+    public function testGetStderr()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             $process->start();
@@ -124,7 +136,8 @@ class ProcessTest extends TestCase {
         });
     }
 
-    public function testProcessEnvIsValid() {
+    public function testProcessEnvIsValid()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS, null, [
                 'test' => 'foobar',
@@ -140,7 +153,8 @@ class ProcessTest extends TestCase {
     /**
      * @expectedException \Error
      */
-    public function testProcessEnvIsInvalid() {
+    public function testProcessEnvIsInvalid()
+    {
         $process = new Process(self::CMD_PROCESS, null, [
             ['error_value']
         ]);
@@ -150,7 +164,8 @@ class ProcessTest extends TestCase {
      * @expectedException \Amp\Process\StatusError
      * @expectedExceptionMessage Process has not been started.
      */
-    public function testGetStdinIsStatusError() {
+    public function testGetStdinIsStatusError()
+    {
         $process = new Process(self::CMD_PROCESS, null, []);
         $process->getStdin();
     }
@@ -159,7 +174,8 @@ class ProcessTest extends TestCase {
      * @expectedException \Amp\Process\StatusError
      * @expectedExceptionMessage Process has not been started.
      */
-    public function testGetStdoutIsStatusError() {
+    public function testGetStdoutIsStatusError()
+    {
         $process = new Process(self::CMD_PROCESS, null, []);
         $process->getStdout();
     }
@@ -168,7 +184,8 @@ class ProcessTest extends TestCase {
      * @expectedException \Amp\Process\StatusError
      * @expectedExceptionMessage Process has not been started.
      */
-    public function testGetStderrIsStatusError() {
+    public function testGetStderrIsStatusError()
+    {
         $process = new Process(self::CMD_PROCESS, null, []);
         $process->getStderr();
     }
@@ -177,7 +194,8 @@ class ProcessTest extends TestCase {
      * @expectedException \Error
      * @expectedExceptionMessage Cloning is not allowed!
      */
-    public function testProcessCantBeCloned() {
+    public function testProcessCantBeCloned()
+    {
         $process = new Process(self::CMD_PROCESS);
         clone $process;
     }
@@ -186,7 +204,8 @@ class ProcessTest extends TestCase {
      * @expectedException \Amp\Process\ProcessException
      * @expectedExceptionMessage The process was killed
      */
-    public function testKillImmediately() {
+    public function testKillImmediately()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS_SLOW);
             $process->start();
@@ -199,7 +218,8 @@ class ProcessTest extends TestCase {
      * @expectedException \Amp\Process\ProcessException
      * @expectedExceptionMessage The process was killed
      */
-    public function testKillThenReadStdout() {
+    public function testKillThenReadStdout()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS_SLOW);
             $process->start();
@@ -219,7 +239,8 @@ class ProcessTest extends TestCase {
      * @expectedException \Amp\Process\StatusError
      * @expectedExceptionMessage Process has not been started.
      */
-    public function testProcessHasNotBeenStartedWithJoin() {
+    public function testProcessHasNotBeenStartedWithJoin()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             yield $process->join();
@@ -230,7 +251,8 @@ class ProcessTest extends TestCase {
      * @expectedException \Amp\Process\StatusError
      * @expectedExceptionMessage Process has not been started.
      */
-    public function testProcessHasNotBeenStartedWithGetPid() {
+    public function testProcessHasNotBeenStartedWithGetPid()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             yield $process->getPid();
@@ -241,7 +263,8 @@ class ProcessTest extends TestCase {
      * @expectedException \Amp\Process\StatusError
      * @expectedExceptionMessage Process is not running.
      */
-    public function testProcessIsNotRunningWithKill() {
+    public function testProcessIsNotRunningWithKill()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             $process->kill();
@@ -252,7 +275,8 @@ class ProcessTest extends TestCase {
      * @expectedException \Amp\Process\StatusError
      * @expectedExceptionMessage Process is not running.
      */
-    public function testProcessIsNotRunningWithSignal() {
+    public function testProcessIsNotRunningWithSignal()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             $process->signal(0);
@@ -263,24 +287,28 @@ class ProcessTest extends TestCase {
      * @expectedException \Amp\Process\StatusError
      * @expectedExceptionMessage Process has not been started.
      */
-    public function testProcessHasBeenStarted() {
+    public function testProcessHasBeenStarted()
+    {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
             yield $process->join();
         });
     }
 
-    public function testCommand() {
+    public function testCommand()
+    {
         $process = new Process([self::CMD_PROCESS]);
         $this->assertSame(\implode(" ", \array_map("escapeshellarg", [self::CMD_PROCESS])), $process->getCommand());
     }
 
-    public function testOptions() {
+    public function testOptions()
+    {
         $process = new Process(self::CMD_PROCESS);
         $this->assertSame([], $process->getOptions());
     }
 
-    public function getProcessCounts(): array {
+    public function getProcessCounts(): array
+    {
         return \array_map(function (int $count): array {
             return [$count];
         }, \range(2, 32, 2));
@@ -291,7 +319,8 @@ class ProcessTest extends TestCase {
      *
      * @param int $count
      */
-    public function testSpawnMultipleProcesses(int $count) {
+    public function testSpawnMultipleProcesses(int $count)
+    {
         Loop::run(function () use ($count) {
             $processes = [];
             for ($i = 0; $i < $count; ++$i) {
@@ -309,7 +338,8 @@ class ProcessTest extends TestCase {
         });
     }
 
-    public function testReadOutputAfterExit() {
+    public function testReadOutputAfterExit()
+    {
         Loop::run(function () {
             $process = new Process(["php", __DIR__ . "/bin/worker.php"]);
             $process->start();
@@ -321,14 +351,15 @@ class ProcessTest extends TestCase {
         });
     }
 
-    public function testReadOutputAfterExitWithLongOutput() {
+    public function testReadOutputAfterExitWithLongOutput()
+    {
         Loop::run(function () {
             $process = new Process(["php", __DIR__ . "/bin/worker.php"]);
             $process->start();
 
             $count = 128 * 1024 + 1;
             $process->getStdin()->write("exit " . $count);
-            $this->assertSame(str_repeat(".", $count), yield new Message($process->getStdout()));
+            $this->assertSame(\str_repeat(".", $count), yield new Message($process->getStdout()));
 
             $this->assertSame(0, yield $process->join());
         });

@@ -15,7 +15,8 @@ use Amp\Process\ProcessOutputStream;
 use Amp\Promise;
 
 /** @internal */
-final class Runner implements ProcessRunner {
+final class Runner implements ProcessRunner
+{
     const FD_SPEC = [
         ["pipe", "r"], // stdin
         ["pipe", "w"], // stdout
@@ -23,7 +24,8 @@ final class Runner implements ProcessRunner {
         ["pipe", "w"], // exit code pipe
     ];
 
-    public static function onProcessEndExtraDataPipeReadable($watcher, $stream, Handle $handle) {
+    public static function onProcessEndExtraDataPipeReadable($watcher, $stream, Handle $handle)
+    {
         Loop::cancel($watcher);
         $handle->extraDataPipeWatcher = null;
 
@@ -36,7 +38,8 @@ final class Runner implements ProcessRunner {
         }
     }
 
-    public static function onProcessStartExtraDataPipeReadable($watcher, $stream, $data) {
+    public static function onProcessStartExtraDataPipeReadable($watcher, $stream, $data)
+    {
         Loop::cancel($watcher);
 
         $pid = \rtrim(@\fgets($stream));
@@ -70,7 +73,8 @@ final class Runner implements ProcessRunner {
     }
 
     /** @inheritdoc */
-    public function start(string $command, string $cwd = null, array $env = [], array $options = []): ProcessHandle {
+    public function start(string $command, string $cwd = null, array $env = [], array $options = []): ProcessHandle
+    {
         $command = \sprintf(
             '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0;' .
             'pid=$!; echo $pid >&3; wait $pid; RC=$?; echo $RC >&3; exit $RC',
@@ -124,7 +128,8 @@ final class Runner implements ProcessRunner {
     }
 
     /** @inheritdoc */
-    public function join(ProcessHandle $handle): Promise {
+    public function join(ProcessHandle $handle): Promise
+    {
         /** @var Handle $handle */
         if ($handle->extraDataPipeWatcher !== null) {
             Loop::reference($handle->extraDataPipeWatcher);
@@ -134,7 +139,8 @@ final class Runner implements ProcessRunner {
     }
 
     /** @inheritdoc */
-    public function kill(ProcessHandle $handle) {
+    public function kill(ProcessHandle $handle)
+    {
         /** @var Handle $handle */
         if ($handle->extraDataPipeWatcher !== null) {
             Loop::cancel($handle->extraDataPipeWatcher);
@@ -160,7 +166,8 @@ final class Runner implements ProcessRunner {
     }
 
     /** @inheritdoc */
-    public function signal(ProcessHandle $handle, int $signo) {
+    public function signal(ProcessHandle $handle, int $signo)
+    {
         /** @var Handle $handle */
         if (!\proc_terminate($handle->proc, $signo)) {
             throw new ProcessException("Sending signal to process failed");
@@ -168,7 +175,8 @@ final class Runner implements ProcessRunner {
     }
 
     /** @inheritdoc */
-    public function destroy(ProcessHandle $handle) {
+    public function destroy(ProcessHandle $handle)
+    {
         /** @var Handle $handle */
         if ($handle->status < ProcessStatus::ENDED && \getmypid() === $handle->originalParentPid) {
             try {
@@ -182,7 +190,8 @@ final class Runner implements ProcessRunner {
         $this->free($handle);
     }
 
-    private function free(Handle $handle) {
+    private function free(Handle $handle)
+    {
         /** @var Handle $handle */
         if ($handle->extraDataPipeWatcher !== null) {
             Loop::cancel($handle->extraDataPipeWatcher);

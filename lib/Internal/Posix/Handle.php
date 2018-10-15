@@ -6,8 +6,10 @@ use Amp\Deferred;
 use Amp\Process\Internal\ProcessHandle;
 
 /** @internal */
-final class Handle extends ProcessHandle {
-    public function __construct() {
+final class Handle extends ProcessHandle
+{
+    public function __construct()
+    {
         $this->pidDeferred = new Deferred;
         $this->joinDeferred = new Deferred;
         $this->originalParentPid = \getmypid();
