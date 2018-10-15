@@ -269,4 +269,16 @@ class Process
 
         return $this->handle->stderr;
     }
+
+    public function __debugInfo(): array
+    {
+        return [
+            'command' => $this->getCommand(),
+            'cwd' => $this->getWorkingDirectory(),
+            'env' => $this->getEnv(),
+            'options' => $this->getOptions(),
+            'pid' => $this->pid,
+            'status' => $this->handle ? $this->handle->status : -1,
+        ];
+    }
 }

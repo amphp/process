@@ -5,6 +5,7 @@ namespace Amp\Process\Test;
 use Amp\ByteStream\Message;
 use Amp\Delayed;
 use Amp\Loop;
+use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Process;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
@@ -356,6 +357,28 @@ class ProcessTest extends TestCase
             $this->assertSame(\str_repeat(".", $count), yield new Message($process->getStdout()));
 
             $this->assertSame(0, yield $process->join());
+        });
+    }
+
+    public function testDebugInfo() {
+        Loop::run(function () {
+            $process = new Process(["php", __DIR__ . "/bin/worker.php"], __DIR__);
+
+            $this->assertSame([
+                'command' => "'php' '" . __DIR__ . "/bin/worker.php'",
+                'cwd' => __DIR__,
+                'env' => [],
+                'options' => [],
+                'pid' => null,
+                'status' => -1,
+            ], $process->__debugInfo());
+
+            yield $process->start();
+
+            $debug = $process->__debugInfo();
+
+            $this->assertInternalType('int', $debug['pid']);
+            $this->assertSame(ProcessStatus::RUNNING, $debug['status']);
         });
     }
 }
