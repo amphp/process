@@ -7,6 +7,8 @@ use function Amp\Promise\all;
 
 function show_process_output(Process $process): \Generator
 {
+    yield $process->start();
+
     $stream = $process->getStdout();
 
     while (null !== $chunk = yield $stream->read()) {
@@ -14,7 +16,7 @@ function show_process_output(Process $process): \Generator
     }
 
     $code = yield $process->join();
-    $pid = yield $process->getPid();
+    $pid = $process->getPid();
 
     echo "Process {$pid} exited with {$code}\n";
 }
@@ -29,7 +31,6 @@ Amp\Loop::run(function () {
             ? "ping -n 5 {$host}"
             : "ping -c 5 {$host}";
         $process = new Process($command);
-        $process->start();
         $promises[] = new Amp\Coroutine(show_process_output($process));
     }
 
