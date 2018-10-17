@@ -360,7 +360,8 @@ class ProcessTest extends TestCase
         });
     }
 
-    public function testDebugInfo() {
+    public function testDebugInfo()
+    {
         Loop::run(function () {
             $process = new Process(["php", __DIR__ . "/bin/worker.php"], __DIR__);
 
