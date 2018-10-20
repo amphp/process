@@ -10,7 +10,7 @@ use Amp\Deferred;
 use Amp\Failure;
 use Amp\Promise;
 
-class ProcessOutputStream implements OutputStream
+final class ProcessOutputStream implements OutputStream
 {
     /** @var \SplQueue */
     private $queuedWrites;

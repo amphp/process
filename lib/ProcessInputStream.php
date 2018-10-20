@@ -11,7 +11,7 @@ use Amp\Failure;
 use Amp\Promise;
 use Amp\Success;
 
-class ProcessInputStream implements InputStream
+final class ProcessInputStream implements InputStream
 {
     /** @var Deferred */
     private $initialRead;

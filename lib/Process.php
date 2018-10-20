@@ -11,7 +11,7 @@ use Amp\Process\Internal\Windows\Runner as WindowsProcessRunner;
 use Amp\Promise;
 use function Amp\call;
 
-class Process
+final class Process
 {
     /** @var ProcessRunner */
     private $processRunner;
