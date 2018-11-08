@@ -257,8 +257,6 @@ final class SocketConnector
             return;
         }
 
-        $handle->pidDeferred->resolve($packet['pid']);
-
         // Required, because a process might be destroyed while starting
         if ($handle->status === ProcessStatus::STARTING) {
             $handle->status = ProcessStatus::RUNNING;
@@ -268,6 +266,8 @@ final class SocketConnector
                 Loop::unreference($handle->exitCodeWatcher);
             }
         }
+
+        $handle->pidDeferred->resolve($packet['pid']);
 
         unset($this->pendingProcesses[$handle->wrapperPid]);
     }
