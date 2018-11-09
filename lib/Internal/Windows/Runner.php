@@ -221,7 +221,6 @@ final class Runner implements ProcessRunner
             @\fclose($socket);
         }
 
-        @\stream_get_contents($handle->wrapperStderrPipe);
         @\fclose($handle->wrapperStderrPipe);
 
         if (\is_resource($handle->proc)) {
