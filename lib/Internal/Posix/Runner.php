@@ -156,6 +156,10 @@ final class Runner implements ProcessRunner
         if (!\proc_terminate($handle->proc, 9)) { // Forcefully kill the process using SIGKILL.
             throw new ProcessException("Terminating process failed");
         }
+        $handle->pidDeferred->promise()->onResolve(function ($error, $pid) {
+        	// ignore errors because process not always detached
+            \posix_kill($pid, 9);
+        });
 
         if ($handle->status < ProcessStatus::ENDED) {
             $handle->status = ProcessStatus::ENDED;
