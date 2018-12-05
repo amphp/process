@@ -157,7 +157,7 @@ final class Runner implements ProcessRunner
             throw new ProcessException("Terminating process failed");
         }
         $handle->pidDeferred->promise()->onResolve(function ($error, $pid) {
-        	// ignore errors because process not always detached
+            // ignore errors because process not always detached
             \posix_kill($pid, 9);
         });
 
