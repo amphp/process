@@ -50,6 +50,6 @@
         ],
         "cs": "php-cs-fixer fix -v --diff --dry-run",
         "cs-fix": "php-cs-fixer fix -v --diff",
-        "test": "@php -dzend.assertions=1 -dassert.exception=1 -d zend.enable_gc=0 ./vendor/bin/phpunit --coverage-text"
+        "test": "@php -dzend.assertions=1 -dassert.exception=1 -dzend.enable_gc=0 ./vendor/bin/phpunit --coverage-text"
     }
 }
