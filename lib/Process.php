@@ -124,10 +124,10 @@ final class Process
         }
 
         return call(function () {
-			$result = yield $this->processRunner->join($this->handle);
-			$this->handle = null;
-			return $result;
-		});
+            $result = yield $this->processRunner->join($this->handle);
+            $this->handle = null;
+            return $result;
+        });
     }
 
     /**
@@ -287,20 +287,20 @@ final class Process
         ];
     }
 
-	/**
-	 * Restart the process
-	 * @param bool $force Whether to kill process or wait finish
-	 * @return Promise
-	 */
-	public function restart($force = true): Promise
-	{
-		return call(function () use($force){
-			if($force) {
-				$this->kill();
-			} else {
-				yield $this->join();
-			}
-			return $this->start();
-		});
-	}
+    /**
+     * Restart the process.
+     * @param bool $force Whether to kill process or wait finish
+     * @return Promise
+     */
+    public function restart($force = true): Promise
+    {
+        return call(function () use ($force) {
+            if ($force) {
+                $this->kill();
+            } else {
+                yield $this->join();
+            }
+            return $this->start();
+        });
+    }
 }

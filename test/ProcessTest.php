@@ -201,7 +201,7 @@ class ProcessTest extends TestCase
      * @expectedException \Amp\Process\StatusError
      * @expectedExceptionMessage Process has not been started.
 
-	 */
+     */
     public function testKillImmediately()
     {
         Loop::run(function () {
@@ -385,52 +385,52 @@ class ProcessTest extends TestCase
     }
 
     public function testStartAfterJoin()
-	{
-		Loop::run(function () {
-			$process = new Process(self::CMD_PROCESS_SLOW);
-			for($i=0; $i<=1; $i++) {
-				$process->start();
-				$this->assertTrue($process->isRunning());
-				yield $process->join();
-				$this->assertFalse($process->isRunning());
-			}
-		});
-	}
+    {
+        Loop::run(function () {
+            $process = new Process(self::CMD_PROCESS_SLOW);
+            for ($i=0; $i<=1; $i++) {
+                $process->start();
+                $this->assertTrue($process->isRunning());
+                yield $process->join();
+                $this->assertFalse($process->isRunning());
+            }
+        });
+    }
 
-	public function testStartAfterKill()
-	{
-		Loop::run(function () {
-			$process = new Process(self::CMD_PROCESS_SLOW);
-			for($i=0; $i<=1; $i++) {
-				$process->start();
-				$this->assertTrue($process->isRunning());
-				$process->kill();
-				$this->assertFalse($process->isRunning());
-			}
-		});
-	}
+    public function testStartAfterKill()
+    {
+        Loop::run(function () {
+            $process = new Process(self::CMD_PROCESS_SLOW);
+            for ($i=0; $i<=1; $i++) {
+                $process->start();
+                $this->assertTrue($process->isRunning());
+                $process->kill();
+                $this->assertFalse($process->isRunning());
+            }
+        });
+    }
 
-	public function testRestart()
-	{
-		Loop::run(function () {
-			$process = new Process(self::CMD_PROCESS_SLOW);
-			$process->start();
-			for($i=0; $i<=1; $i++) {
-				$this->assertTrue($process->isRunning());
-				$process->restart();
-			}
-		});
-	}
+    public function testRestart()
+    {
+        Loop::run(function () {
+            $process = new Process(self::CMD_PROCESS_SLOW);
+            $process->start();
+            for ($i=0; $i<=1; $i++) {
+                $this->assertTrue($process->isRunning());
+                $process->restart();
+            }
+        });
+    }
 
-	public function testForceRestart()
-	{
-		Loop::run(function () {
-			$process = new Process(self::CMD_PROCESS_SLOW);
-			$process->start();
-			for($i=0; $i<=1; $i++) {
-				$this->assertTrue($process->isRunning());
-				$process->restart(true);
-			}
-		});
-	}
+    public function testForceRestart()
+    {
+        Loop::run(function () {
+            $process = new Process(self::CMD_PROCESS_SLOW);
+            $process->start();
+            for ($i=0; $i<=1; $i++) {
+                $this->assertTrue($process->isRunning());
+                $process->restart(true);
+            }
+        });
+    }
 }
