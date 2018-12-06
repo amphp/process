@@ -198,9 +198,10 @@ class ProcessTest extends TestCase
     }
 
     /**
-     * @expectedException \Amp\Process\ProcessException
-     * @expectedExceptionMessage The process was killed
-     */
+     * @expectedException \Amp\Process\StatusError
+     * @expectedExceptionMessage Process has not been started.
+
+	 */
     public function testKillImmediately()
     {
         Loop::run(function () {
@@ -212,8 +213,8 @@ class ProcessTest extends TestCase
     }
 
     /**
-     * @expectedException \Amp\Process\ProcessException
-     * @expectedExceptionMessage The process was killed
+     * @expectedException \Amp\Process\StatusError
+     * @expectedExceptionMessage Process has not been started or has not completed starting.
      */
     public function testKillThenReadStdout()
     {
@@ -382,4 +383,54 @@ class ProcessTest extends TestCase
             $this->assertSame(ProcessStatus::RUNNING, $debug['status']);
         });
     }
+
+    public function testStartAfterJoin()
+	{
+		Loop::run(function () {
+			$process = new Process(self::CMD_PROCESS_SLOW);
+			for($i=0; $i<=1; $i++) {
+				$process->start();
+				$this->assertTrue($process->isRunning());
+				yield $process->join();
+				$this->assertFalse($process->isRunning());
+			}
+		});
+	}
+
+	public function testStartAfterKill()
+	{
+		Loop::run(function () {
+			$process = new Process(self::CMD_PROCESS_SLOW);
+			for($i=0; $i<=1; $i++) {
+				$process->start();
+				$this->assertTrue($process->isRunning());
+				$process->kill();
+				$this->assertFalse($process->isRunning());
+			}
+		});
+	}
+
+	public function testRestart()
+	{
+		Loop::run(function () {
+			$process = new Process(self::CMD_PROCESS_SLOW);
+			$process->start();
+			for($i=0; $i<=1; $i++) {
+				$this->assertTrue($process->isRunning());
+				$process->restart();
+			}
+		});
+	}
+
+	public function testForceRestart()
+	{
+		Loop::run(function () {
+			$process = new Process(self::CMD_PROCESS_SLOW);
+			$process->start();
+			for($i=0; $i<=1; $i++) {
+				$this->assertTrue($process->isRunning());
+				$process->restart(true);
+			}
+		});
+	}
 }
