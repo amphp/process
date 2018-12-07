@@ -123,11 +123,7 @@ final class Process
             throw new StatusError("Process has not been started.");
         }
 
-        return call(function () {
-            $result = yield $this->processRunner->join($this->handle);
-            $this->handle = null;
-            return $result;
-        });
+        return $this->processRunner->join($this->handle);
     }
 
     /**
@@ -143,7 +139,6 @@ final class Process
         }
 
         $this->processRunner->kill($this->handle);
-        $this->handle = null;
     }
 
     /**
@@ -290,9 +285,9 @@ final class Process
     /**
      * Restart the process.
      * @param bool $force Whether to kill process or wait finish
-     * @return Promise
+     * @return Promise<Process> new process instance
      */
-    public function restart($force = true): Promise
+    public function restart($force = false): Promise
     {
         return call(function () use ($force) {
             if ($force) {
@@ -300,7 +295,9 @@ final class Process
             } else {
                 yield $this->join();
             }
-            return $this->start();
+            $instance = new static($this->command, $this->cwd, $this->env, $this->options);
+            yield $instance->start();
+            return $instance;
         });
     }
 }
