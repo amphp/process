@@ -157,6 +157,10 @@ final class Runner implements ProcessRunner
             throw new ProcessException("Terminating process failed");
         }
         $handle->pidDeferred->promise()->onResolve(function ($error, $pid) {
+            // The function should not call posix_kill() if $pid is null (i.e., there was an error starting the process).
+            if ($error) {
+                return;
+            }
             // ignore errors because process not always detached
             \posix_kill($pid, 9);
         });

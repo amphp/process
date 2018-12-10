@@ -24,8 +24,8 @@ class ProcessTest extends TestCase
     {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
-            $process->start();
-            $process->start();
+            yield $process->start();
+            yield $process->start();
         });
     }
 
