@@ -16,6 +16,7 @@ class ProcessTest extends TestCase
     const CMD_PROCESS = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c echo foo" : "echo foo";
     const CMD_PROCESS_SLOW = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c ping -n 3 127.0.0.1 > nul" : "sleep 2";
 
+
     /**
      * @expectedException \Amp\Process\StatusError
      */
@@ -23,8 +24,8 @@ class ProcessTest extends TestCase
     {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS);
-            $process->start();
-            $process->start();
+            yield $process->start();
+            yield $process->start();
         });
     }
 
@@ -357,6 +358,20 @@ class ProcessTest extends TestCase
             $this->assertSame(\str_repeat(".", $count), yield new Message($process->getStdout()));
 
             $this->assertSame(0, yield $process->join());
+        });
+    }
+
+    public function testKillPHPImmediatly()
+    {
+        Loop::run(function () {
+            $socket = \stream_socket_server("tcp://0.0.0.0:10000", $errno, $errstr);
+            $this->assertNotFalse($socket);
+            $process = new Process(["php", __DIR__ . "/bin/socket-worker.php"]);
+            yield $process->start();
+            $conn = \stream_socket_accept($socket);
+            $this->assertSame('start', \fread($conn, 5));
+            $process->kill();
+            $this->assertEmpty(\fread($conn, 3));
         });
     }
 
