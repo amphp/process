@@ -23,7 +23,6 @@ final class Runner implements ProcessRunner
         ["pipe", "w"], // stderr
         ["pipe", "w"], // exit code pipe
     ];
-    const FD_COUNT = 4;
 
     /** @var string|null */
     private static $fdPath;
@@ -137,20 +136,22 @@ final class Runner implements ProcessRunner
             self::$fdPath = \file_exists("/dev/fd") ? "/dev/fd" : "/proc/self/fd";
         }
 
-        $fds = @\scandir(self::$fdPath, \SCANDIR_SORT_NONE);
+        $fdList = @\scandir(self::$fdPath, \SCANDIR_SORT_NONE);
 
-        if ($fds === false) {
+        if ($fdList === false) {
             throw new ProcessException("Unable to list open file descriptors");
         }
 
-        $fds = \array_filter($fds, function (string $path): bool {
+        $fdList = \array_filter($fdList, function (string $path): bool {
             return $path !== "." && $path !== "..";
         });
 
-        return \array_merge(
-            self::FD_SPEC,
-            \array_fill(self::FD_COUNT, \count($fds) - self::FD_COUNT, ["file", "/dev/null", "r"])
-        );
+        $fds = [];
+        foreach ($fdList as $id) {
+            $fds[(int) $id] = ["file", "/dev/null", "r"];
+        }
+
+        return self::FD_SPEC + $fds;
     }
 
     /** @inheritdoc */
