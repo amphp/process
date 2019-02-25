@@ -46,7 +46,7 @@ final class Process
     public function __construct($command, string $cwd = null, array $env = [], array $options = [])
     {
         $command = \is_array($command)
-            ? \implode(" ", \array_map("escapeshellarg", $command))
+            ? \implode(" ", \array_map(__NAMESPACE__ . "\\escape_arg", $command))
             : (string) $command;
 
         $cwd = $cwd ?? "";
@@ -68,7 +68,7 @@ final class Process
         $this->processRunner = Loop::getState(self::class);
 
         if ($this->processRunner === null) {
-            $this->processRunner = \strncasecmp(\PHP_OS, "WIN", 3) === 0
+            $this->processRunner = IS_WINDOWS
                 ? new WindowsProcessRunner
                 : new PosixProcessRunner;
 
