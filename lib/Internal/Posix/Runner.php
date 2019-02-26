@@ -79,7 +79,7 @@ final class Runner implements ProcessRunner
     public function start(string $command, string $cwd = null, array $env = [], array $options = []): ProcessHandle
     {
         $command = \sprintf(
-            '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0;' .
+            '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0; trap "" INT TERM QUIT HUP;' .
             'pid=$!; echo $pid >&3; wait $pid; RC=$?; echo $RC >&3; exit $RC',
             $command
         );
