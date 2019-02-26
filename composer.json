@@ -31,7 +31,7 @@
         "psr-4": {
             "Amp\\Process\\": "lib"
         },
-        "files": ["lib/constants.php"]
+        "files": ["lib/functions.php"]
     },
     "autoload-dev": {
         "psr-4": {

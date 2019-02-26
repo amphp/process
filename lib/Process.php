@@ -46,7 +46,7 @@ final class Process
     public function __construct($command, string $cwd = null, array $env = [], array $options = [])
     {
         $command = \is_array($command)
-            ? \implode(" ", \array_map(__NAMESPACE__ . "\\escape_arg", $command))
+            ? \implode(" ", \array_map(__NAMESPACE__ . "\\escapeArguments", $command))
             : (string) $command;
 
         $cwd = $cwd ?? "";
