@@ -1,6 +1,6 @@
 <?php
 
-require dirname(__DIR__, 2) . '/vendor/autoload.php';
+require \dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 Amp\Loop::run(function () {
     Amp\Loop::unreference(Amp\Loop::onSignal(\SIGTERM, function () {
