@@ -375,6 +375,17 @@ class ProcessTest extends TestCase
         });
     }
 
+    public function testSignal()
+    {
+        Loop::run(function () {
+            $process = new Process(["php", __DIR__ . "/bin/signal-process.php"]);
+            yield $process->start();
+            yield new Delayed(100); // Give process time to set up single handler.
+            $process->signal(\SIGTERM);
+            $this->assertSame(42, yield $process->join());
+        });
+    }
+
     public function testDebugInfo()
     {
         Loop::run(function () {

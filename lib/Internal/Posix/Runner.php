@@ -204,10 +204,13 @@ final class Runner implements ProcessRunner
     /** @inheritdoc */
     public function signal(ProcessHandle $handle, int $signo)
     {
-        /** @var Handle $handle */
-        if (!\proc_terminate($handle->proc, $signo)) {
-            throw new ProcessException("Sending signal to process failed");
-        }
+        $handle->pidDeferred->promise()->onResolve(function ($error, $pid) use ($signo) {
+            if ($error) {
+                return;
+            }
+
+            @\posix_kill($pid, $signo);
+        });
     }
 
     /** @inheritdoc */
