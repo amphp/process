@@ -41,7 +41,7 @@ final class Runner implements ProcessRunner
         // We can't execute the exe from within the PHAR, so copy it out...
         if (\strncmp($wrapperPath, "phar://", 7) === 0) {
             if (self::$pharWrapperPath === null) {
-                self::$pharWrapperPath = \tempnam(\sys_get_temp_dir(), "amphp-process-wrapper-");
+                self::$pharWrapperPath = \sys_get_temp_dir() . "amphp-process-wrapper-" . \hash('sha1', \file_get_contents(self::WRAPPER_EXE_PATH));
                 \copy(self::WRAPPER_EXE_PATH, self::$pharWrapperPath);
 
                 \register_shutdown_function(static function () {
