@@ -2,8 +2,12 @@
 
 namespace Amp\Process;
 
-const BIN_DIR = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'bin';
-const IS_WINDOWS = (PHP_OS & "\xDF\xDF\xDF") === 'WIN';
+if (!defined('BIN_DIR')) {
+    define('BIN_DIR', __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'bin');
+}
+if (!defined('IS_WINDOWS')) {
+    define('IS_WINDOWS', (PHP_OS & "\xDF\xDF\xDF") === 'WIN');
+}
 
 if (IS_WINDOWS) {
     /**
