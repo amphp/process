@@ -10,6 +10,7 @@ use Amp\Process\Process;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
 use PHPUnit\Framework\TestCase;
+use const Amp\Process\IS_WINDOWS;
 
 class ProcessTest extends TestCase
 {
@@ -375,6 +376,9 @@ class ProcessTest extends TestCase
         });
     }
 
+    /**
+     * @requires extension pcntl
+     */
     public function testSignal()
     {
         Loop::run(function () {
@@ -392,7 +396,9 @@ class ProcessTest extends TestCase
             $process = new Process(["php", __DIR__ . "/bin/worker.php"], __DIR__);
 
             $this->assertSame([
-                'command' => "'php' '" . __DIR__ . "/bin/worker.php'",
+                'command' => IS_WINDOWS
+                    ? "\"php\" \"" . __DIR__ . "/bin/worker.php\""
+                    : "'php' '" . __DIR__ . "/bin/worker.php'",
                 'cwd' => __DIR__,
                 'env' => [],
                 'options' => [],
