@@ -7,22 +7,20 @@ use Amp\ByteStream\OutputStream;
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\ByteStream\StreamException;
 use Amp\Deferred;
-use Amp\Failure;
 use Amp\Promise;
+use function Amp\await;
 
 final class ProcessOutputStream implements OutputStream
 {
     /** @var \SplQueue */
-    private $queuedWrites;
+    private \SplQueue $queuedWrites;
 
     /** @var bool */
-    private $shouldClose = false;
+    private bool $shouldClose = false;
 
-    /** @var ResourceOutputStream */
-    private $resourceStream;
+    private ResourceOutputStream $resourceStream;
 
-    /** @var StreamException|null */
-    private $error;
+    private ?\Throwable $error = null;
 
     public function __construct(Promise $resourceStreamPromise)
     {
@@ -57,14 +55,14 @@ final class ProcessOutputStream implements OutputStream
     }
 
     /** @inheritdoc */
-    public function write(string $data): Promise
+    public function write(string $data): void
     {
-        if ($this->resourceStream) {
-            return $this->resourceStream->write($data);
+        if (isset($this->resourceStream)) {
+            $this->resourceStream->write($data);
         }
 
         if ($this->error) {
-            return new Failure($this->error);
+            throw $this->error;
         }
 
         if ($this->shouldClose) {
@@ -74,18 +72,18 @@ final class ProcessOutputStream implements OutputStream
         $deferred = new Deferred;
         $this->queuedWrites->push([$data, $deferred]);
 
-        return $deferred->promise();
+        await($deferred->promise());
     }
 
     /** @inheritdoc */
-    public function end(string $finalData = ""): Promise
+    public function end(string $finalData = ""): void
     {
-        if ($this->resourceStream) {
-            return $this->resourceStream->end($finalData);
+        if (isset($this->resourceStream)) {
+            $this->resourceStream->end($finalData);
         }
 
         if ($this->error) {
-            return new Failure($this->error);
+            throw $this->error;
         }
 
         if ($this->shouldClose) {
@@ -97,14 +95,14 @@ final class ProcessOutputStream implements OutputStream
 
         $this->shouldClose = true;
 
-        return $deferred->promise();
+        await($deferred->promise());
     }
 
-    public function close()
+    public function close(): void
     {
         $this->shouldClose = true;
 
-        if ($this->resourceStream) {
+        if (isset($this->resourceStream)) {
             $this->resourceStream->close();
         } elseif (!$this->queuedWrites->isEmpty()) {
             $error = new ClosedException("Stream closed.");

@@ -8,31 +8,23 @@ use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Internal\Windows\Runner as WindowsProcessRunner;
-use Amp\Promise;
-use function Amp\call;
+use function Amp\await;
 
 final class Process
 {
-    /** @var ProcessRunner */
-    private $processRunner;
+    private ?ProcessRunner $processRunner = null;
 
-    /** @var string */
-    private $command;
+    private string $command;
 
-    /** @var string */
-    private $cwd = "";
+    private string $cwd = "";
 
-    /** @var array */
-    private $env = [];
+    private array $env = [];
 
-    /** @var array */
-    private $options;
+    private array $options;
 
-    /** @var ProcessHandle */
-    private $handle;
+    private ?ProcessHandle $handle = null;
 
-    /** @var int|null */
-    private $pid;
+    private ?int $pid = null;
 
     /**
      * @param   string|string[] $command Command to run.
@@ -43,7 +35,7 @@ final class Process
      *
      * @throws \Error If the arguments are invalid.
      */
-    public function __construct($command, string $cwd = null, array $env = [], array $options = [])
+    public function __construct(string|array $command, string $cwd = null, array $env = [], array $options = [])
     {
         $command = \is_array($command)
             ? \implode(" ", \array_map(__NAMESPACE__ . "\\escapeArguments", $command))
@@ -94,36 +86,34 @@ final class Process
     /**
      * Start the process.
      *
-     * @return Promise<int> Resolves with the PID.
+     * @return int The PID.
      *
      * @throws StatusError If the process has already been started.
      */
-    public function start(): Promise
+    public function start(): int
     {
         if ($this->handle) {
             throw new StatusError("Process has already been started.");
         }
 
-        return call(function () {
-            $this->handle = $this->processRunner->start($this->command, $this->cwd, $this->env, $this->options);
-            return $this->pid = yield $this->handle->pidDeferred->promise();
-        });
+        $this->handle = $this->processRunner->start($this->command, $this->cwd, $this->env, $this->options);
+        return $this->pid = await($this->handle->pidDeferred->promise());
     }
 
     /**
      * Wait for the process to end.
      *
-     * @return Promise <int> Succeeds with process exit code or fails with a ProcessException if the process is killed.
+     * @return int The process exit code or throws a ProcessException if the process is killed.
      *
      * @throws StatusError If the process has already been started.
      */
-    public function join(): Promise
+    public function join(): int
     {
         if (!$this->handle) {
             throw new StatusError("Process has not been started.");
         }
 
-        return $this->processRunner->join($this->handle);
+        return await($this->processRunner->join($this->handle));
     }
 
     /**
@@ -132,7 +122,7 @@ final class Process
      * @throws StatusError If the process is not running.
      * @throws ProcessException If terminating the process fails.
      */
-    public function kill()
+    public function kill(): void
     {
         if (!$this->isRunning()) {
             throw new StatusError("Process is not running.");
@@ -149,7 +139,7 @@ final class Process
      * @throws StatusError If the process is not running.
      * @throws ProcessException If sending the signal fails.
      */
-    public function signal(int $signo)
+    public function signal(int $signo): void
     {
         if (!$this->isRunning()) {
             throw new StatusError("Process is not running.");

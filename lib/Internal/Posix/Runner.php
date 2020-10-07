@@ -13,6 +13,9 @@ use Amp\Process\ProcessException;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
 use Amp\Promise;
+use function Amp\async;
+use function Amp\await;
+use function Amp\defer;
 
 /** @internal */
 final class Runner implements ProcessRunner
@@ -25,9 +28,9 @@ final class Runner implements ProcessRunner
     ];
 
     /** @var string|null */
-    private static $fdPath;
+    private static ?string $fdPath = null;
 
-    public static function onProcessEndExtraDataPipeReadable($watcher, $stream, Handle $handle)
+    public static function onProcessEndExtraDataPipeReadable($watcher, $stream, Handle $handle): void
     {
         Loop::cancel($watcher);
         $handle->extraDataPipeWatcher = null;
@@ -41,7 +44,7 @@ final class Runner implements ProcessRunner
         }
     }
 
-    public static function onProcessStartExtraDataPipeReadable($watcher, $stream, $data)
+    public static function onProcessStartExtraDataPipeReadable($watcher, $stream, $data): void
     {
         Loop::cancel($watcher);
 
@@ -166,7 +169,7 @@ final class Runner implements ProcessRunner
     }
 
     /** @inheritdoc */
-    public function kill(ProcessHandle $handle)
+    public function kill(ProcessHandle $handle): void
     {
         /** @var Handle $handle */
         if ($handle->extraDataPipeWatcher !== null) {
@@ -184,14 +187,7 @@ final class Runner implements ProcessRunner
             throw new ProcessException("Terminating process failed");
         }
 
-        $handle->pidDeferred->promise()->onResolve(function ($error, $pid) {
-            // The function should not call posix_kill() if $pid is null (i.e., there was an error starting the process).
-            if ($error) {
-                return;
-            }
-            // ignore errors because process not always detached
-            @\posix_kill($pid, 9);
-        });
+        $this->signal($handle, 9);
 
         if ($handle->status < ProcessStatus::ENDED) {
             $handle->status = ProcessStatus::ENDED;
@@ -202,10 +198,12 @@ final class Runner implements ProcessRunner
     }
 
     /** @inheritdoc */
-    public function signal(ProcessHandle $handle, int $signo)
+    public function signal(ProcessHandle $handle, int $signo): void
     {
-        $handle->pidDeferred->promise()->onResolve(function ($error, $pid) use ($signo) {
-            if ($error) {
+        defer(function () use ($handle, $signo): void {
+            try {
+                $pid = await($handle->pidDeferred->promise());
+            } catch (\Throwable $exception) {
                 return;
             }
 
@@ -214,7 +212,7 @@ final class Runner implements ProcessRunner
     }
 
     /** @inheritdoc */
-    public function destroy(ProcessHandle $handle)
+    public function destroy(ProcessHandle $handle): void
     {
         /** @var Handle $handle */
         if ($handle->status < ProcessStatus::ENDED && \getmypid() === $handle->originalParentPid) {
@@ -229,7 +227,7 @@ final class Runner implements ProcessRunner
         $this->free($handle);
     }
 
-    private function free(Handle $handle)
+    private function free(Handle $handle): void
     {
         /** @var Handle $handle */
         if ($handle->extraDataPipeWatcher !== null) {

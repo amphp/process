@@ -22,16 +22,16 @@ final class SocketConnector
     private $server;
 
     /** @var PendingSocketClient[] */
-    private $pendingClients = [];
+    private array $pendingClients = [];
 
     /** @var Handle[] */
-    private $pendingProcesses = [];
+    private array $pendingProcesses = [];
 
     /** @var string */
-    public $address;
+    public string $address;
 
     /** @var int */
-    public $port;
+    public int $port;
 
     public function __construct()
     {
@@ -46,8 +46,8 @@ final class SocketConnector
             throw new \Error("Failed to set server socket to non-blocking mode");
         }
 
-        list($this->address, $this->port) = \explode(':', \stream_socket_get_name($this->server, false));
-        $this->port = (int) $this->port;
+        [$this->address, $port] = \explode(':', \stream_socket_get_name($this->server, false));
+        $this->port = (int) $port;
 
         Loop::unreference(Loop::onReadable($this->server, [$this, 'onServerSocketReadable']));
     }
@@ -170,8 +170,8 @@ final class SocketConnector
             return;
         }
 
-        $pendingClient->pid = $packet['pid'];
-        $pendingClient->streamId = $packet['stream_id'];
+        $pendingClient->pid = (int) $packet['pid'];
+        $pendingClient->streamId = (int) $packet['stream_id'];
         $pendingClient->readWatcher = Loop::onReadable($socket, [$this, 'onReadableHandshakeAck']);
     }
 

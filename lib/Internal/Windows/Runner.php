@@ -30,9 +30,9 @@ final class Runner implements ProcessRunner
         ? BIN_DIR . '\\windows\\ProcessWrapper64.exe'
         : BIN_DIR . '\\windows\\ProcessWrapper.exe';
 
-    private static $pharWrapperPath;
+    private static ?string $pharWrapperPath = null;
 
-    private $socketConnector;
+    private SocketConnector $socketConnector;
 
     private function makeCommand(string $workingDirectory): string
     {
@@ -147,7 +147,7 @@ final class Runner implements ProcessRunner
     }
 
     /** @inheritdoc */
-    public function kill(ProcessHandle $handle)
+    public function kill(ProcessHandle $handle): void
     {
         /** @var Handle $handle */
         // todo: send a signal to the wrapper to kill the child instead?
@@ -180,13 +180,13 @@ final class Runner implements ProcessRunner
     }
 
     /** @inheritdoc */
-    public function signal(ProcessHandle $handle, int $signo)
+    public function signal(ProcessHandle $handle, int $signo): void
     {
         throw new ProcessException('Signals are not supported on Windows');
     }
 
     /** @inheritdoc */
-    public function destroy(ProcessHandle $handle)
+    public function destroy(ProcessHandle $handle): void
     {
         /** @var Handle $handle */
         if ($handle->status < ProcessStatus::ENDED && \is_resource($handle->proc)) {
@@ -201,7 +201,7 @@ final class Runner implements ProcessRunner
         $this->free($handle);
     }
 
-    private function free(Handle $handle)
+    private function free(Handle $handle): void
     {
         if ($handle->childPidWatcher !== null) {
             Loop::cancel($handle->childPidWatcher);

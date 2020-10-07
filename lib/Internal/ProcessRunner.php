@@ -37,7 +37,7 @@ interface ProcessRunner
      *
      * @throws ProcessException If terminating the process fails.
      */
-    public function kill(ProcessHandle $handle);
+    public function kill(ProcessHandle $handle): void;
 
     /**
      * Send a signal signal to the child process.
@@ -47,12 +47,12 @@ interface ProcessRunner
      *
      * @throws ProcessException If sending the signal fails.
      */
-    public function signal(ProcessHandle $handle, int $signo);
+    public function signal(ProcessHandle $handle, int $signo): void;
 
     /**
      * Release all resources held by the process handle.
      *
      * @param ProcessHandle $handle The process descriptor.
      */
-    public function destroy(ProcessHandle $handle);
+    public function destroy(ProcessHandle $handle): void;
 }

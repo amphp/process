@@ -17,36 +17,29 @@ final class Handle extends ProcessHandle
         $this->pidDeferred = new Deferred;
     }
 
-    /** @var Deferred */
-    public $joinDeferred;
+    public Deferred $joinDeferred;
 
-    /** @var string */
-    public $exitCodeWatcher;
+    public ?string $exitCodeWatcher = null;
 
-    /** @var bool */
-    public $exitCodeRequested = false;
+    public bool $exitCodeRequested = false;
 
     /** @var resource */
     public $proc;
 
-    /** @var int */
-    public $wrapperPid;
+    public int $wrapperPid;
 
     /** @var resource */
     public $wrapperStderrPipe;
 
     /** @var resource[] */
-    public $sockets = [];
+    public array $sockets = [];
 
     /** @var Deferred[] */
-    public $stdioDeferreds;
+    public array $stdioDeferreds = [];
 
-    /** @var string */
-    public $childPidWatcher;
+    public ?string $childPidWatcher = null;
 
-    /** @var string */
-    public $connectTimeoutWatcher;
+    public ?string $connectTimeoutWatcher = null;
 
-    /** @var string[] */
-    public $securityTokens;
+    public array $securityTokens = [];
 }

@@ -4,9 +4,9 @@ namespace Amp\Process\Internal;
 
 final class ProcessStatus
 {
-    const STARTING = 0;
-    const RUNNING = 1;
-    const ENDED = 2;
+    public const STARTING = 0;
+    public const RUNNING = 1;
+    public const ENDED = 2;
 
     private function __construct()
     {

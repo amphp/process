@@ -8,15 +8,7 @@ use Amp\Process\Internal\ProcessHandle;
 /** @internal */
 final class Handle extends ProcessHandle
 {
-    public function __construct()
-    {
-        $this->pidDeferred = new Deferred;
-        $this->joinDeferred = new Deferred;
-        $this->originalParentPid = \getmypid();
-    }
-
-    /** @var Deferred */
-    public $joinDeferred;
+    public Deferred $joinDeferred;
 
     /** @var resource */
     public $proc;
@@ -24,12 +16,16 @@ final class Handle extends ProcessHandle
     /** @var resource */
     public $extraDataPipe;
 
-    /** @var string */
-    public $extraDataPipeWatcher;
+    public ?string $extraDataPipeWatcher = null;
 
-    /** @var string */
-    public $extraDataPipeStartWatcher;
+    public ?string $extraDataPipeStartWatcher = null;
 
-    /** @var int */
-    public $originalParentPid;
+    public int $originalParentPid;
+
+    public function __construct()
+    {
+        $this->pidDeferred = new Deferred;
+        $this->joinDeferred = new Deferred;
+        $this->originalParentPid = \getmypid();
+    }
 }

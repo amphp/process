@@ -11,18 +11,13 @@ abstract class ProcessHandle
 {
     use Struct;
 
-    /** @var ProcessOutputStream */
-    public $stdin;
+    public ProcessOutputStream $stdin;
 
-    /** @var ProcessInputStream */
-    public $stdout;
+    public ProcessInputStream $stdout;
 
-    /** @var ProcessInputStream */
-    public $stderr;
+    public ProcessInputStream $stderr;
 
-    /** @var Deferred */
-    public $pidDeferred;
+    public Deferred $pidDeferred;
 
-    /** @var int */
-    public $status = ProcessStatus::STARTING;
+    public int $status = ProcessStatus::STARTING;
 }
