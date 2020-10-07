@@ -8,7 +8,9 @@ use Amp\ByteStream\ResourceOutputStream;
 use Amp\ByteStream\StreamException;
 use Amp\Deferred;
 use Amp\Promise;
+use function Amp\async;
 use function Amp\await;
+use function Amp\defer;
 
 final class ProcessOutputStream implements OutputStream
 {
@@ -25,31 +27,32 @@ final class ProcessOutputStream implements OutputStream
     public function __construct(Promise $resourceStreamPromise)
     {
         $this->queuedWrites = new \SplQueue;
-        $resourceStreamPromise->onResolve(function ($error, $resourceStream) {
-            if ($error) {
-                $this->error = new StreamException("Failed to launch process", 0, $error);
+
+        defer(function () use ($resourceStreamPromise): void {
+            try {
+                $resourceStream = await($resourceStreamPromise);
+
+                while (!$this->queuedWrites->isEmpty()) {
+                    /**
+                     * @var string $data
+                     * @var \Amp\Deferred $deferred
+                     */
+                    list($data, $deferred) = $this->queuedWrites->shift();
+                    $deferred->resolve(async(fn() => $resourceStream->write($data)));
+                }
+
+                $this->resourceStream = $resourceStream;
+
+                if ($this->shouldClose) {
+                    $this->resourceStream->close();
+                }
+            } catch (\Throwable $exception) {
+                $this->error = new StreamException("Failed to launch process", 0, $exception);
 
                 while (!$this->queuedWrites->isEmpty()) {
                     list(, $deferred) = $this->queuedWrites->shift();
                     $deferred->fail($this->error);
                 }
-
-                return;
-            }
-
-            while (!$this->queuedWrites->isEmpty()) {
-                /**
-                 * @var string $data
-                 * @var \Amp\Deferred $deferred
-                 */
-                list($data, $deferred) = $this->queuedWrites->shift();
-                $deferred->resolve($resourceStream->write($data));
-            }
-
-            $this->resourceStream = $resourceStream;
-
-            if ($this->shouldClose) {
-                $this->resourceStream->close();
             }
         });
     }

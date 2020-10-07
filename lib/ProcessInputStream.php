@@ -10,6 +10,7 @@ use Amp\Deferred;
 use Amp\Promise;
 use Amp\Success;
 use function Amp\await;
+use function Amp\defer;
 
 final class ProcessInputStream implements InputStream
 {
@@ -25,31 +26,30 @@ final class ProcessInputStream implements InputStream
 
     public function __construct(Promise $resourceStreamPromise)
     {
-        $resourceStreamPromise->onResolve(function ($error, $resourceStream) {
-            if ($error) {
-                $this->error = new StreamException("Failed to launch process", 0, $error);
+        defer(function () use ($resourceStreamPromise): void {
+            try {
+                $this->resourceStream = await($resourceStreamPromise);
+
+                if (!$this->referenced) {
+                    $this->resourceStream->unreference();
+                }
+
+                if ($this->shouldClose) {
+                    $this->resourceStream->close();
+                }
+
+                if ($this->initialRead) {
+                    $initialRead = $this->initialRead;
+                    $this->initialRead = null;
+                    $initialRead->resolve($this->shouldClose ? null : $this->resourceStream->read());
+                }
+            } catch (\Throwable $exception) {
+                $this->error = new StreamException("Failed to launch process", 0, $exception);
                 if ($this->initialRead) {
                     $initialRead = $this->initialRead;
                     $this->initialRead = null;
                     $initialRead->fail($this->error);
                 }
-                return;
-            }
-
-            $this->resourceStream = $resourceStream;
-
-            if (!$this->referenced) {
-                $this->resourceStream->unreference();
-            }
-
-            if ($this->shouldClose) {
-                $this->resourceStream->close();
-            }
-
-            if ($this->initialRead) {
-                $initialRead = $this->initialRead;
-                $this->initialRead = null;
-                $initialRead->resolve($this->shouldClose ? null : $this->resourceStream->read());
             }
         });
     }
