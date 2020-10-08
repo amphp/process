@@ -13,9 +13,6 @@ use Amp\Process\ProcessException;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
 use Amp\Promise;
-use function Amp\async;
-use function Amp\await;
-use function Amp\defer;
 
 /** @internal */
 final class Runner implements ProcessRunner
@@ -200,10 +197,8 @@ final class Runner implements ProcessRunner
     /** @inheritdoc */
     public function signal(ProcessHandle $handle, int $signo): void
     {
-        defer(function () use ($handle, $signo): void {
-            try {
-                $pid = await($handle->pidDeferred->promise());
-            } catch (\Throwable $exception) {
+        $handle->pidDeferred->promise()->onResolve(function (?\Throwable $exception, int $pid) use ($signo): void {
+            if ($exception) {
                 return;
             }
 
