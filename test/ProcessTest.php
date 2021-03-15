@@ -362,7 +362,7 @@ class ProcessTest extends TestCase
         });
     }
 
-    public function testKillPHPImmediatly()
+    public function testKillPHPImmediately()
     {
         Loop::run(function () {
             $socket = \stream_socket_server("tcp://0.0.0.0:10000", $errno, $errstr);
@@ -371,6 +371,12 @@ class ProcessTest extends TestCase
             yield $process->start();
             $conn = \stream_socket_accept($socket);
             $this->assertSame('start', \fread($conn, 5));
+            $process->getStderr()->read()->onResolve(function() {
+                var_dump(func_get_args());
+            });
+            $process->getStdout()->read()->onResolve(function() {
+                var_dump(func_get_args());
+            });
             $process->kill();
             $this->assertSame('', \fread($conn, 3));
         });
