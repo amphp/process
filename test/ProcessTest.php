@@ -369,7 +369,10 @@ class ProcessTest extends TestCase
             $socket = \stream_socket_server("tcp://0.0.0.0:10000", $errno, $errstr);
             $this->assertNotFalse($socket);
             $process = new Process(["php", __DIR__ . "/bin/socket-worker.php"]);
+            $start = microtime(true);
             yield $process->start();
+            $end = microtime(true) - $start;
+            var_dump($end);
             $conn = \stream_socket_accept($socket);
             $this->assertSame('start', \fread($conn, 5));
             $process->kill();
