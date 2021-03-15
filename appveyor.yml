@@ -21,7 +21,7 @@ install:
   - IF %PHP%==1 sc config wuauserv start= auto
   - IF %PHP%==1 net start wuauserv
   - IF %PHP%==1 cinst -y OpenSSL.Light
-  - IF %PHP%==1 cinst -y php
+  - IF %PHP%==1 cinst -y php -version 7.4.16
   - cd c:\tools\php74
   - IF %PHP%==1 copy php.ini-production php.ini /Y
   - IF %PHP%==1 echo date.timezone="UTC" >> php.ini
