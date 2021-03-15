@@ -371,12 +371,11 @@ class ProcessTest extends TestCase
             $process = new Process(["php", __DIR__ . "/bin/socket-worker.php"]);
             $start = microtime(true);
             yield $process->start();
-            $end = microtime(true) - $start;
-            var_dump($end);
             $conn = \stream_socket_accept($socket);
             $this->assertSame('start', \fread($conn, 5));
             $process->kill();
-
+            $end = microtime(true) - $start;
+            var_dump($end);
             var_dump(yield ByteStream\buffer($process->getStdout()));
             var_dump(yield ByteStream\buffer($process->getStderr()));
 
