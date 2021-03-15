@@ -5,6 +5,7 @@ namespace Amp\Process\Test;
 use Amp\ByteStream\Message;
 use Amp\Delayed;
 use Amp\Loop;
+use Amp\ByteStream;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Process;
 use Amp\Process\ProcessInputStream;
@@ -371,12 +372,10 @@ class ProcessTest extends TestCase
             yield $process->start();
             $conn = \stream_socket_accept($socket);
             $this->assertSame('start', \fread($conn, 5));
-            $process->getStderr()->read()->onResolve(function() {
-                var_dump(func_get_args());
-            });
-            $process->getStdout()->read()->onResolve(function() {
-                var_dump(func_get_args());
-            });
+
+            var_dump(yield ByteStream\buffer($process->getStdout()));
+            var_dump(yield ByteStream\buffer($process->getStderr()));
+
             $process->kill();
             $this->assertSame('', \fread($conn, 3));
         });
