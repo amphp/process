@@ -372,11 +372,11 @@ class ProcessTest extends TestCase
             yield $process->start();
             $conn = \stream_socket_accept($socket);
             $this->assertSame('start', \fread($conn, 5));
+            $process->kill();
 
             var_dump(yield ByteStream\buffer($process->getStdout()));
             var_dump(yield ByteStream\buffer($process->getStderr()));
 
-            $process->kill();
             $this->assertSame('', \fread($conn, 3));
         });
     }
