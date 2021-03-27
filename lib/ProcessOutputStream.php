@@ -10,7 +10,7 @@ use Amp\Deferred;
 use Amp\Promise;
 use function Amp\async;
 use function Amp\await;
-use function Amp\defer;
+use function Revolt\EventLoop\defer;
 
 final class ProcessOutputStream implements OutputStream
 {
@@ -34,11 +34,11 @@ final class ProcessOutputStream implements OutputStream
 
                 while (!$this->queuedWrites->isEmpty()) {
                     /**
-                     * @var string $data
+                     * @var string        $data
                      * @var \Amp\Deferred $deferred
                      */
-                    list($data, $deferred) = $this->queuedWrites->shift();
-                    $deferred->resolve(async(fn() => $resourceStream->write($data)));
+                    [$data, $deferred] = $this->queuedWrites->shift();
+                    $deferred->resolve(async(fn () => $resourceStream->write($data)));
                 }
 
                 $this->resourceStream = $resourceStream;
@@ -50,7 +50,7 @@ final class ProcessOutputStream implements OutputStream
                 $this->error = new StreamException("Failed to launch process", 0, $exception);
 
                 while (!$this->queuedWrites->isEmpty()) {
-                    list(, $deferred) = $this->queuedWrites->shift();
+                    [, $deferred] = $this->queuedWrites->shift();
                     $deferred->fail($this->error);
                 }
             }
@@ -110,7 +110,7 @@ final class ProcessOutputStream implements OutputStream
         } elseif (!$this->queuedWrites->isEmpty()) {
             $error = new ClosedException("Stream closed.");
             do {
-                list(, $deferred) = $this->queuedWrites->shift();
+                [, $deferred] = $this->queuedWrites->shift();
                 $deferred->fail($error);
             } while (!$this->queuedWrites->isEmpty());
         }

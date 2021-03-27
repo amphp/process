@@ -3,7 +3,6 @@
 namespace Amp\Process\Internal\Windows;
 
 use Amp\Deferred;
-use Amp\Loop;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
@@ -11,6 +10,7 @@ use Amp\Process\ProcessException;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
 use Amp\Promise;
+use Revolt\EventLoop\Loop;
 use const Amp\Process\BIN_DIR;
 
 /**
@@ -34,39 +34,6 @@ final class Runner implements ProcessRunner
 
     private SocketConnector $socketConnector;
 
-    private function makeCommand(string $workingDirectory): string
-    {
-        $wrapperPath = self::WRAPPER_EXE_PATH;
-
-        // We can't execute the exe from within the PHAR, so copy it out...
-        if (\strncmp($wrapperPath, "phar://", 7) === 0) {
-            if (self::$pharWrapperPath === null) {
-                self::$pharWrapperPath = \sys_get_temp_dir() . "amphp-process-wrapper-" . \hash('sha1', \file_get_contents(self::WRAPPER_EXE_PATH));
-                \copy(self::WRAPPER_EXE_PATH, self::$pharWrapperPath);
-
-                \register_shutdown_function(static function () {
-                    @\unlink(self::$pharWrapperPath);
-                });
-            }
-
-            $wrapperPath = self::$pharWrapperPath;
-        }
-
-        $result = \sprintf(
-            '%s --address=%s --port=%d --token-size=%d',
-            \escapeshellarg($wrapperPath),
-            $this->socketConnector->address,
-            $this->socketConnector->port,
-            SocketConnector::SECURITY_TOKEN_SIZE
-        );
-
-        if ($workingDirectory !== '') {
-            $result .= ' ' . \escapeshellarg('--cwd=' . \rtrim($workingDirectory, '\\'));
-        }
-
-        return $result;
-    }
-
     public function __construct()
     {
         $this->socketConnector = new SocketConnector;
@@ -82,7 +49,14 @@ final class Runner implements ProcessRunner
         $options['bypass_shell'] = true;
 
         $handle = new Handle;
-        $handle->proc = @\proc_open($this->makeCommand($cwd ?? ''), self::FD_SPEC, $pipes, $cwd ?: null, $env ?: null, $options);
+        $handle->proc = @\proc_open(
+            $this->makeCommand($cwd ?? ''),
+            self::FD_SPEC,
+            $pipes,
+            $cwd ?: null,
+            $env ?: null,
+            $options
+        );
 
         if (!\is_resource($handle->proc)) {
             $message = "Could not start process";
@@ -199,6 +173,42 @@ final class Runner implements ProcessRunner
         }
 
         $this->free($handle);
+    }
+
+    private function makeCommand(string $workingDirectory): string
+    {
+        $wrapperPath = self::WRAPPER_EXE_PATH;
+
+        // We can't execute the exe from within the PHAR, so copy it out...
+        if (\strncmp($wrapperPath, "phar://", 7) === 0) {
+            if (self::$pharWrapperPath === null) {
+                self::$pharWrapperPath = \sys_get_temp_dir() . "amphp-process-wrapper-" . \hash(
+                    'sha1',
+                    \file_get_contents(self::WRAPPER_EXE_PATH)
+                );
+                \copy(self::WRAPPER_EXE_PATH, self::$pharWrapperPath);
+
+                \register_shutdown_function(static function () {
+                    @\unlink(self::$pharWrapperPath);
+                });
+            }
+
+            $wrapperPath = self::$pharWrapperPath;
+        }
+
+        $result = \sprintf(
+            '%s --address=%s --port=%d --token-size=%d',
+            \escapeshellarg($wrapperPath),
+            $this->socketConnector->address,
+            $this->socketConnector->port,
+            SocketConnector::SECURITY_TOKEN_SIZE
+        );
+
+        if ($workingDirectory !== '') {
+            $result .= ' ' . \escapeshellarg('--cwd=' . \rtrim($workingDirectory, '\\'));
+        }
+
+        return $result;
     }
 
     private function free(Handle $handle): void

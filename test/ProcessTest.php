@@ -9,11 +9,11 @@ use Amp\Process\ProcessException;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
 use Amp\Process\StatusError;
+use const Amp\Process\IS_WINDOWS;
 use function Amp\async;
 use function Amp\await;
 use function Amp\ByteStream\buffer;
-use function Amp\delay;
-use const Amp\Process\IS_WINDOWS;
+use function Revolt\EventLoop\delay;
 
 class ProcessTest extends AsyncTestCase
 {
@@ -33,13 +33,13 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
         $process->start();
-        $promise = async(fn() => $process->join());
+        $promise = async(fn () => $process->join());
 
-        $this->assertTrue($process->isRunning());
+        self::assertTrue($process->isRunning());
 
         await($promise);
 
-        $this->assertFalse($process->isRunning());
+        self::assertFalse($process->isRunning());
     }
 
     public function testExecuteResolvesToExitCode()
@@ -49,52 +49,52 @@ class ProcessTest extends AsyncTestCase
 
         $code = $process->join();
 
-        $this->assertSame(42, $code);
-        $this->assertFalse($process->isRunning());
+        self::assertSame(42, $code);
+        self::assertFalse($process->isRunning());
     }
 
     public function testCommandCanRun()
     {
         $process = new Process(self::CMD_PROCESS);
-        $this->assertIsInt($process->start());
-        $this->assertSame(0, $process->join());
+        self::assertIsInt($process->start());
+        self::assertSame(0, $process->join());
     }
 
     public function testProcessCanTerminate()
     {
         if (\DIRECTORY_SEPARATOR === "\\") {
-            $this->markTestSkipped("Signals are not supported on Windows");
+            self::markTestSkipped("Signals are not supported on Windows");
         }
 
         $process = new Process(self::CMD_PROCESS_SLOW);
         $process->start();
         $process->signal(0);
-        $this->assertSame(0, $process->join());
+        self::assertSame(0, $process->join());
     }
 
     public function testGetWorkingDirectoryIsDefault()
     {
         $process = new Process(self::CMD_PROCESS);
-        $this->assertSame(\getcwd(), $process->getWorkingDirectory());
+        self::assertSame(\getcwd(), $process->getWorkingDirectory());
     }
 
     public function testGetWorkingDirectoryIsCustomized()
     {
         $process = new Process(self::CMD_PROCESS, __DIR__);
-        $this->assertSame(__DIR__, $process->getWorkingDirectory());
+        self::assertSame(__DIR__, $process->getWorkingDirectory());
     }
 
     public function testGetEnv()
     {
         $process = new Process(self::CMD_PROCESS);
-        $this->assertSame([], $process->getEnv());
+        self::assertSame([], $process->getEnv());
     }
 
     public function testGetStdin()
     {
         $process = new Process(self::CMD_PROCESS);
         $process->start();
-        $this->assertInstanceOf(ProcessOutputStream::class, $process->getStdin());
+        self::assertInstanceOf(ProcessOutputStream::class, $process->getStdin());
         $process->join();
     }
 
@@ -102,7 +102,7 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(self::CMD_PROCESS);
         $process->start();
-        $this->assertInstanceOf(ProcessInputStream::class, $process->getStdout());
+        self::assertInstanceOf(ProcessInputStream::class, $process->getStdout());
         $process->join();
     }
 
@@ -110,7 +110,7 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(self::CMD_PROCESS);
         $process->start();
-        $this->assertInstanceOf(ProcessInputStream::class, $process->getStderr());
+        self::assertInstanceOf(ProcessInputStream::class, $process->getStderr());
         $process->join();
     }
 
@@ -122,7 +122,7 @@ class ProcessTest extends AsyncTestCase
             'SystemRoot' => \getenv('SystemRoot') ?: '', // required on Windows for process wrapper
         ]);
         $process->start();
-        $this->assertSame('foobar', $process->getEnv()['test']);
+        self::assertSame('foobar', $process->getEnv()['test']);
         $process->join();
     }
 
@@ -131,7 +131,7 @@ class ProcessTest extends AsyncTestCase
         $this->expectException(\Error::class);
 
         $process = new Process(self::CMD_PROCESS, null, [
-            ['error_value']
+            ['error_value'],
         ]);
     }
 
@@ -193,7 +193,7 @@ class ProcessTest extends AsyncTestCase
 
         $process->kill();
 
-        $this->assertNull($process->getStdout()->read());
+        self::assertNull($process->getStdout()->read());
 
         $process->join();
     }
@@ -250,13 +250,13 @@ class ProcessTest extends AsyncTestCase
     public function testCommand()
     {
         $process = new Process([self::CMD_PROCESS]);
-        $this->assertSame(\implode(" ", \array_map("escapeshellarg", [self::CMD_PROCESS])), $process->getCommand());
+        self::assertSame(\implode(" ", \array_map("escapeshellarg", [self::CMD_PROCESS])), $process->getCommand());
     }
 
     public function testOptions()
     {
         $process = new Process(self::CMD_PROCESS);
-        $this->assertSame([], $process->getOptions());
+        self::assertSame([], $process->getOptions());
     }
 
     public function getProcessCounts(): array
@@ -282,10 +282,10 @@ class ProcessTest extends AsyncTestCase
         $promises = [];
         foreach ($processes as $process) {
             $process->start();
-            $promises[] = async(fn() => $process->join());
+            $promises[] = async(fn () => $process->join());
         }
 
-        $this->assertSame(\range(0, $count - 1), await($promises));
+        self::assertSame(\range(0, $count - 1), await($promises));
     }
 
     public function testReadOutputAfterExit()
@@ -294,9 +294,9 @@ class ProcessTest extends AsyncTestCase
         $process->start();
 
         $process->getStdin()->write("exit 2");
-        $this->assertSame("..", $process->getStdout()->read());
+        self::assertSame("..", $process->getStdout()->read());
 
-        $this->assertSame(0, $process->join());
+        self::assertSame(0, $process->join());
     }
 
     public function testReadOutputAfterExitWithLongOutput()
@@ -306,22 +306,22 @@ class ProcessTest extends AsyncTestCase
 
         $count = 128 * 1024 + 1;
         $process->getStdin()->write("exit " . $count);
-        $this->assertSame(\str_repeat(".", $count), buffer($process->getStdout()));
+        self::assertSame(\str_repeat(".", $count), buffer($process->getStdout()));
 
-        $this->assertSame(0, $process->join());
+        self::assertSame(0, $process->join());
     }
 
     public function testKillPHPImmediately()
     {
         $socket = \stream_socket_server("tcp://0.0.0.0:10000", $errno, $errstr);
-        $this->assertNotFalse($socket);
+        self::assertNotFalse($socket);
         $process = new Process(["php", __DIR__ . "/bin/socket-worker.php"]);
         $process->start();
         $conn = \stream_socket_accept($socket);
-        $this->assertSame('start', \fread($conn, 5));
+        self::assertSame('start', \fread($conn, 5));
         $process->kill();
         delay(0); // Tick event loop to send signal
-        $this->assertEmpty(\fread($conn, 3));
+        self::assertEmpty(\fread($conn, 3));
     }
 
     /**
@@ -333,14 +333,14 @@ class ProcessTest extends AsyncTestCase
         $process->start();
         delay(100); // Give process time to set up single handler.
         $process->signal(\SIGTERM);
-        $this->assertSame(42, $process->join());
+        self::assertSame(42, $process->join());
     }
 
     public function testDebugInfo()
     {
         $process = new Process(["php", __DIR__ . "/bin/worker.php"], __DIR__);
 
-        $this->assertSame([
+        self::assertSame([
             'command' => IS_WINDOWS
                 ? "\"php\" \"" . __DIR__ . "/bin/worker.php\""
                 : "'php' '" . __DIR__ . "/bin/worker.php'",
@@ -355,7 +355,7 @@ class ProcessTest extends AsyncTestCase
 
         $debug = $process->__debugInfo();
 
-        $this->assertIsInt($debug['pid']);
-        $this->assertSame(ProcessStatus::RUNNING, $debug['status']);
+        self::assertIsInt($debug['pid']);
+        self::assertSame(ProcessStatus::RUNNING, $debug['status']);
     }
 }

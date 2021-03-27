@@ -10,7 +10,7 @@ use Amp\Deferred;
 use Amp\Promise;
 use Amp\Success;
 use function Amp\await;
-use function Amp\defer;
+use function Revolt\EventLoop\defer;
 
 final class ProcessInputStream implements InputStream
 {

@@ -5,7 +5,6 @@ namespace Amp\Process\Internal\Posix;
 use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Deferred;
-use Amp\Loop;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
@@ -13,6 +12,7 @@ use Amp\Process\ProcessException;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
 use Amp\Promise;
+use Revolt\EventLoop\Loop;
 
 /** @internal */
 final class Runner implements ProcessRunner
@@ -48,7 +48,7 @@ final class Runner implements ProcessRunner
         $pid = \rtrim(@\fgets($stream));
 
         /** @var $deferreds Deferred[] */
-        list($handle, $pipes, $deferreds) = $data;
+        [$handle, $pipes, $deferreds] = $data;
 
         if (!$pid || !\is_numeric($pid)) {
             $error = new ProcessException("Could not determine PID");

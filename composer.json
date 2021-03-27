@@ -4,14 +4,22 @@
     "description": "Asynchronous process manager.",
     "require": {
         "php": ">=8",
-        "amphp/amp": "^3-dev",
-        "amphp/byte-stream": "^2-dev"
+        "amphp/amp": "dev-v3-revolt",
+        "amphp/byte-stream": "dev-v2-revolt"
     },
     "require-dev": {
         "phpunit/phpunit": "^9",
-        "amphp/phpunit-util": "^2-dev",
+        "amphp/phpunit-util": "dev-v2-revolt",
         "amphp/php-cs-fixer-config": "dev-master"
     },
+    "prefer-stable": true,
+    "minimum-stability": "dev",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "git@github.com:revolt-php/event-loop.git"
+        }
+    ],
     "license": "MIT",
     "authors": [
         {

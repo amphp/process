@@ -32,7 +32,7 @@ foreach ($hosts as $host) {
         ? "ping -n 5 {$host}"
         : "ping -c 5 {$host}";
     $process = new Process($command);
-    $promises[] = async(fn() => show_process_output($process));
+    $promises[] = async(fn () => show_process_output($process));
 }
 
 await(all($promises));

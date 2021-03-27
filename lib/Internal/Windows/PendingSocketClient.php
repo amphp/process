@@ -2,7 +2,7 @@
 
 namespace Amp\Process\Internal\Windows;
 
-use Amp\Struct;
+use Revolt\EventLoop\Internal\Struct;
 
 /**
  * @internal

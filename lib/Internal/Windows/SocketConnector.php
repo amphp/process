@@ -4,9 +4,9 @@ namespace Amp\Process\Internal\Windows;
 
 use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\ResourceOutputStream;
-use Amp\Loop;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
+use Revolt\EventLoop\Loop;
 
 /**
  * @internal
@@ -17,21 +17,16 @@ final class SocketConnector
     const SERVER_SOCKET_URI = 'tcp://127.0.0.1:0';
     const SECURITY_TOKEN_SIZE = 16;
     const CONNECT_TIMEOUT = 1000;
-
-    /** @var resource */
-    private $server;
-
-    /** @var PendingSocketClient[] */
-    private array $pendingClients = [];
-
-    /** @var Handle[] */
-    private array $pendingProcesses = [];
-
     /** @var string */
     public string $address;
-
     /** @var int */
     public int $port;
+    /** @var resource */
+    private $server;
+    /** @var PendingSocketClient[] */
+    private array $pendingClients = [];
+    /** @var Handle[] */
+    private array $pendingProcesses = [];
 
     public function __construct()
     {
@@ -50,14 +45,6 @@ final class SocketConnector
         $this->port = (int) $port;
 
         Loop::unreference(Loop::onReadable($this->server, [$this, 'onServerSocketReadable']));
-    }
-
-    private function failClientHandshake($socket, int $code)
-    {
-        \fwrite($socket, \chr(SignalCode::HANDSHAKE_ACK) . \chr($code));
-        \fclose($socket);
-
-        unset($this->pendingClients[(int) $socket]);
     }
 
     public function failHandleStart(Handle $handle, string $message, ...$args)
@@ -79,39 +66,6 @@ final class SocketConnector
         foreach ($deferreds as $deferred) {
             $deferred->fail($error);
         }
-    }
-
-    /**
-     * Read data from a client socket.
-     *
-     * This method cleans up internal state as appropriate. Returns null if the read fails or needs to be repeated.
-     *
-     * @param resource            $socket
-     * @param int                 $length
-     * @param PendingSocketClient $state
-     *
-     * @return string|null
-     */
-    private function readDataFromPendingClient($socket, int $length, PendingSocketClient $state)
-    {
-        $data = \fread($socket, $length);
-
-        if ($data === false || $data === '') {
-            return null;
-        }
-
-        $data = $state->receivedDataBuffer . $data;
-
-        if (\strlen($data) < $length) {
-            $state->receivedDataBuffer = $data;
-            return null;
-        }
-
-        $state->receivedDataBuffer = '';
-
-        Loop::cancel($state->readWatcher);
-
-        return $data;
     }
 
     public function onReadableHandshake($watcher, $socket)
@@ -334,7 +288,11 @@ final class SocketConnector
 
         $pendingClient = new PendingSocketClient;
         $pendingClient->readWatcher = Loop::onReadable($socket, [$this, 'onReadableHandshake']);
-        $pendingClient->timeoutWatcher = Loop::delay(self::CONNECT_TIMEOUT, [$this, 'onClientSocketConnectTimeout'], $socket);
+        $pendingClient->timeoutWatcher = Loop::delay(
+            self::CONNECT_TIMEOUT,
+            [$this, 'onClientSocketConnectTimeout'],
+            $socket
+        );
 
         $this->pendingClients[(int) $socket] = $pendingClient;
     }
@@ -377,5 +335,46 @@ final class SocketConnector
         });
 
         $this->pendingProcesses[$handle->wrapperPid] = $handle;
+    }
+
+    private function failClientHandshake($socket, int $code)
+    {
+        \fwrite($socket, \chr(SignalCode::HANDSHAKE_ACK) . \chr($code));
+        \fclose($socket);
+
+        unset($this->pendingClients[(int) $socket]);
+    }
+
+    /**
+     * Read data from a client socket.
+     *
+     * This method cleans up internal state as appropriate. Returns null if the read fails or needs to be repeated.
+     *
+     * @param resource            $socket
+     * @param int                 $length
+     * @param PendingSocketClient $state
+     *
+     * @return string|null
+     */
+    private function readDataFromPendingClient($socket, int $length, PendingSocketClient $state)
+    {
+        $data = \fread($socket, $length);
+
+        if ($data === false || $data === '') {
+            return null;
+        }
+
+        $data = $state->receivedDataBuffer . $data;
+
+        if (\strlen($data) < $length) {
+            $state->receivedDataBuffer = $data;
+            return null;
+        }
+
+        $state->receivedDataBuffer = '';
+
+        Loop::cancel($state->readWatcher);
+
+        return $data;
     }
 }

@@ -2,12 +2,12 @@
 
 namespace Amp\Process;
 
-use Amp\Loop;
 use Amp\Process\Internal\Posix\Runner as PosixProcessRunner;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Internal\Windows\Runner as WindowsProcessRunner;
+use Revolt\EventLoop\Loop;
 use function Amp\await;
 
 final class Process
@@ -27,11 +27,11 @@ final class Process
     private ?int $pid = null;
 
     /**
-     * @param   string|string[] $command Command to run.
-     * @param   string|null     $cwd Working directory or use an empty string to use the working directory of the
+     * @param string|string[] $command Command to run.
+     * @param string|null     $cwd Working directory or use an empty string to use the working directory of the
      *     parent.
-     * @param   mixed[]         $env Environment variables or use an empty array to inherit from the parent.
-     * @param   mixed[]         $options Options for `proc_open()`.
+     * @param mixed[]         $env Environment variables or use an empty array to inherit from the parent.
+     * @param mixed[]         $options Options for `proc_open()`.
      *
      * @throws \Error If the arguments are invalid.
      */
