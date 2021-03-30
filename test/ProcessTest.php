@@ -384,7 +384,7 @@ class ProcessTest extends TestCase
         Loop::run(function () {
             $process = new Process(["php", __DIR__ . "/bin/signal-process.php"]);
             yield $process->start();
-            yield new Delayed(100); // Give process time to set up single handler.
+            yield new Delayed(500); // Give process time to set up single handler.
             $process->signal(\SIGTERM);
             $this->assertSame(42, yield $process->join());
         });
