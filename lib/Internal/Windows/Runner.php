@@ -216,12 +216,15 @@ final class Runner implements ProcessRunner
         $handle->stdin->close();
         $handle->stdout->close();
         $handle->stderr->close();
-
         foreach ($handle->sockets as $socket) {
-            @\fclose($socket);
+            if (\is_resource($socket)) {
+                @\fclose($socket);
+            }
         }
 
-        @\fclose($handle->wrapperStderrPipe);
+        if (\is_resource($handle->wrapperStderrPipe)) {
+            @\fclose($handle->wrapperStderrPipe);
+        }
 
         if (\is_resource($handle->proc)) {
             \proc_close($handle->proc);
