@@ -311,7 +311,7 @@ final class SocketConnector
         // Explicitly \fclose() sockets, as resource streams shut only one side down.
         foreach ($handle->sockets as $sock) {
             // Ensure socket is still open before attempting to close.
-            if (is_resource($sock)) {
+            if (\is_resource($sock)) {
                 @\fclose($sock);
             }
         }
