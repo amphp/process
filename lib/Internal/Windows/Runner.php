@@ -150,8 +150,8 @@ final class Runner implements ProcessRunner
     public function kill(ProcessHandle $handle)
     {
         /** @var Handle $handle */
-        // todo: send a signal to the wrapper to kill the child instead?
-        if (!\proc_terminate($handle->proc)) {
+        \exec('taskkill /F /T /PID ' . $handle->wrapperPid . ' 2>&1', $output, $exitCode);
+        if ($exitCode) {
             throw new ProcessException("Terminating process failed");
         }
 
