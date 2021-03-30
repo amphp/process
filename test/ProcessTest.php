@@ -372,7 +372,7 @@ class ProcessTest extends TestCase
             $conn = \stream_socket_accept($socket);
             $this->assertSame('start', \fread($conn, 5));
             $process->kill();
-            $this->assertEmpty(\fread($conn, 3));
+            $this->assertSame('', \fread($conn, 3));
         });
     }
 
