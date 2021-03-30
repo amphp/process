@@ -221,7 +221,7 @@ class ProcessTest extends TestCase
     {
         Loop::run(function () {
             $process = new Process(self::CMD_PROCESS_SLOW);
-            $process->start();
+            yield $process->start();
 
             yield new Delayed(100); // Give process a chance to start, otherwise a different error is thrown.
 
