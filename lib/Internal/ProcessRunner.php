@@ -3,7 +3,6 @@
 namespace Amp\Process\Internal;
 
 use Amp\Process\ProcessException;
-use Amp\Promise;
 
 interface ProcessRunner
 {
@@ -26,9 +25,9 @@ interface ProcessRunner
      *
      * @param ProcessHandle $handle The process descriptor.
      *
-     * @return Promise <int> Succeeds with exit code of the process or fails if the process is killed.
+     * @return int Exit code.
      */
-    public function join(ProcessHandle $handle): Promise;
+    public function join(ProcessHandle $handle): int;
 
     /**
      * Forcibly end the child process.

@@ -8,6 +8,7 @@ use Amp\Process\Internal\ProcessHandle;
 /** @internal */
 final class Handle extends ProcessHandle
 {
+    /** @var Deferred<int> */
     public Deferred $joinDeferred;
 
     /** @var resource */

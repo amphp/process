@@ -64,7 +64,7 @@ final class SocketConnector
         $handle->stdioDeferreds = [];
 
         foreach ($deferreds as $deferred) {
-            $deferred->fail($error);
+            $deferred->error($error);
         }
     }
 
@@ -172,9 +172,9 @@ final class SocketConnector
             $deferreds = $handle->stdioDeferreds;
             $handle->stdioDeferreds = []; // clear, so there's no double resolution if process spawn fails
 
-            $deferreds[0]->resolve(new ResourceOutputStream($handle->sockets[0]));
-            $deferreds[1]->resolve(new ResourceInputStream($handle->sockets[1]));
-            $deferreds[2]->resolve(new ResourceInputStream($handle->sockets[2]));
+            $deferreds[0]->complete(new ResourceOutputStream($handle->sockets[0]));
+            $deferreds[1]->complete(new ResourceInputStream($handle->sockets[1]));
+            $deferreds[2]->complete(new ResourceInputStream($handle->sockets[2]));
         }
     }
 
@@ -221,7 +221,7 @@ final class SocketConnector
             }
         }
 
-        $handle->pidDeferred->resolve($packet['pid']);
+        $handle->pidDeferred->complete($packet['pid']);
 
         unset($this->pendingProcesses[$handle->wrapperPid]);
     }
@@ -239,7 +239,7 @@ final class SocketConnector
 
         if (\strlen($data) !== 5) {
             $handle->status = ProcessStatus::ENDED;
-            $handle->joinDeferred->fail(new ProcessException(
+            $handle->joinDeferred->error(new ProcessException(
                 \sprintf('Failed to read exit code from wrapper: Received %d of 5 expected bytes', \strlen($data))
             ));
             return;
@@ -257,7 +257,7 @@ final class SocketConnector
         }
 
         $handle->status = ProcessStatus::ENDED;
-        $handle->joinDeferred->resolve($packet['code']);
+        $handle->joinDeferred->complete($packet['code']);
         $handle->stdin->close();
         $handle->stdout->close();
         $handle->stderr->close();
@@ -316,13 +316,13 @@ final class SocketConnector
 
         $error = new ProcessException(\trim($error));
         foreach ($handle->stdioDeferreds as $deferred) {
-            $deferred->fail($error);
+            $deferred->error($error);
         }
 
         \fclose($handle->wrapperStderrPipe);
         \proc_close($handle->proc);
 
-        $handle->joinDeferred->fail($error);
+        $handle->joinDeferred->error($error);
     }
 
     public function registerPendingProcess(Handle $handle)

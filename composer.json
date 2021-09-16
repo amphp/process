@@ -46,11 +46,6 @@
             "Amp\\Process\\Test\\": "test"
         }
     },
-    "config": {
-        "platform": {
-            "php": "7.0.33"
-        }
-    },
     "scripts": {
         "check": [
             "@cs",

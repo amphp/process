@@ -7,9 +7,7 @@ use Amp\ByteStream\PendingReadError;
 use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\StreamException;
 use Amp\Deferred;
-use Amp\Promise;
-use Amp\Success;
-use function Amp\await;
+use Amp\Future;
 use function Revolt\EventLoop\defer;
 
 final class ProcessInputStream implements InputStream
@@ -24,11 +22,11 @@ final class ProcessInputStream implements InputStream
 
     private ?\Throwable $error = null;
 
-    public function __construct(Promise $resourceStreamPromise)
+    public function __construct(Future $resourceStreamFuture)
     {
-        defer(function () use ($resourceStreamPromise): void {
+        defer(function () use ($resourceStreamFuture): void {
             try {
-                $this->resourceStream = await($resourceStreamPromise);
+                $this->resourceStream = $resourceStreamFuture->join();
 
                 if (!$this->referenced) {
                     $this->resourceStream->unreference();
@@ -41,14 +39,14 @@ final class ProcessInputStream implements InputStream
                 if ($this->initialRead) {
                     $initialRead = $this->initialRead;
                     $this->initialRead = null;
-                    $initialRead->resolve($this->shouldClose ? null : $this->resourceStream->read());
+                    $initialRead->complete($this->shouldClose ? null : $this->resourceStream->read());
                 }
             } catch (\Throwable $exception) {
                 $this->error = new StreamException("Failed to launch process", 0, $exception);
                 if ($this->initialRead) {
                     $initialRead = $this->initialRead;
                     $this->initialRead = null;
-                    $initialRead->fail($this->error);
+                    $initialRead->error($this->error);
                 }
             }
         });
@@ -76,12 +74,12 @@ final class ProcessInputStream implements InputStream
         }
 
         if ($this->shouldClose) {
-            return new Success; // Resolve reads on closed streams with null.
+            return null; // Resolve reads on closed streams with null.
         }
 
         $this->initialRead = new Deferred;
 
-        return await($this->initialRead->promise());
+        return $this->initialRead->getFuture()->join();
     }
 
     public function reference(): void
@@ -109,7 +107,7 @@ final class ProcessInputStream implements InputStream
         if ($this->initialRead) {
             $initialRead = $this->initialRead;
             $this->initialRead = null;
-            $initialRead->resolve();
+            $initialRead->complete(null);
         }
 
         if (isset($this->resourceStream)) {

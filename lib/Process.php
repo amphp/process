@@ -8,10 +8,11 @@ use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Internal\Windows\Runner as WindowsProcessRunner;
 use Revolt\EventLoop\Loop;
-use function Amp\await;
 
 final class Process
 {
+    private static \WeakMap $map;
+
     private ?ProcessRunner $processRunner = null;
 
     private string $command;
@@ -37,6 +38,8 @@ final class Process
      */
     public function __construct(string|array $command, string $cwd = null, array $env = [], array $options = [])
     {
+        self::$map ??= new \WeakMap();
+
         $command = \is_array($command)
             ? \implode(" ", \array_map(__NAMESPACE__ . "\\escapeArguments", $command))
             : (string) $command;
@@ -57,15 +60,11 @@ final class Process
         $this->env = $envVars;
         $this->options = $options;
 
-        $this->processRunner = Loop::getState(self::class);
+        $driver = Loop::getDriver();
 
-        if ($this->processRunner === null) {
-            $this->processRunner = IS_WINDOWS
-                ? new WindowsProcessRunner
-                : new PosixProcessRunner;
-
-            Loop::setState(self::class, $this->processRunner);
-        }
+        $this->processRunner = (
+            self::$map[$driver] ??= (IS_WINDOWS ? new WindowsProcessRunner() : new PosixProcessRunner())
+        );
     }
 
     /**
@@ -97,7 +96,7 @@ final class Process
         }
 
         $this->handle = $this->processRunner->start($this->command, $this->cwd, $this->env, $this->options);
-        return $this->pid = await($this->handle->pidDeferred->promise());
+        return $this->pid = $this->handle->pidDeferred->getFuture()->join();
     }
 
     /**
@@ -113,7 +112,7 @@ final class Process
             throw new StatusError("Process has not been started.");
         }
 
-        return await($this->processRunner->join($this->handle));
+        return $this->processRunner->join($this->handle);
     }
 
     /**

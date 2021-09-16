@@ -9,7 +9,6 @@ use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
-use Amp\Promise;
 use Revolt\EventLoop\Loop;
 use const Amp\Process\BIN_DIR;
 
@@ -92,15 +91,15 @@ final class Runner implements ProcessRunner
 
         $stdinDeferred = new Deferred;
         $handle->stdioDeferreds[] = $stdinDeferred;
-        $handle->stdin = new ProcessOutputStream($stdinDeferred->promise());
+        $handle->stdin = new ProcessOutputStream($stdinDeferred->getFuture());
 
         $stdoutDeferred = new Deferred;
         $handle->stdioDeferreds[] = $stdoutDeferred;
-        $handle->stdout = new ProcessInputStream($stdoutDeferred->promise());
+        $handle->stdout = new ProcessInputStream($stdoutDeferred->getFuture());
 
         $stderrDeferred = new Deferred;
         $handle->stdioDeferreds[] = $stderrDeferred;
-        $handle->stderr = new ProcessInputStream($stderrDeferred->promise());
+        $handle->stderr = new ProcessInputStream($stderrDeferred->getFuture());
 
         $this->socketConnector->registerPendingProcess($handle);
 
@@ -108,7 +107,7 @@ final class Runner implements ProcessRunner
     }
 
     /** @inheritdoc */
-    public function join(ProcessHandle $handle): Promise
+    public function join(ProcessHandle $handle): int
     {
         /** @var Handle $handle */
         $handle->exitCodeRequested = true;
@@ -117,7 +116,7 @@ final class Runner implements ProcessRunner
             Loop::reference($handle->exitCodeWatcher);
         }
 
-        return $handle->joinDeferred->promise();
+        return $handle->joinDeferred->getFuture()->join();
     }
 
     /** @inheritdoc */
@@ -134,14 +133,14 @@ final class Runner implements ProcessRunner
         if ($handle->childPidWatcher !== null) {
             Loop::cancel($handle->childPidWatcher);
             $handle->childPidWatcher = null;
-            $handle->pidDeferred->fail(new ProcessException("The process was killed"));
+            $handle->pidDeferred->error(new ProcessException("The process was killed"));
             $failStart = true;
         }
 
         if ($handle->exitCodeWatcher !== null) {
             Loop::cancel($handle->exitCodeWatcher);
             $handle->exitCodeWatcher = null;
-            $handle->joinDeferred->fail(new ProcessException("The process was killed"));
+            $handle->joinDeferred->error(new ProcessException("The process was killed"));
         }
 
         $handle->status = ProcessStatus::ENDED;

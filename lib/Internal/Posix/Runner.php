@@ -5,13 +5,13 @@ namespace Amp\Process\Internal\Posix;
 use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Deferred;
+use Amp\Future;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
-use Amp\Promise;
 use Revolt\EventLoop\Loop;
 
 /** @internal */
@@ -35,9 +35,9 @@ final class Runner implements ProcessRunner
         $handle->status = ProcessStatus::ENDED;
 
         if (!\is_resource($stream) || \feof($stream)) {
-            $handle->joinDeferred->fail(new ProcessException("Process ended unexpectedly"));
+            $handle->joinDeferred->error(new ProcessException("Process ended unexpectedly"));
         } else {
-            $handle->joinDeferred->resolve((int) \rtrim(@\stream_get_contents($stream)));
+            $handle->joinDeferred->complete((int) \rtrim(@\stream_get_contents($stream)));
         }
     }
 
@@ -54,8 +54,7 @@ final class Runner implements ProcessRunner
             $error = new ProcessException("Could not determine PID");
             $handle->pidDeferred->fail($error);
             foreach ($deferreds as $deferred) {
-                /** @var $deferred Deferred */
-                $deferred->fail($error);
+                $deferred->error($error);
             }
             if ($handle->status < ProcessStatus::ENDED) {
                 $handle->status = ProcessStatus::ENDED;
@@ -65,10 +64,10 @@ final class Runner implements ProcessRunner
         }
 
         $handle->status = ProcessStatus::RUNNING;
-        $handle->pidDeferred->resolve((int) $pid);
-        $deferreds[0]->resolve($pipes[0]);
-        $deferreds[1]->resolve($pipes[1]);
-        $deferreds[2]->resolve($pipes[2]);
+        $handle->pidDeferred->complete((int) $pid);
+        $deferreds[0]->complete($pipes[0]);
+        $deferreds[1]->complete($pipes[1]);
+        $deferreds[2]->complete($pipes[2]);
 
         if ($handle->extraDataPipeWatcher !== null) {
             Loop::enable($handle->extraDataPipeWatcher);
@@ -103,27 +102,44 @@ final class Runner implements ProcessRunner
         }
 
         $stdinDeferred = new Deferred;
-        $handle->stdin = new ProcessOutputStream($stdinDeferred->promise());
+        $handle->stdin = new ProcessOutputStream($stdinDeferred->getFuture());
 
         $stdoutDeferred = new Deferred;
-        $handle->stdout = new ProcessInputStream($stdoutDeferred->promise());
+        $handle->stdout = new ProcessInputStream($stdoutDeferred->getFuture());
 
         $stderrDeferred = new Deferred;
-        $handle->stderr = new ProcessInputStream($stderrDeferred->promise());
+        $handle->stderr = new ProcessInputStream($stderrDeferred->getFuture());
 
         $handle->extraDataPipe = $pipes[3];
 
-        \stream_set_blocking($pipes[3], false);
+        \stream_set_blocking($handle->extraDataPipe, false);
 
-        $handle->extraDataPipeStartWatcher = Loop::onReadable($pipes[3], [self::class, 'onProcessStartExtraDataPipeReadable'], [$handle, [
-            new ResourceOutputStream($pipes[0]),
-            new ResourceInputStream($pipes[1]),
-            new ResourceInputStream($pipes[2]),
-        ], [
-            $stdinDeferred, $stdoutDeferred, $stderrDeferred
-        ]]);
+        $handle->extraDataPipeStartWatcher = Loop::onReadable(
+            $handle->extraDataPipe,
+            static function (string $watcher, $stream) use (
+                $handle,
+                $pipes,
+                $stdinDeferred,
+                $stdoutDeferred,
+                $stderrDeferred,
+            ): void {
+                self::onProcessStartExtraDataPipeReadable($watcher, $stream, [$handle, [
+                    new ResourceOutputStream($pipes[0]),
+                    new ResourceInputStream($pipes[1]),
+                    new ResourceInputStream($pipes[2]),
+                ], [
+                    $stdinDeferred,
+                    $stdoutDeferred,
+                    $stderrDeferred
+                ]]);
+            }
+        );
 
-        $handle->extraDataPipeWatcher = Loop::onReadable($pipes[3], [self::class, 'onProcessEndExtraDataPipeReadable'], $handle);
+        $handle->extraDataPipeWatcher = Loop::onReadable(
+            $handle->extraDataPipe,
+            static fn (string $watcher, $stream) => self::onProcessEndExtraDataPipeReadable($watcher, $stream, $handle),
+        );
+
         Loop::unreference($handle->extraDataPipeWatcher);
         Loop::disable($handle->extraDataPipeWatcher);
 
@@ -155,14 +171,14 @@ final class Runner implements ProcessRunner
     }
 
     /** @inheritdoc */
-    public function join(ProcessHandle $handle): Promise
+    public function join(ProcessHandle $handle): int
     {
         /** @var Handle $handle */
         if ($handle->extraDataPipeWatcher !== null) {
             Loop::reference($handle->extraDataPipeWatcher);
         }
 
-        return $handle->joinDeferred->promise();
+        return $handle->joinDeferred->getFuture()->join();
     }
 
     /** @inheritdoc */
@@ -188,7 +204,7 @@ final class Runner implements ProcessRunner
 
         if ($handle->status < ProcessStatus::ENDED) {
             $handle->status = ProcessStatus::ENDED;
-            $handle->joinDeferred->fail(new ProcessException("The process was killed"));
+            $handle->joinDeferred->error(new ProcessException("The process was killed"));
         }
 
         $this->free($handle);
@@ -197,13 +213,12 @@ final class Runner implements ProcessRunner
     /** @inheritdoc */
     public function signal(ProcessHandle $handle, int $signo): void
     {
-        $handle->pidDeferred->promise()->onResolve(function (?\Throwable $exception, int $pid) use ($signo): void {
-            if ($exception) {
-                return;
-            }
-
+        try {
+            $pid = $handle->pidDeferred->getFuture()->join();
             @\posix_kill($pid, $signo);
-        });
+        } catch (\Throwable) {
+            // Ignored.
+        }
     }
 
     /** @inheritdoc */

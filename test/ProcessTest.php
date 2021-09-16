@@ -2,6 +2,7 @@
 
 namespace Amp\Process\Test;
 
+use Amp\Future;
 use Amp\PHPUnit\AsyncTestCase;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Process;
@@ -9,9 +10,8 @@ use Amp\Process\ProcessException;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
 use Amp\Process\StatusError;
+use function Amp\Future\spawn;
 use const Amp\Process\IS_WINDOWS;
-use function Amp\async;
-use function Amp\await;
 use function Amp\ByteStream\buffer;
 use function Revolt\EventLoop\delay;
 
@@ -33,11 +33,11 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
         $process->start();
-        $promise = async(fn () => $process->join());
+        $promise = spawn(fn () => $process->join());
 
         self::assertTrue($process->isRunning());
 
-        await($promise);
+        $promise->join();
 
         self::assertFalse($process->isRunning());
     }
@@ -167,7 +167,7 @@ class ProcessTest extends AsyncTestCase
         $this->expectException(\Error::class);
 
         $process = new Process(self::CMD_PROCESS);
-        clone $process;
+        $clone = clone $process;
     }
 
     public function testKillImmediately()
@@ -189,7 +189,7 @@ class ProcessTest extends AsyncTestCase
         $process = new Process(self::CMD_PROCESS_SLOW);
         $process->start();
 
-        delay(100); // Give process a chance to start, otherwise a different error is thrown.
+        delay(0.1); // Give process a chance to start, otherwise a different error is thrown.
 
         $process->kill();
 
@@ -216,10 +216,6 @@ class ProcessTest extends AsyncTestCase
         $process->getPid();
     }
 
-    /**
-     * @expectedException \Amp\Process\StatusError
-     * @expectedExceptionMessage Process is not running.
-     */
     public function testProcessIsNotRunningWithKill()
     {
         $this->expectException(StatusError::class);
@@ -282,10 +278,10 @@ class ProcessTest extends AsyncTestCase
         $promises = [];
         foreach ($processes as $process) {
             $process->start();
-            $promises[] = async(fn () => $process->join());
+            $promises[] = spawn(fn () => $process->join());
         }
 
-        self::assertSame(\range(0, $count - 1), await($promises));
+        self::assertSame(\range(0, $count - 1), Future\all($promises));
     }
 
     public function testReadOutputAfterExit()
@@ -331,7 +327,7 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(["php", __DIR__ . "/bin/signal-process.php"]);
         $process->start();
-        delay(100); // Give process time to set up single handler.
+        delay(0.1); // Give process time to set up single handler.
         $process->signal(\SIGTERM);
         self::assertSame(42, $process->join());
     }
