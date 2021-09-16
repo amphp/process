@@ -8,21 +8,21 @@ platform:
 clone_folder: c:\projects\amphp
 
 cache:
-  - c:\tools\php74 -> appveyor.yml
+  - c:\tools\php80 -> appveyor.yml
 
 init:
-  - SET PATH=C:\Program Files\OpenSSL;c:\tools\php74;%PATH%
+  - SET PATH=C:\Program Files\OpenSSL;c:\tools\php80;%PATH%
   - SET COMPOSER_NO_INTERACTION=1
   - SET PHP=1
   - SET ANSICON=121x90 (121x90)
 
 install:
-  - IF EXIST c:\tools\php74 (SET PHP=0)
+  - IF EXIST c:\tools\php80 (SET PHP=0)
   - IF %PHP%==1 sc config wuauserv start= auto
   - IF %PHP%==1 net start wuauserv
   - IF %PHP%==1 cinst -y OpenSSL.Light
   - IF %PHP%==1 cinst -y php
-  - cd c:\tools\php74
+  - cd c:\tools\php80
   - IF %PHP%==1 copy php.ini-production php.ini /Y
   - IF %PHP%==1 echo date.timezone="UTC" >> php.ini
   - IF %PHP%==1 echo extension_dir=ext >> php.ini
@@ -37,5 +37,5 @@ test_script:
   - cd c:\projects\amphp
   - phpdbg -qrr vendor/phpunit/phpunit/phpunit --colors=always --coverage-text --coverage-clover build/logs/clover.xml
   # Disable for now, because it can't be combined and files can't be shown on coveralls.io
-  # https://github.com/php-coveralls/php-coveralls/issues/234  
+  # https://github.com/php-coveralls/php-coveralls/issues/234
   # - vendor/bin/coveralls -v

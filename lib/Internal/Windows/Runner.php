@@ -124,8 +124,8 @@ final class Runner implements ProcessRunner
     public function kill(ProcessHandle $handle): void
     {
         /** @var Handle $handle */
-        // todo: send a signal to the wrapper to kill the child instead?
-        if (!\proc_terminate($handle->proc)) {
+        \exec('taskkill /F /T /PID ' . $handle->wrapperPid . ' 2>&1', $output, $exitCode);
+        if ($exitCode) {
             throw new ProcessException("Terminating process failed");
         }
 
@@ -226,12 +226,15 @@ final class Runner implements ProcessRunner
         $handle->stdin->close();
         $handle->stdout->close();
         $handle->stderr->close();
-
         foreach ($handle->sockets as $socket) {
-            @\fclose($socket);
+            if (\is_resource($socket)) {
+                @\fclose($socket);
+            }
         }
 
-        @\fclose($handle->wrapperStderrPipe);
+        if (\is_resource($handle->wrapperStderrPipe)) {
+            @\fclose($handle->wrapperStderrPipe);
+        }
 
         if (\is_resource($handle->proc)) {
             \proc_close($handle->proc);
