@@ -8,7 +8,7 @@ use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\StreamException;
 use Amp\Deferred;
 use Amp\Future;
-use function Revolt\EventLoop\defer;
+use function Revolt\EventLoop\queue;
 
 final class ProcessInputStream implements InputStream
 {
@@ -24,9 +24,9 @@ final class ProcessInputStream implements InputStream
 
     public function __construct(Future $resourceStreamFuture)
     {
-        defer(function () use ($resourceStreamFuture): void {
+        queue(function () use ($resourceStreamFuture): void {
             try {
-                $this->resourceStream = $resourceStreamFuture->join();
+                $this->resourceStream = $resourceStreamFuture->await();
 
                 if (!$this->referenced) {
                     $this->resourceStream->unreference();
@@ -79,7 +79,7 @@ final class ProcessInputStream implements InputStream
 
         $this->initialRead = new Deferred;
 
-        return $this->initialRead->getFuture()->join();
+        return $this->initialRead->getFuture()->await();
     }
 
     public function reference(): void

@@ -96,7 +96,7 @@ final class Process
         }
 
         $this->handle = $this->processRunner->start($this->command, $this->cwd, $this->env, $this->options);
-        return $this->pid = $this->handle->pidDeferred->getFuture()->join();
+        return $this->pid = $this->handle->pidDeferred->getFuture()->await();
     }
 
     /**

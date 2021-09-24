@@ -5,7 +5,6 @@ namespace Amp\Process\Internal\Posix;
 use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Deferred;
-use Amp\Future;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
@@ -178,7 +177,7 @@ final class Runner implements ProcessRunner
             Loop::reference($handle->extraDataPipeWatcher);
         }
 
-        return $handle->joinDeferred->getFuture()->join();
+        return $handle->joinDeferred->getFuture()->await();
     }
 
     /** @inheritdoc */
@@ -201,6 +200,7 @@ final class Runner implements ProcessRunner
         }
 
         $this->signal($handle, 9);
+        $handle->joinDeferred->getFuture()->ignore();
 
         if ($handle->status < ProcessStatus::ENDED) {
             $handle->status = ProcessStatus::ENDED;
@@ -214,7 +214,7 @@ final class Runner implements ProcessRunner
     public function signal(ProcessHandle $handle, int $signo): void
     {
         try {
-            $pid = $handle->pidDeferred->getFuture()->join();
+            $pid = $handle->pidDeferred->getFuture()->await();
             @\posix_kill($pid, $signo);
         } catch (\Throwable) {
             // Ignored.

@@ -2,10 +2,9 @@
 
 include \dirname(__DIR__) . "/vendor/autoload.php";
 
+use Amp\Future;
 use Amp\Process\Process;
-use function Amp\async;
-use function Amp\await;
-use function Amp\Promise\all;
+use function Amp\coroutine;
 
 function show_process_output(Process $process): void
 {
@@ -25,14 +24,14 @@ function show_process_output(Process $process): void
 
 $hosts = ['8.8.8.8', '8.8.4.4', 'google.com', 'stackoverflow.com', 'github.com'];
 
-$promises = [];
+$futures = [];
 
 foreach ($hosts as $host) {
     $command = \DIRECTORY_SEPARATOR === "\\"
         ? "ping -n 5 {$host}"
         : "ping -c 5 {$host}";
     $process = new Process($command);
-    $promises[] = async(fn () => show_process_output($process));
+    $futures[] = coroutine(fn () => show_process_output($process));
 }
 
-await(all($promises));
+Future\all($futures);

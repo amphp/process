@@ -6,6 +6,6 @@ Revolt\EventLoop\Loop::unreference(Revolt\EventLoop\Loop::onSignal(\SIGTERM, fun
     exit(42);
 }));
 
-Revolt\EventLoop\delay(1000);
+Amp\delay(1);
 
 exit(0);

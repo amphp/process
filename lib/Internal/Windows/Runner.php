@@ -116,7 +116,7 @@ final class Runner implements ProcessRunner
             Loop::reference($handle->exitCodeWatcher);
         }
 
-        return $handle->joinDeferred->getFuture()->join();
+        return $handle->joinDeferred->getFuture()->await();
     }
 
     /** @inheritdoc */
@@ -143,6 +143,7 @@ final class Runner implements ProcessRunner
             $handle->joinDeferred->error(new ProcessException("The process was killed"));
         }
 
+        $handle->joinDeferred->getFuture()->ignore();
         $handle->status = ProcessStatus::ENDED;
 
         if ($failStart || $handle->stdioDeferreds) {

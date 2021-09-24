@@ -10,10 +10,10 @@ use Amp\Process\ProcessException;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
 use Amp\Process\StatusError;
-use function Amp\Future\spawn;
 use const Amp\Process\IS_WINDOWS;
+use function Amp\coroutine;
+use function Amp\delay;
 use function Amp\ByteStream\buffer;
-use function Revolt\EventLoop\delay;
 
 class ProcessTest extends AsyncTestCase
 {
@@ -33,11 +33,11 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
         $process->start();
-        $promise = spawn(fn () => $process->join());
+        $future = coroutine(fn () => $process->join());
 
         self::assertTrue($process->isRunning());
 
-        $promise->join();
+        $future->await();
 
         self::assertFalse($process->isRunning());
     }
@@ -278,7 +278,7 @@ class ProcessTest extends AsyncTestCase
         $promises = [];
         foreach ($processes as $process) {
             $process->start();
-            $promises[] = spawn(fn () => $process->join());
+            $promises[] = coroutine(fn () => $process->join());
         }
 
         self::assertSame(\range(0, $count - 1), Future\all($promises));
@@ -289,7 +289,7 @@ class ProcessTest extends AsyncTestCase
         $process = new Process(["php", __DIR__ . "/bin/worker.php"]);
         $process->start();
 
-        $process->getStdin()->write("exit 2");
+        $process->getStdin()->write("exit 2")->await();
         self::assertSame("..", $process->getStdout()->read());
 
         self::assertSame(0, $process->join());
@@ -301,7 +301,7 @@ class ProcessTest extends AsyncTestCase
         $process->start();
 
         $count = 128 * 1024 + 1;
-        $process->getStdin()->write("exit " . $count);
+        $process->getStdin()->write("exit " . $count)->await();
         self::assertSame(\str_repeat(".", $count), buffer($process->getStdout()));
 
         self::assertSame(0, $process->join());

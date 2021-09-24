@@ -8,7 +8,7 @@ use Amp\ByteStream\ResourceOutputStream;
 use Amp\ByteStream\StreamException;
 use Amp\Deferred;
 use Amp\Future;
-use function Revolt\EventLoop\defer;
+use function Revolt\EventLoop\queue;
 
 final class ProcessOutputStream implements OutputStream
 {
@@ -26,9 +26,9 @@ final class ProcessOutputStream implements OutputStream
     {
         $this->queuedWrites = new \SplQueue;
 
-        defer(function () use ($resourceStreamFuture): void {
+        queue(function () use ($resourceStreamFuture): void {
             try {
-                $resourceStream = $resourceStreamFuture->join();
+                $resourceStream = $resourceStreamFuture->await();
 
                 while (!$this->queuedWrites->isEmpty()) {
                     /**
@@ -57,14 +57,14 @@ final class ProcessOutputStream implements OutputStream
     }
 
     /** @inheritdoc */
-    public function write(string $data): void
+    public function write(string $data): Future
     {
         if (isset($this->resourceStream)) {
-            $this->resourceStream->write($data);
+            return $this->resourceStream->write($data);
         }
 
         if ($this->error) {
-            throw $this->error;
+            return Future::error($this->error);
         }
 
         if ($this->shouldClose) {
@@ -74,18 +74,18 @@ final class ProcessOutputStream implements OutputStream
         $deferred = new Deferred;
         $this->queuedWrites->push([$data, $deferred]);
 
-        $deferred->getFuture()->join();
+        return $deferred->getFuture();
     }
 
     /** @inheritdoc */
-    public function end(string $finalData = ""): void
+    public function end(string $finalData = ""): Future
     {
         if (isset($this->resourceStream)) {
-            $this->resourceStream->end($finalData);
+            return $this->resourceStream->end($finalData);
         }
 
         if ($this->error) {
-            throw $this->error;
+            return Future::error($this->error);
         }
 
         if ($this->shouldClose) {
@@ -97,7 +97,7 @@ final class ProcessOutputStream implements OutputStream
 
         $this->shouldClose = true;
 
-        $deferred->getFuture()->join();
+        return $deferred->getFuture();
     }
 
     public function close(): void
