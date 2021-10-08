@@ -5,7 +5,7 @@ namespace Amp\Process;
 const BIN_DIR = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'bin';
 const IS_WINDOWS = (PHP_OS & "\xDF\xDF\xDF") === 'WIN';
 
-if (!\function_exists('Amp\\Process\\escapeArguments')) {
+if (!\function_exists(__NAMESPACE__ . '\\escapeArguments')) {
     if (IS_WINDOWS) {
         /**
          * Escapes the command argument for safe inclusion into a Windows command string.
