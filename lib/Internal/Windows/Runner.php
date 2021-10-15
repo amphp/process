@@ -9,7 +9,7 @@ use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
-use Revolt\EventLoop\Loop;
+use Revolt\EventLoop;
 use const Amp\Process\BIN_DIR;
 
 /**
@@ -113,7 +113,7 @@ final class Runner implements ProcessRunner
         $handle->exitCodeRequested = true;
 
         if ($handle->exitCodeWatcher !== null) {
-            Loop::reference($handle->exitCodeWatcher);
+            EventLoop::reference($handle->exitCodeWatcher);
         }
 
         return $handle->joinDeferred->getFuture()->await();
@@ -131,14 +131,14 @@ final class Runner implements ProcessRunner
         $failStart = false;
 
         if ($handle->childPidWatcher !== null) {
-            Loop::cancel($handle->childPidWatcher);
+            EventLoop::cancel($handle->childPidWatcher);
             $handle->childPidWatcher = null;
             $handle->pidDeferred->error(new ProcessException("The process was killed"));
             $failStart = true;
         }
 
         if ($handle->exitCodeWatcher !== null) {
-            Loop::cancel($handle->exitCodeWatcher);
+            EventLoop::cancel($handle->exitCodeWatcher);
             $handle->exitCodeWatcher = null;
             $handle->joinDeferred->error(new ProcessException("The process was killed"));
         }
@@ -214,12 +214,12 @@ final class Runner implements ProcessRunner
     private function free(Handle $handle): void
     {
         if ($handle->childPidWatcher !== null) {
-            Loop::cancel($handle->childPidWatcher);
+            EventLoop::cancel($handle->childPidWatcher);
             $handle->childPidWatcher = null;
         }
 
         if ($handle->exitCodeWatcher !== null) {
-            Loop::cancel($handle->exitCodeWatcher);
+            EventLoop::cancel($handle->exitCodeWatcher);
             $handle->exitCodeWatcher = null;
         }
 

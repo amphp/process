@@ -6,7 +6,7 @@ use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
-use Revolt\EventLoop\Loop;
+use Revolt\EventLoop;
 
 /**
  * @internal
@@ -44,12 +44,12 @@ final class SocketConnector
         [$this->address, $port] = \explode(':', \stream_socket_get_name($this->server, false));
         $this->port = (int) $port;
 
-        Loop::unreference(Loop::onReadable($this->server, [$this, 'onServerSocketReadable']));
+        EventLoop::unreference(EventLoop::onReadable($this->server, [$this, 'onServerSocketReadable']));
     }
 
     public function failHandleStart(Handle $handle, string $message, ...$args)
     {
-        Loop::cancel($handle->connectTimeoutWatcher);
+        EventLoop::cancel($handle->connectTimeoutWatcher);
 
         unset($this->pendingProcesses[$handle->wrapperPid]);
 
@@ -126,7 +126,7 @@ final class SocketConnector
 
         $pendingClient->pid = (int) $packet['pid'];
         $pendingClient->streamId = (int) $packet['stream_id'];
-        $pendingClient->readWatcher = Loop::onReadable($socket, [$this, 'onReadableHandshakeAck']);
+        $pendingClient->readWatcher = EventLoop::onReadable($socket, [$this, 'onReadableHandshakeAck']);
     }
 
     public function onReadableHandshakeAck($watcher, $socket)
@@ -137,8 +137,8 @@ final class SocketConnector
         // can happen if the start promise was failed
         if (!isset($this->pendingProcesses[$pendingClient->pid]) || $this->pendingProcesses[$pendingClient->pid]->status === ProcessStatus::ENDED) {
             \fclose($socket);
-            Loop::cancel($watcher);
-            Loop::cancel($pendingClient->timeoutWatcher);
+            EventLoop::cancel($watcher);
+            EventLoop::cancel($pendingClient->timeoutWatcher);
             unset($this->pendingClients[$socketId]);
             return;
         }
@@ -147,7 +147,7 @@ final class SocketConnector
             return;
         }
 
-        Loop::cancel($pendingClient->timeoutWatcher);
+        EventLoop::cancel($pendingClient->timeoutWatcher);
 
         unset($this->pendingClients[$socketId]);
         $handle = $this->pendingProcesses[$pendingClient->pid];
@@ -167,7 +167,7 @@ final class SocketConnector
         $handle->sockets[$pendingClient->streamId] = $socket;
 
         if (\count($handle->sockets) === 3) {
-            $handle->childPidWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableChildPid'], $handle);
+            $handle->childPidWatcher = EventLoop::onReadable($handle->sockets[0], [$this, 'onReadableChildPid'], $handle);
 
             $deferreds = $handle->stdioDeferreds;
             $handle->stdioDeferreds = []; // clear, so there's no double resolution if process spawn fails
@@ -186,8 +186,8 @@ final class SocketConnector
             return;
         }
 
-        Loop::cancel($handle->childPidWatcher);
-        Loop::cancel($handle->connectTimeoutWatcher);
+        EventLoop::cancel($handle->childPidWatcher);
+        EventLoop::cancel($handle->connectTimeoutWatcher);
 
         $handle->childPidWatcher = null;
 
@@ -214,10 +214,10 @@ final class SocketConnector
         // Required, because a process might be destroyed while starting
         if ($handle->status === ProcessStatus::STARTING) {
             $handle->status = ProcessStatus::RUNNING;
-            $handle->exitCodeWatcher = Loop::onReadable($handle->sockets[0], [$this, 'onReadableExitCode'], $handle);
+            $handle->exitCodeWatcher = EventLoop::onReadable($handle->sockets[0], [$this, 'onReadableExitCode'], $handle);
 
             if (!$handle->exitCodeRequested) {
-                Loop::unreference($handle->exitCodeWatcher);
+                EventLoop::unreference($handle->exitCodeWatcher);
             }
         }
 
@@ -234,7 +234,7 @@ final class SocketConnector
             return;
         }
 
-        Loop::cancel($handle->exitCodeWatcher);
+        EventLoop::cancel($handle->exitCodeWatcher);
         $handle->exitCodeWatcher = null;
 
         if (\strlen($data) !== 5) {
@@ -275,7 +275,7 @@ final class SocketConnector
     {
         $id = (int) $socket;
 
-        Loop::cancel($this->pendingClients[$id]->readWatcher);
+        EventLoop::cancel($this->pendingClients[$id]->readWatcher);
         unset($this->pendingClients[$id]);
 
         \fclose($socket);
@@ -290,8 +290,8 @@ final class SocketConnector
         }
 
         $pendingClient = new PendingSocketClient;
-        $pendingClient->readWatcher = Loop::onReadable($socket, [$this, 'onReadableHandshake']);
-        $pendingClient->timeoutWatcher = Loop::delay(
+        $pendingClient->readWatcher = EventLoop::onReadable($socket, [$this, 'onReadableHandshake']);
+        $pendingClient->timeoutWatcher = EventLoop::delay(
             self::CONNECT_TIMEOUT,
             [$this, 'onClientSocketConnectTimeout'],
             $socket
@@ -327,10 +327,10 @@ final class SocketConnector
 
     public function registerPendingProcess(Handle $handle)
     {
-        // Use Loop::defer() to start the timeout only after the loop has ticked once. This prevents issues with many
+        // Use EventLoop::defer() to start the timeout only after the loop has ticked once. This prevents issues with many
         // things started at once, see https://github.com/amphp/process/issues/21.
-        $handle->connectTimeoutWatcher = Loop::defer(function () use ($handle) {
-            $handle->connectTimeoutWatcher = Loop::delay(
+        $handle->connectTimeoutWatcher = EventLoop::defer(function () use ($handle) {
+            $handle->connectTimeoutWatcher = EventLoop::delay(
                 self::CONNECT_TIMEOUT,
                 [$this, 'onProcessConnectTimeout'],
                 $handle
@@ -376,7 +376,7 @@ final class SocketConnector
 
         $state->receivedDataBuffer = '';
 
-        Loop::cancel($state->readWatcher);
+        EventLoop::cancel($state->readWatcher);
 
         return $data;
     }

@@ -11,7 +11,7 @@ use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
-use Revolt\EventLoop\Loop;
+use Revolt\EventLoop;
 
 /** @internal */
 final class Runner implements ProcessRunner
@@ -28,7 +28,7 @@ final class Runner implements ProcessRunner
 
     public static function onProcessEndExtraDataPipeReadable($watcher, $stream, Handle $handle): void
     {
-        Loop::cancel($watcher);
+        EventLoop::cancel($watcher);
         $handle->extraDataPipeWatcher = null;
 
         $handle->status = ProcessStatus::ENDED;
@@ -42,7 +42,7 @@ final class Runner implements ProcessRunner
 
     public static function onProcessStartExtraDataPipeReadable($watcher, $stream, $data): void
     {
-        Loop::cancel($watcher);
+        EventLoop::cancel($watcher);
 
         $pid = \rtrim(@\fgets($stream));
 
@@ -69,7 +69,7 @@ final class Runner implements ProcessRunner
         $deferreds[2]->complete($pipes[2]);
 
         if ($handle->extraDataPipeWatcher !== null) {
-            Loop::enable($handle->extraDataPipeWatcher);
+            EventLoop::enable($handle->extraDataPipeWatcher);
         }
     }
 
@@ -113,7 +113,7 @@ final class Runner implements ProcessRunner
 
         \stream_set_blocking($handle->extraDataPipe, false);
 
-        $handle->extraDataPipeStartWatcher = Loop::onReadable(
+        $handle->extraDataPipeStartWatcher = EventLoop::onReadable(
             $handle->extraDataPipe,
             static function (string $watcher, $stream) use (
                 $handle,
@@ -134,13 +134,13 @@ final class Runner implements ProcessRunner
             }
         );
 
-        $handle->extraDataPipeWatcher = Loop::onReadable(
+        $handle->extraDataPipeWatcher = EventLoop::onReadable(
             $handle->extraDataPipe,
             static fn (string $watcher, $stream) => self::onProcessEndExtraDataPipeReadable($watcher, $stream, $handle),
         );
 
-        Loop::unreference($handle->extraDataPipeWatcher);
-        Loop::disable($handle->extraDataPipeWatcher);
+        EventLoop::unreference($handle->extraDataPipeWatcher);
+        EventLoop::disable($handle->extraDataPipeWatcher);
 
         return $handle;
     }
@@ -174,7 +174,7 @@ final class Runner implements ProcessRunner
     {
         /** @var Handle $handle */
         if ($handle->extraDataPipeWatcher !== null) {
-            Loop::reference($handle->extraDataPipeWatcher);
+            EventLoop::reference($handle->extraDataPipeWatcher);
         }
 
         return $handle->joinDeferred->getFuture()->await();
@@ -185,13 +185,13 @@ final class Runner implements ProcessRunner
     {
         /** @var Handle $handle */
         if ($handle->extraDataPipeWatcher !== null) {
-            Loop::cancel($handle->extraDataPipeWatcher);
+            EventLoop::cancel($handle->extraDataPipeWatcher);
             $handle->extraDataPipeWatcher = null;
         }
 
         /** @var Handle $handle */
         if ($handle->extraDataPipeStartWatcher !== null) {
-            Loop::cancel($handle->extraDataPipeStartWatcher);
+            EventLoop::cancel($handle->extraDataPipeStartWatcher);
             $handle->extraDataPipeStartWatcher = null;
         }
 
@@ -241,13 +241,13 @@ final class Runner implements ProcessRunner
     {
         /** @var Handle $handle */
         if ($handle->extraDataPipeWatcher !== null) {
-            Loop::cancel($handle->extraDataPipeWatcher);
+            EventLoop::cancel($handle->extraDataPipeWatcher);
             $handle->extraDataPipeWatcher = null;
         }
 
         /** @var Handle $handle */
         if ($handle->extraDataPipeStartWatcher !== null) {
-            Loop::cancel($handle->extraDataPipeStartWatcher);
+            EventLoop::cancel($handle->extraDataPipeStartWatcher);
             $handle->extraDataPipeStartWatcher = null;
         }
 

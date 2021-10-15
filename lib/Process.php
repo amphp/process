@@ -7,7 +7,7 @@ use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Internal\Windows\Runner as WindowsProcessRunner;
-use Revolt\EventLoop\Loop;
+use Revolt\EventLoop;
 
 final class Process
 {
@@ -60,7 +60,7 @@ final class Process
         $this->env = $envVars;
         $this->options = $options;
 
-        $driver = Loop::getDriver();
+        $driver = EventLoop::getDriver();
 
         $this->processRunner = (
             self::$map[$driver] ??= (IS_WINDOWS ? new WindowsProcessRunner() : new PosixProcessRunner())

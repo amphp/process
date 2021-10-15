@@ -281,7 +281,7 @@ class ProcessTest extends AsyncTestCase
             $promises[] = coroutine(fn () => $process->join());
         }
 
-        self::assertSame(\range(0, $count - 1), Future\all($promises));
+        self::assertEquals(\range(0, $count - 1), Future\all($promises));
     }
 
     public function testReadOutputAfterExit()

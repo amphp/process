@@ -8,7 +8,7 @@ use Amp\ByteStream\ResourceOutputStream;
 use Amp\ByteStream\StreamException;
 use Amp\Deferred;
 use Amp\Future;
-use function Revolt\EventLoop\queue;
+use function Revolt\launch;
 
 final class ProcessOutputStream implements OutputStream
 {
@@ -26,7 +26,7 @@ final class ProcessOutputStream implements OutputStream
     {
         $this->queuedWrites = new \SplQueue;
 
-        queue(function () use ($resourceStreamFuture): void {
+        launch(function () use ($resourceStreamFuture): void {
             try {
                 $resourceStream = $resourceStreamFuture->await();
 
