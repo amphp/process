@@ -8,7 +8,7 @@ use Amp\ByteStream\ResourceInputStream;
 use Amp\ByteStream\StreamException;
 use Amp\Deferred;
 use Amp\Future;
-use function Revolt\launch;
+use Revolt\EventLoop;
 
 final class ProcessInputStream implements InputStream
 {
@@ -24,7 +24,7 @@ final class ProcessInputStream implements InputStream
 
     public function __construct(Future $resourceStreamFuture)
     {
-        launch(function () use ($resourceStreamFuture): void {
+        EventLoop::queue(function () use ($resourceStreamFuture): void {
             try {
                 $this->resourceStream = $resourceStreamFuture->await();
 
