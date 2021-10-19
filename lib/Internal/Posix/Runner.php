@@ -213,12 +213,14 @@ final class Runner implements ProcessRunner
     /** @inheritdoc */
     public function signal(ProcessHandle $handle, int $signo): void
     {
-        try {
-            $pid = $handle->pidDeferred->getFuture()->await();
-            @\posix_kill($pid, $signo);
-        } catch (\Throwable) {
-            // Ignored.
-        }
+        EventLoop::queue(function () use ($handle, $signo): void {
+            try {
+                $pid = $handle->pidDeferred->getFuture()->await();
+                @\posix_kill($pid, $signo);
+            } catch (\Throwable) {
+                // Ignored.
+            }
+        });
     }
 
     /** @inheritdoc */
