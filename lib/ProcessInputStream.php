@@ -18,7 +18,7 @@ final class ProcessInputStream implements InputStream
 
     private bool $referenced = true;
 
-    private ResourceInputStream $resourceStream;
+    private ?ResourceInputStream $resourceStream = null;
 
     private ?\Throwable $error = null;
 
@@ -69,7 +69,7 @@ final class ProcessInputStream implements InputStream
             throw $this->error;
         }
 
-        if (isset($this->resourceStream)) {
+        if ($this->resourceStream) {
             return $this->resourceStream->read();
         }
 
@@ -110,7 +110,7 @@ final class ProcessInputStream implements InputStream
             $initialRead->complete(null);
         }
 
-        if (isset($this->resourceStream)) {
+        if ($this->resourceStream) {
             $this->resourceStream->close();
         }
     }
