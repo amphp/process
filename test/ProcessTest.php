@@ -10,10 +10,10 @@ use Amp\Process\ProcessException;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
 use Amp\Process\StatusError;
-use const Amp\Process\IS_WINDOWS;
-use function Amp\coroutine;
-use function Amp\delay;
 use function Amp\ByteStream\buffer;
+use function Amp\delay;
+use function Amp\launch;
+use const Amp\Process\IS_WINDOWS;
 
 class ProcessTest extends AsyncTestCase
 {
@@ -33,7 +33,7 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
         $process->start();
-        $future = coroutine(fn () => $process->join());
+        $future = launch(fn () => $process->join());
 
         self::assertTrue($process->isRunning());
 
@@ -278,7 +278,7 @@ class ProcessTest extends AsyncTestCase
         $promises = [];
         foreach ($processes as $process) {
             $process->start();
-            $promises[] = coroutine(fn () => $process->join());
+            $promises[] = launch(fn () => $process->join());
         }
 
         self::assertEquals(\range(0, $count - 1), Future\all($promises));

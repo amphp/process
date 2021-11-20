@@ -4,7 +4,7 @@ include \dirname(__DIR__) . "/vendor/autoload.php";
 
 use Amp\Future;
 use Amp\Process\Process;
-use function Amp\coroutine;
+use function Amp\launch;
 
 function show_process_output(Process $process): void
 {
@@ -31,7 +31,7 @@ foreach ($hosts as $host) {
         ? "ping -n 5 {$host}"
         : "ping -c 5 {$host}";
     $process = new Process($command);
-    $futures[] = coroutine(fn () => show_process_output($process));
+    $futures[] = launch(fn () => show_process_output($process));
 }
 
 Future\all($futures);

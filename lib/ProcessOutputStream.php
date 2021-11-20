@@ -2,6 +2,7 @@
 
 namespace Amp\Process;
 
+use Amp\ByteStream\ClosableStream;
 use Amp\ByteStream\ClosedException;
 use Amp\ByteStream\OutputStream;
 use Amp\ByteStream\ResourceOutputStream;
@@ -10,7 +11,7 @@ use Amp\Deferred;
 use Amp\Future;
 use Revolt\EventLoop;
 
-final class ProcessOutputStream implements OutputStream
+final class ProcessOutputStream implements OutputStream, ClosableStream
 {
     /** @var \SplQueue */
     private \SplQueue $queuedWrites;
@@ -18,7 +19,7 @@ final class ProcessOutputStream implements OutputStream
     /** @var bool */
     private bool $shouldClose = false;
 
-    private ResourceOutputStream $resourceStream;
+    private ?ResourceOutputStream $resourceStream = null;
 
     private ?\Throwable $error = null;
 
@@ -37,7 +38,7 @@ final class ProcessOutputStream implements OutputStream
                      */
                     [$data, $deferred] = $this->queuedWrites->shift();
                     $resourceStream->write($data);
-                    $deferred->complete(null);
+                    $deferred->complete();
                 }
 
                 $this->resourceStream = $resourceStream;
@@ -59,7 +60,7 @@ final class ProcessOutputStream implements OutputStream
     /** @inheritdoc */
     public function write(string $data): Future
     {
-        if (isset($this->resourceStream)) {
+        if ($this->resourceStream) {
             return $this->resourceStream->write($data);
         }
 
@@ -80,7 +81,7 @@ final class ProcessOutputStream implements OutputStream
     /** @inheritdoc */
     public function end(string $finalData = ""): Future
     {
-        if (isset($this->resourceStream)) {
+        if ($this->resourceStream) {
             return $this->resourceStream->end($finalData);
         }
 
@@ -103,10 +104,9 @@ final class ProcessOutputStream implements OutputStream
     public function close(): void
     {
         $this->shouldClose = true;
+        $this->resourceStream?->close();
 
-        if (isset($this->resourceStream)) {
-            $this->resourceStream->close();
-        } elseif (!$this->queuedWrites->isEmpty()) {
+        if (!$this->queuedWrites->isEmpty()) {
             $error = new ClosedException("Stream closed.");
             do {
                 [, $deferred] = $this->queuedWrites->shift();
