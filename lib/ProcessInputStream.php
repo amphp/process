@@ -91,4 +91,9 @@ final class ProcessInputStream implements InputStream, ClosableStream, Reference
         $this->shouldClose = true;
         $this->resourceStream?->close();
     }
+
+    public function isClosed(): bool
+    {
+        return $this->shouldClose;
+    }
 }

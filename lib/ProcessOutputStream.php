@@ -114,4 +114,9 @@ final class ProcessOutputStream implements OutputStream, ClosableStream
             } while (!$this->queuedWrites->isEmpty());
         }
     }
+
+    public function isClosed(): bool
+    {
+        return $this->shouldClose;
+    }
 }
