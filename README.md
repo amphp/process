@@ -22,7 +22,7 @@ composer require amphp/process
 
 ## Requirements
 
-* PHP 7.0+
+* PHP 8.0+
 
 ## Versioning
 
