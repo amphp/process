@@ -119,4 +119,9 @@ final class ProcessOutputStream implements OutputStream, ClosableStream
     {
         return $this->shouldClose;
     }
+
+    public function isWritable(): bool
+    {
+        return !$this->isClosed();
+    }
 }
