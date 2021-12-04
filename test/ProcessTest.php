@@ -7,8 +7,8 @@ use Amp\PHPUnit\AsyncTestCase;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Process;
 use Amp\Process\ProcessException;
-use Amp\Process\ProcessReadableStream;
-use Amp\Process\ProcessWritableStream;
+use Amp\Process\ReadableProcessStream;
+use Amp\Process\WritableProcessStream;
 use Amp\Process\StatusError;
 use function Amp\ByteStream\buffer;
 use function Amp\delay;
@@ -94,7 +94,7 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(self::CMD_PROCESS);
         $process->start();
-        self::assertInstanceOf(ProcessWritableStream::class, $process->getStdin());
+        self::assertInstanceOf(WritableProcessStream::class, $process->getStdin());
         $process->join();
     }
 
@@ -102,7 +102,7 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(self::CMD_PROCESS);
         $process->start();
-        self::assertInstanceOf(ProcessReadableStream::class, $process->getStdout());
+        self::assertInstanceOf(ReadableProcessStream::class, $process->getStdout());
         $process->join();
     }
 
@@ -110,7 +110,7 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(self::CMD_PROCESS);
         $process->start();
-        self::assertInstanceOf(ProcessReadableStream::class, $process->getStderr());
+        self::assertInstanceOf(ReadableProcessStream::class, $process->getStderr());
         $process->join();
     }
 

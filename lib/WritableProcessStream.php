@@ -11,7 +11,7 @@ use Amp\DeferredFuture;
 use Amp\Future;
 use Revolt\EventLoop;
 
-final class ProcessWritableStream implements WritableStream, ClosableStream
+final class WritableProcessStream implements WritableStream, ClosableStream
 {
     /** @var \SplQueue */
     private \SplQueue $queuedWrites;

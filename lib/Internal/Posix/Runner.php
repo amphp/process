@@ -9,8 +9,8 @@ use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
-use Amp\Process\ProcessReadableStream;
-use Amp\Process\ProcessWritableStream;
+use Amp\Process\ReadableProcessStream;
+use Amp\Process\WritableProcessStream;
 use Revolt\EventLoop;
 
 /** @internal */
@@ -101,13 +101,13 @@ final class Runner implements ProcessRunner
         }
 
         $stdinDeferred = new DeferredFuture;
-        $handle->stdin = new ProcessWritableStream($stdinDeferred->getFuture());
+        $handle->stdin = new WritableProcessStream($stdinDeferred->getFuture());
 
         $stdoutDeferred = new DeferredFuture;
-        $handle->stdout = new ProcessReadableStream($stdoutDeferred->getFuture());
+        $handle->stdout = new ReadableProcessStream($stdoutDeferred->getFuture());
 
         $stderrDeferred = new DeferredFuture;
-        $handle->stderr = new ProcessReadableStream($stderrDeferred->getFuture());
+        $handle->stderr = new ReadableProcessStream($stderrDeferred->getFuture());
 
         $handle->extraDataPipe = $pipes[3];
 

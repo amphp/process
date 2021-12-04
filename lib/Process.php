@@ -220,9 +220,9 @@ final class Process
     /**
      * Gets the process input stream (STDIN).
      *
-     * @return ProcessWritableStream
+     * @return WritableProcessStream
      */
-    public function getStdin(): ProcessWritableStream
+    public function getStdin(): WritableProcessStream
     {
         if (!$this->handle || $this->handle->status === ProcessStatus::STARTING) {
             throw new StatusError("Process has not been started or has not completed starting.");
@@ -234,9 +234,9 @@ final class Process
     /**
      * Gets the process output stream (STDOUT).
      *
-     * @return ProcessReadableStream
+     * @return ReadableProcessStream
      */
-    public function getStdout(): ProcessReadableStream
+    public function getStdout(): ReadableProcessStream
     {
         if (!$this->handle || $this->handle->status === ProcessStatus::STARTING) {
             throw new StatusError("Process has not been started or has not completed starting.");
@@ -248,9 +248,9 @@ final class Process
     /**
      * Gets the process error stream (STDERR).
      *
-     * @return ProcessReadableStream
+     * @return ReadableProcessStream
      */
-    public function getStderr(): ProcessReadableStream
+    public function getStderr(): ReadableProcessStream
     {
         if (!$this->handle || $this->handle->status === ProcessStatus::STARTING) {
             throw new StatusError("Process has not been started or has not completed starting.");

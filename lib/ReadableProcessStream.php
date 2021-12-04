@@ -12,7 +12,7 @@ use Amp\Cancellation;
 use Amp\Future;
 use function Amp\async;
 
-final class ProcessReadableStream implements ReadableStream, ClosableStream, ReferencedStream
+final class ReadableProcessStream implements ReadableStream, ClosableStream, ReferencedStream
 {
     private ?Future $future;
 

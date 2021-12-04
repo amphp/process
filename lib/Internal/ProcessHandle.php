@@ -3,16 +3,16 @@
 namespace Amp\Process\Internal;
 
 use Amp\DeferredFuture;
-use Amp\Process\ProcessReadableStream;
-use Amp\Process\ProcessWritableStream;
+use Amp\Process\ReadableProcessStream;
+use Amp\Process\WritableProcessStream;
 
 abstract class ProcessHandle
 {
-    public ProcessWritableStream $stdin;
+    public WritableProcessStream $stdin;
 
-    public ProcessReadableStream $stdout;
+    public ReadableProcessStream $stdout;
 
-    public ProcessReadableStream $stderr;
+    public ReadableProcessStream $stderr;
 
     /** @var DeferredFuture<int> */
     public DeferredFuture $pidDeferred;
