@@ -2,8 +2,8 @@
 
 namespace Amp\Process\Internal\Windows;
 
-use Amp\ByteStream\ResourceInputStream;
-use Amp\ByteStream\ResourceOutputStream;
+use Amp\ByteStream\ReadableResourceStream;
+use Amp\ByteStream\WritableResourceStream;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
 use Revolt\EventLoop;
@@ -63,8 +63,8 @@ final class SocketConnector
         $deferreds[] = $handle->joinDeferred;
         $handle->stdioDeferreds = [];
 
-        foreach ($deferreds as $deferred) {
-            $deferred->error($error);
+        foreach ($deferreds as $DeferredFuture) {
+            $DeferredFuture->error($error);
         }
     }
 
@@ -172,9 +172,9 @@ final class SocketConnector
             $deferreds = $handle->stdioDeferreds;
             $handle->stdioDeferreds = []; // clear, so there's no double resolution if process spawn fails
 
-            $deferreds[0]->complete(new ResourceOutputStream($handle->sockets[0]));
-            $deferreds[1]->complete(new ResourceInputStream($handle->sockets[1]));
-            $deferreds[2]->complete(new ResourceInputStream($handle->sockets[2]));
+            $deferreds[0]->complete(new WritableResourceStream($handle->sockets[0]));
+            $deferreds[1]->complete(new ReadableResourceStream($handle->sockets[1]));
+            $deferreds[2]->complete(new ReadableResourceStream($handle->sockets[2]));
         }
     }
 
@@ -315,8 +315,8 @@ final class SocketConnector
         }
 
         $error = new ProcessException(\trim($error));
-        foreach ($handle->stdioDeferreds as $deferred) {
-            $deferred->error($error);
+        foreach ($handle->stdioDeferreds as $DeferredFuture) {
+            $DeferredFuture->error($error);
         }
 
         \fclose($handle->wrapperStderrPipe);

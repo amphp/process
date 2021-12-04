@@ -2,15 +2,15 @@
 
 namespace Amp\Process\Internal\Posix;
 
-use Amp\ByteStream\ResourceInputStream;
-use Amp\ByteStream\ResourceOutputStream;
-use Amp\Deferred;
+use Amp\ByteStream\ReadableResourceStream;
+use Amp\ByteStream\WritableResourceStream;
+use Amp\DeferredFuture;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
-use Amp\Process\ProcessInputStream;
-use Amp\Process\ProcessOutputStream;
+use Amp\Process\ProcessReadableStream;
+use Amp\Process\ProcessWritableStream;
 use Revolt\EventLoop;
 
 /** @internal */
@@ -46,14 +46,14 @@ final class Runner implements ProcessRunner
 
         $pid = \rtrim(@\fgets($stream));
 
-        /** @var $deferreds Deferred[] */
+        /** @var $deferreds DeferredFuture[] */
         [$handle, $pipes, $deferreds] = $data;
 
         if (!$pid || !\is_numeric($pid)) {
             $error = new ProcessException("Could not determine PID");
             $handle->pidDeferred->fail($error);
-            foreach ($deferreds as $deferred) {
-                $deferred->error($error);
+            foreach ($deferreds as $DeferredFuture) {
+                $DeferredFuture->error($error);
             }
             if ($handle->status < ProcessStatus::ENDED) {
                 $handle->status = ProcessStatus::ENDED;
@@ -100,14 +100,14 @@ final class Runner implements ProcessRunner
             throw new ProcessException("Could not get process status");
         }
 
-        $stdinDeferred = new Deferred;
-        $handle->stdin = new ProcessOutputStream($stdinDeferred->getFuture());
+        $stdinDeferred = new DeferredFuture;
+        $handle->stdin = new ProcessWritableStream($stdinDeferred->getFuture());
 
-        $stdoutDeferred = new Deferred;
-        $handle->stdout = new ProcessInputStream($stdoutDeferred->getFuture());
+        $stdoutDeferred = new DeferredFuture;
+        $handle->stdout = new ProcessReadableStream($stdoutDeferred->getFuture());
 
-        $stderrDeferred = new Deferred;
-        $handle->stderr = new ProcessInputStream($stderrDeferred->getFuture());
+        $stderrDeferred = new DeferredFuture;
+        $handle->stderr = new ProcessReadableStream($stderrDeferred->getFuture());
 
         $handle->extraDataPipe = $pipes[3];
 
@@ -123,9 +123,9 @@ final class Runner implements ProcessRunner
                 $stderrDeferred,
             ): void {
                 self::onProcessStartExtraDataPipeReadable($watcher, $stream, [$handle, [
-                    new ResourceOutputStream($pipes[0]),
-                    new ResourceInputStream($pipes[1]),
-                    new ResourceInputStream($pipes[2]),
+                    new WritableResourceStream($pipes[0]),
+                    new ReadableResourceStream($pipes[1]),
+                    new ReadableResourceStream($pipes[2]),
                 ], [
                     $stdinDeferred,
                     $stdoutDeferred,

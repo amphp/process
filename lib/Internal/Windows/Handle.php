@@ -2,7 +2,7 @@
 
 namespace Amp\Process\Internal\Windows;
 
-use Amp\Deferred;
+use Amp\DeferredFuture;
 use Amp\Process\Internal\ProcessHandle;
 
 /**
@@ -11,7 +11,7 @@ use Amp\Process\Internal\ProcessHandle;
  */
 final class Handle extends ProcessHandle
 {
-    public Deferred $joinDeferred;
+    public DeferredFuture $joinDeferred;
     public ?string $exitCodeWatcher = null;
     public bool $exitCodeRequested = false;
     /** @var resource */
@@ -21,7 +21,7 @@ final class Handle extends ProcessHandle
     public $wrapperStderrPipe;
     /** @var resource[] */
     public array $sockets = [];
-    /** @var Deferred[] */
+    /** @var DeferredFuture[] */
     public array $stdioDeferreds = [];
     public ?string $childPidWatcher = null;
     public ?string $connectTimeoutWatcher = null;
@@ -29,7 +29,7 @@ final class Handle extends ProcessHandle
 
     public function __construct()
     {
-        $this->joinDeferred = new Deferred;
-        $this->pidDeferred = new Deferred;
+        $this->joinDeferred = new DeferredFuture;
+        $this->pidDeferred = new DeferredFuture;
     }
 }

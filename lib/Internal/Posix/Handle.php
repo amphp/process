@@ -2,14 +2,14 @@
 
 namespace Amp\Process\Internal\Posix;
 
-use Amp\Deferred;
+use Amp\DeferredFuture;
 use Amp\Process\Internal\ProcessHandle;
 
 /** @internal */
 final class Handle extends ProcessHandle
 {
-    /** @var Deferred<int> */
-    public Deferred $joinDeferred;
+    /** @var DeferredFuture<int> */
+    public DeferredFuture $joinDeferred;
 
     /** @var resource */
     public $proc;
@@ -25,8 +25,8 @@ final class Handle extends ProcessHandle
 
     public function __construct()
     {
-        $this->pidDeferred = new Deferred;
-        $this->joinDeferred = new Deferred;
+        $this->pidDeferred = new DeferredFuture;
+        $this->joinDeferred = new DeferredFuture;
         $this->originalParentPid = \getmypid();
     }
 }

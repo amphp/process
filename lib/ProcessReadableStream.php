@@ -3,16 +3,16 @@
 namespace Amp\Process;
 
 use Amp\ByteStream\ClosableStream;
-use Amp\ByteStream\InputStream;
+use Amp\ByteStream\ReadableStream;
 use Amp\ByteStream\PendingReadError;
 use Amp\ByteStream\ReferencedStream;
-use Amp\ByteStream\ResourceInputStream;
+use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\StreamException;
-use Amp\CancellationToken;
+use Amp\Cancellation;
 use Amp\Future;
-use function Amp\launch;
+use function Amp\async;
 
-final class ProcessInputStream implements InputStream, ClosableStream, ReferencedStream
+final class ProcessReadableStream implements ReadableStream, ClosableStream, ReferencedStream
 {
     private ?Future $future;
 
@@ -22,11 +22,11 @@ final class ProcessInputStream implements InputStream, ClosableStream, Reference
 
     private bool $referenced = true;
 
-    private ?ResourceInputStream $resourceStream = null;
+    private ?ReadableResourceStream $resourceStream = null;
 
     public function __construct(Future $resourceStreamFuture)
     {
-        $this->future = launch(function () use ($resourceStreamFuture): ?string {
+        $this->future = async(function () use ($resourceStreamFuture): ?string {
             try {
                 $this->resourceStream = $resourceStreamFuture->await();
 
@@ -41,7 +41,7 @@ final class ProcessInputStream implements InputStream, ClosableStream, Reference
 
                 return $this->resourceStream->read();
             } catch (\Throwable $exception) {
-                throw new StreamException("Failed to launch process", 0, $exception);
+                throw new StreamException("Failed to async process", 0, $exception);
             } finally {
                 $this->future = null;
             }
@@ -55,7 +55,7 @@ final class ProcessInputStream implements InputStream, ClosableStream, Reference
      *
      * @throws PendingReadError Thrown if another read operation is still pending.
      */
-    public function read(?CancellationToken $token = null): ?string
+    public function read(?Cancellation $token = null): ?string
     {
         if ($this->pending) {
             throw new PendingReadError;
@@ -96,4 +96,8 @@ final class ProcessInputStream implements InputStream, ClosableStream, Reference
     {
         return $this->shouldClose;
     }
+
+	public function isReadable(): bool {
+		return $this->resourceStream?->isReadable() ?? false;
+	}
 }

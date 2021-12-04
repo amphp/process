@@ -4,14 +4,14 @@ namespace Amp\Process;
 
 use Amp\ByteStream\ClosableStream;
 use Amp\ByteStream\ClosedException;
-use Amp\ByteStream\OutputStream;
-use Amp\ByteStream\ResourceOutputStream;
+use Amp\ByteStream\WritableStream;
+use Amp\ByteStream\WritableResourceStream;
 use Amp\ByteStream\StreamException;
-use Amp\Deferred;
+use Amp\DeferredFuture;
 use Amp\Future;
 use Revolt\EventLoop;
 
-final class ProcessOutputStream implements OutputStream, ClosableStream
+final class ProcessWritableStream implements WritableStream, ClosableStream
 {
     /** @var \SplQueue */
     private \SplQueue $queuedWrites;
@@ -19,7 +19,7 @@ final class ProcessOutputStream implements OutputStream, ClosableStream
     /** @var bool */
     private bool $shouldClose = false;
 
-    private ?ResourceOutputStream $resourceStream = null;
+    private ?WritableResourceStream $resourceStream = null;
 
     private ?\Throwable $error = null;
 
@@ -34,11 +34,11 @@ final class ProcessOutputStream implements OutputStream, ClosableStream
                 while (!$this->queuedWrites->isEmpty()) {
                     /**
                      * @var string        $data
-                     * @var \Amp\Deferred $deferred
+                     * @var \Amp\DeferredFuture $DeferredFuture
                      */
-                    [$data, $deferred] = $this->queuedWrites->shift();
+                    [$data, $DeferredFuture] = $this->queuedWrites->shift();
                     $resourceStream->write($data);
-                    $deferred->complete();
+                    $DeferredFuture->complete();
                 }
 
                 $this->resourceStream = $resourceStream;
@@ -50,8 +50,8 @@ final class ProcessOutputStream implements OutputStream, ClosableStream
                 $this->error = new StreamException("Failed to launch process", 0, $exception);
 
                 while (!$this->queuedWrites->isEmpty()) {
-                    [, $deferred] = $this->queuedWrites->shift();
-                    $deferred->error($this->error);
+                    [, $DeferredFuture] = $this->queuedWrites->shift();
+                    $DeferredFuture->error($this->error);
                 }
             }
         });
@@ -72,10 +72,10 @@ final class ProcessOutputStream implements OutputStream, ClosableStream
             throw new ClosedException("Stream has already been closed.");
         }
 
-        $deferred = new Deferred;
-        $this->queuedWrites->push([$data, $deferred]);
+        $DeferredFuture = new DeferredFuture;
+        $this->queuedWrites->push([$data, $DeferredFuture]);
 
-        return $deferred->getFuture();
+        return $DeferredFuture->getFuture();
     }
 
     /** @inheritdoc */
@@ -93,12 +93,12 @@ final class ProcessOutputStream implements OutputStream, ClosableStream
             throw new ClosedException("Stream has already been closed.");
         }
 
-        $deferred = new Deferred;
-        $this->queuedWrites->push([$finalData, $deferred]);
+        $DeferredFuture = new DeferredFuture;
+        $this->queuedWrites->push([$finalData, $DeferredFuture]);
 
         $this->shouldClose = true;
 
-        return $deferred->getFuture();
+        return $DeferredFuture->getFuture();
     }
 
     public function close(): void
@@ -109,8 +109,8 @@ final class ProcessOutputStream implements OutputStream, ClosableStream
         if (!$this->queuedWrites->isEmpty()) {
             $error = new ClosedException("Stream closed.");
             do {
-                [, $deferred] = $this->queuedWrites->shift();
-                $deferred->fail($error);
+                [, $DeferredFuture] = $this->queuedWrites->shift();
+                $DeferredFuture->fail($error);
             } while (!$this->queuedWrites->isEmpty());
         }
     }
@@ -119,4 +119,8 @@ final class ProcessOutputStream implements OutputStream, ClosableStream
     {
         return $this->shouldClose;
     }
+
+	public function isWritable(): bool {
+		return $this->resourceStream?->isWritable() ?? false;
+	}
 }

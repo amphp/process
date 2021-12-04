@@ -7,12 +7,12 @@ use Amp\PHPUnit\AsyncTestCase;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Process;
 use Amp\Process\ProcessException;
-use Amp\Process\ProcessInputStream;
-use Amp\Process\ProcessOutputStream;
+use Amp\Process\ProcessReadableStream;
+use Amp\Process\ProcessWritableStream;
 use Amp\Process\StatusError;
 use function Amp\ByteStream\buffer;
 use function Amp\delay;
-use function Amp\launch;
+use function Amp\async;
 use const Amp\Process\IS_WINDOWS;
 
 class ProcessTest extends AsyncTestCase
@@ -33,7 +33,7 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
         $process->start();
-        $future = launch(fn () => $process->join());
+        $future = async(fn () => $process->join());
 
         self::assertTrue($process->isRunning());
 
@@ -94,7 +94,7 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(self::CMD_PROCESS);
         $process->start();
-        self::assertInstanceOf(ProcessOutputStream::class, $process->getStdin());
+        self::assertInstanceOf(ProcessWritableStream::class, $process->getStdin());
         $process->join();
     }
 
@@ -102,7 +102,7 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(self::CMD_PROCESS);
         $process->start();
-        self::assertInstanceOf(ProcessInputStream::class, $process->getStdout());
+        self::assertInstanceOf(ProcessReadableStream::class, $process->getStdout());
         $process->join();
     }
 
@@ -110,7 +110,7 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(self::CMD_PROCESS);
         $process->start();
-        self::assertInstanceOf(ProcessInputStream::class, $process->getStderr());
+        self::assertInstanceOf(ProcessReadableStream::class, $process->getStderr());
         $process->join();
     }
 
@@ -278,7 +278,7 @@ class ProcessTest extends AsyncTestCase
         $promises = [];
         foreach ($processes as $process) {
             $process->start();
-            $promises[] = launch(fn () => $process->join());
+            $promises[] = async(fn () => $process->join());
         }
 
         self::assertEquals(\range(0, $count - 1), Future\all($promises));

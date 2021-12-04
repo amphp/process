@@ -2,13 +2,13 @@
 
 namespace Amp\Process\Internal\Windows;
 
-use Amp\Deferred;
+use Amp\DeferredFuture;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
-use Amp\Process\ProcessInputStream;
-use Amp\Process\ProcessOutputStream;
+use Amp\Process\ProcessReadableStream;
+use Amp\Process\ProcessWritableStream;
 use Revolt\EventLoop;
 use const Amp\Process\BIN_DIR;
 
@@ -89,17 +89,17 @@ final class Runner implements ProcessRunner
         $handle->wrapperPid = $status['pid'];
         $handle->wrapperStderrPipe = $pipes[2];
 
-        $stdinDeferred = new Deferred;
+        $stdinDeferred = new DeferredFuture;
         $handle->stdioDeferreds[] = $stdinDeferred;
-        $handle->stdin = new ProcessOutputStream($stdinDeferred->getFuture());
+        $handle->stdin = new ProcessWritableStream($stdinDeferred->getFuture());
 
-        $stdoutDeferred = new Deferred;
+        $stdoutDeferred = new DeferredFuture;
         $handle->stdioDeferreds[] = $stdoutDeferred;
-        $handle->stdout = new ProcessInputStream($stdoutDeferred->getFuture());
+        $handle->stdout = new ProcessReadableStream($stdoutDeferred->getFuture());
 
-        $stderrDeferred = new Deferred;
+        $stderrDeferred = new DeferredFuture;
         $handle->stdioDeferreds[] = $stderrDeferred;
-        $handle->stderr = new ProcessInputStream($stderrDeferred->getFuture());
+        $handle->stderr = new ProcessReadableStream($stderrDeferred->getFuture());
 
         $this->socketConnector->registerPendingProcess($handle);
 

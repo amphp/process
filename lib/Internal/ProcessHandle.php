@@ -2,20 +2,20 @@
 
 namespace Amp\Process\Internal;
 
-use Amp\Deferred;
-use Amp\Process\ProcessInputStream;
-use Amp\Process\ProcessOutputStream;
+use Amp\DeferredFuture;
+use Amp\Process\ProcessReadableStream;
+use Amp\Process\ProcessWritableStream;
 
 abstract class ProcessHandle
 {
-    public ProcessOutputStream $stdin;
+    public ProcessWritableStream $stdin;
 
-    public ProcessInputStream $stdout;
+    public ProcessReadableStream $stdout;
 
-    public ProcessInputStream $stderr;
+    public ProcessReadableStream $stderr;
 
-    /** @var Deferred<int> */
-    public Deferred $pidDeferred;
+    /** @var DeferredFuture<int> */
+    public DeferredFuture $pidDeferred;
 
     public int $status = ProcessStatus::STARTING;
 }
