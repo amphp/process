@@ -13,11 +13,11 @@ final class Process
 {
     private static \WeakMap $map;
 
-    private ?ProcessRunner $processRunner = null;
+    private ProcessRunner $processRunner;
 
     private string $command;
 
-    private string $cwd = "";
+    private ?string $cwd;
 
     private array $env = [];
 
@@ -40,12 +40,6 @@ final class Process
     {
         self::$map ??= new \WeakMap();
 
-        $command = \is_array($command)
-            ? \implode(" ", \array_map(__NAMESPACE__ . "\\escapeArguments", $command))
-            : (string) $command;
-
-        $cwd = $cwd ?? "";
-
         $envVars = [];
         foreach ($env as $key => $value) {
             if (\is_array($value)) {
@@ -55,7 +49,9 @@ final class Process
             $envVars[(string) $key] = (string) $value;
         }
 
-        $this->command = $command;
+        $this->command = \is_array($command)
+            ? \implode(" ", \array_map(__NAMESPACE__ . "\\escapeArguments", $command))
+            : $command;
         $this->cwd = $cwd;
         $this->env = $envVars;
         $this->options = $options;
@@ -63,7 +59,10 @@ final class Process
         $driver = EventLoop::getDriver();
 
         $this->processRunner = (
-            self::$map[$driver] ??= (IS_WINDOWS ? new WindowsProcessRunner() : new PosixProcessRunner())
+            self::$map[$driver] ??= (\PHP_OS_FAMILY === 'Windows'
+                ? new WindowsProcessRunner()
+                : new PosixProcessRunner()
+            )
         );
     }
 
@@ -176,14 +175,10 @@ final class Process
     /**
      * Gets the current working directory.
      *
-     * @return string The current working directory an empty string if inherited from the current PHP process.
+     * @return string|null The current working directory or null if inherited from the current PHP process.
      */
-    public function getWorkingDirectory(): string
+    public function getWorkingDirectory(): ?string
     {
-        if ($this->cwd === "") {
-            return \getcwd() ?: "";
-        }
-
         return $this->cwd;
     }
 

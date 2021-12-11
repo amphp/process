@@ -75,7 +75,7 @@ class ProcessTest extends AsyncTestCase
     public function testGetWorkingDirectoryIsDefault()
     {
         $process = new Process(self::CMD_PROCESS);
-        self::assertSame(\getcwd(), $process->getWorkingDirectory());
+        self::assertNull($process->getWorkingDirectory());
     }
 
     public function testGetWorkingDirectoryIsCustomized()
