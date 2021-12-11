@@ -2,6 +2,6 @@
 
 namespace Amp\Process;
 
-class StatusError extends \Error
+final class StatusError extends \Error
 {
 }

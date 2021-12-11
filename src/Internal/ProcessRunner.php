@@ -9,16 +9,21 @@ interface ProcessRunner
     /**
      * Start a process using the supplied parameters.
      *
-     * @param string      $command The command to execute.
-     * @param string|null $cwd The working directory for the child process.
-     * @param array       $env Environment variables to pass to the child process.
-     * @param array       $options `proc_open()` options.
+     * @param string $command The command to execute.
+     * @param string|null $workingDirectory The working directory for the child process.
+     * @param array $environment Environment variables to pass to the child process.
+     * @param array $options `proc_open()` options.
      *
      * @return ProcessHandle
      *
      * @throws ProcessException If starting the process fails.
      */
-    public function start(string $command, string $cwd = null, array $env = [], array $options = []): ProcessHandle;
+    public function start(
+        string $command,
+        string $workingDirectory = null,
+        array $environment = [],
+        array $options = []
+    ): ProcessHandle;
 
     /**
      * Wait for the child process to end.
@@ -39,10 +44,10 @@ interface ProcessRunner
     public function kill(ProcessHandle $handle): void;
 
     /**
-     * Send a signal signal to the child process.
+     * Send a signal to the child process.
      *
      * @param ProcessHandle $handle The process descriptor.
-     * @param int           $signo Signal number to send to process.
+     * @param int $signo Signal number to send to process.
      *
      * @throws ProcessException If sending the signal fails.
      */

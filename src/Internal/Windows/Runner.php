@@ -39,7 +39,7 @@ final class Runner implements ProcessRunner
     }
 
     /** @inheritdoc */
-    public function start(string $command, string $cwd = null, array $env = [], array $options = []): ProcessHandle
+    public function start(string $command, string $workingDirectory = null, array $environment = [], array $options = []): ProcessHandle
     {
         if (\strpos($command, "\0") !== false) {
             throw new ProcessException("Can't execute commands that contain null bytes.");
@@ -49,11 +49,11 @@ final class Runner implements ProcessRunner
 
         $handle = new Handle;
         $handle->proc = @\proc_open(
-            $this->makeCommand($cwd ?? ''),
+            $this->makeCommand($workingDirectory ?? ''),
             self::FD_SPEC,
             $pipes,
-            $cwd ?: null,
-            $env ?: null,
+            $workingDirectory ?: null,
+            $environment ?: null,
             $options
         );
 

@@ -25,7 +25,6 @@ final class Handle extends ProcessHandle
 
     public function __construct()
     {
-        $this->pidDeferred = new DeferredFuture;
         $this->joinDeferred = new DeferredFuture;
         $this->originalParentPid = \getmypid();
     }

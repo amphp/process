@@ -4,19 +4,15 @@ namespace Amp\Process\Internal\Posix;
 
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\WritableResourceStream;
-use Amp\DeferredFuture;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
-use Amp\Process\ReadableProcessStream;
-use Amp\Process\WritableProcessStream;
 use Revolt\EventLoop;
 
-/** @internal */
 final class Runner implements ProcessRunner
 {
-    const FD_SPEC = [
+    private const FD_SPEC = [
         ["pipe", "r"], // stdin
         ["pipe", "w"], // stdout
         ["pipe", "w"], // stderr
@@ -26,56 +22,12 @@ final class Runner implements ProcessRunner
     /** @var string|null */
     private static ?string $fdPath = null;
 
-    public static function onProcessEndExtraDataPipeReadable($watcher, $stream, Handle $handle): void
-    {
-        EventLoop::cancel($watcher);
-        $handle->extraDataPipeWatcher = null;
-
-        $handle->status = ProcessStatus::ENDED;
-
-        if (!\is_resource($stream) || \feof($stream)) {
-            $handle->joinDeferred->error(new ProcessException("Process ended unexpectedly"));
-        } else {
-            $handle->joinDeferred->complete((int) \rtrim(@\stream_get_contents($stream)));
-        }
-    }
-
-    public static function onProcessStartExtraDataPipeReadable($watcher, $stream, $data): void
-    {
-        EventLoop::cancel($watcher);
-
-        $pid = \rtrim(@\fgets($stream));
-
-        /** @var $deferreds DeferredFuture[] */
-        [$handle, $pipes, $deferreds] = $data;
-
-        if (!$pid || !\is_numeric($pid)) {
-            $error = new ProcessException("Could not determine PID");
-            $handle->pidDeferred->fail($error);
-            foreach ($deferreds as $deferredFuture) {
-                $deferredFuture->error($error);
-            }
-            if ($handle->status < ProcessStatus::ENDED) {
-                $handle->status = ProcessStatus::ENDED;
-                $handle->joinDeferred->fail($error);
-            }
-            return;
-        }
-
-        $handle->status = ProcessStatus::RUNNING;
-        $handle->pidDeferred->complete((int) $pid);
-        $deferreds[0]->complete($pipes[0]);
-        $deferreds[1]->complete($pipes[1]);
-        $deferreds[2]->complete($pipes[2]);
-
-        if ($handle->extraDataPipeWatcher !== null) {
-            EventLoop::enable($handle->extraDataPipeWatcher);
-        }
-    }
-
-    /** @inheritdoc */
-    public function start(string $command, string $cwd = null, array $env = [], array $options = []): ProcessHandle
-    {
+    public function start(
+        string $command,
+        string $workingDirectory = null,
+        array $environment = [],
+        array $options = []
+    ): ProcessHandle {
         $command = \sprintf(
             '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0; trap "" INT TERM QUIT HUP;' .
             'pid=$!; echo $pid >&3; wait $pid; RC=$?; echo $RC >&3; exit $RC',
@@ -83,7 +35,14 @@ final class Runner implements ProcessRunner
         );
 
         $handle = new Handle;
-        $handle->proc = @\proc_open($command, $this->generateFds(), $pipes, $cwd ?: null, $env ?: null, $options);
+        $handle->proc = @\proc_open(
+            $command,
+            $this->generateFds(),
+            $pipes,
+            $workingDirectory ?: null,
+            $environment ?: null,
+            $options
+        );
 
         if (!\is_resource($handle->proc)) {
             $message = "Could not start process";
@@ -94,53 +53,73 @@ final class Runner implements ProcessRunner
         }
 
         $status = \proc_get_status($handle->proc);
-
         if (!$status) {
             \proc_close($handle->proc);
+
             throw new ProcessException("Could not get process status");
         }
 
-        $stdinDeferred = new DeferredFuture;
-        $handle->stdin = new WritableProcessStream($stdinDeferred->getFuture());
-
-        $stdoutDeferred = new DeferredFuture;
-        $handle->stdout = new ReadableProcessStream($stdoutDeferred->getFuture());
-
-        $stderrDeferred = new DeferredFuture;
-        $handle->stderr = new ReadableProcessStream($stderrDeferred->getFuture());
-
         $handle->extraDataPipe = $pipes[3];
-
         \stream_set_blocking($handle->extraDataPipe, false);
 
+        $suspension = EventLoop::createSuspension();
         $handle->extraDataPipeStartWatcher = EventLoop::onReadable(
             $handle->extraDataPipe,
-            static function (string $watcher, $stream) use (
-                $handle,
-                $pipes,
-                $stdinDeferred,
-                $stdoutDeferred,
-                $stderrDeferred,
-            ): void {
-                self::onProcessStartExtraDataPipeReadable($watcher, $stream, [$handle, [
-                    new WritableResourceStream($pipes[0]),
-                    new ReadableResourceStream($pipes[1]),
-                    new ReadableResourceStream($pipes[2]),
-                ], [
-                    $stdinDeferred,
-                    $stdoutDeferred,
-                    $stderrDeferred
-                ]]);
+            static function (string $callbackId) use ($suspension): void {
+                EventLoop::cancel($callbackId);
+
+                $suspension->resume();
             }
         );
 
+        $suspension->suspend();
+
+        $pid = \rtrim(@\fgets($pipes[3]));
+        if (!$pid || !\is_numeric($pid)) {
+            throw new ProcessException("Could not determine PID");
+        }
+
+        $handle->status = ProcessStatus::RUNNING;
+        $handle->pid = (int) $pid;
+
+        $handle->stdin = new WritableResourceStream($pipes[0]);
+        $handle->stdout = new ReadableResourceStream($pipes[1]);
+        $handle->stderr = new ReadableResourceStream($pipes[2]);
+
         $handle->extraDataPipeWatcher = EventLoop::onReadable(
             $handle->extraDataPipe,
-            static fn (string $watcher, $stream) => self::onProcessEndExtraDataPipeReadable($watcher, $stream, $handle),
+            static function (string $callbackId, $stream) use ($handle) {
+                EventLoop::cancel($callbackId);
+
+                $handle->extraDataPipeWatcher = null;
+                $handle->status = ProcessStatus::ENDED;
+
+                if (!\is_resource($stream) || \feof($stream)) {
+                    $handle->joinDeferred->error(new ProcessException("Process ended unexpectedly"));
+                } else {
+                    $handle->joinDeferred->complete((int) \rtrim(@\stream_get_contents($stream)));
+                }
+
+                if ($handle->extraDataPipeWatcher !== null) {
+                    EventLoop::cancel($handle->extraDataPipeWatcher);
+                    $handle->extraDataPipeWatcher = null;
+                }
+
+                if ($handle->extraDataPipeStartWatcher !== null) {
+                    EventLoop::cancel($handle->extraDataPipeStartWatcher);
+                    $handle->extraDataPipeStartWatcher = null;
+                }
+
+                if (\is_resource($handle->extraDataPipe)) {
+                    \fclose($handle->extraDataPipe);
+                }
+
+                // Don't call proc_close here or close output streams, as there might still be stream reads
+                $handle->stdin->close();
+            }
         );
 
         EventLoop::unreference($handle->extraDataPipeWatcher);
-        EventLoop::disable($handle->extraDataPipeWatcher);
 
         return $handle;
     }
@@ -157,7 +136,7 @@ final class Runner implements ProcessRunner
             throw new ProcessException("Unable to list open file descriptors");
         }
 
-        $fdList = \array_filter($fdList, function (string $path): bool {
+        $fdList = \array_filter($fdList, static function (string $path): bool {
             return $path !== "." && $path !== "..";
         });
 
@@ -169,7 +148,6 @@ final class Runner implements ProcessRunner
         return self::FD_SPEC + $fds;
     }
 
-    /** @inheritdoc */
     public function join(ProcessHandle $handle): int
     {
         /** @var Handle $handle */
@@ -180,89 +158,26 @@ final class Runner implements ProcessRunner
         return $handle->joinDeferred->getFuture()->await();
     }
 
-    /** @inheritdoc */
     public function kill(ProcessHandle $handle): void
     {
-        /** @var Handle $handle */
-        if ($handle->extraDataPipeWatcher !== null) {
-            EventLoop::cancel($handle->extraDataPipeWatcher);
-            $handle->extraDataPipeWatcher = null;
-        }
-
-        /** @var Handle $handle */
-        if ($handle->extraDataPipeStartWatcher !== null) {
-            EventLoop::cancel($handle->extraDataPipeStartWatcher);
-            $handle->extraDataPipeStartWatcher = null;
-        }
-
-        if (!\proc_terminate($handle->proc, 9)) { // Forcefully kill the process using SIGKILL.
-            throw new ProcessException("Terminating process failed");
-        }
-
         $this->signal($handle, 9);
-        $handle->joinDeferred->getFuture()->ignore();
-
-        if ($handle->status < ProcessStatus::ENDED) {
-            $handle->status = ProcessStatus::ENDED;
-            $handle->joinDeferred->error(new ProcessException("The process was killed"));
-        }
-
-        $this->free($handle);
     }
 
-    /** @inheritdoc */
     public function signal(ProcessHandle $handle, int $signo): void
     {
-        EventLoop::queue(function () use ($handle, $signo): void {
-            try {
-                $pid = $handle->pidDeferred->getFuture()->await();
-                @\posix_kill($pid, $signo);
-            } catch (\Throwable) {
-                // Ignored.
-            }
-        });
+        /** @noinspection PhpComposerExtensionStubsInspection */
+        @\posix_kill($handle->pid, $signo);
     }
 
-    /** @inheritdoc */
     public function destroy(ProcessHandle $handle): void
     {
         /** @var Handle $handle */
         if ($handle->status < ProcessStatus::ENDED && \getmypid() === $handle->originalParentPid) {
             try {
                 $this->kill($handle);
-                return;
-            } catch (ProcessException $e) {
+            } catch (ProcessException) {
                 // ignore
             }
-        }
-
-        $this->free($handle);
-    }
-
-    private function free(Handle $handle): void
-    {
-        /** @var Handle $handle */
-        if ($handle->extraDataPipeWatcher !== null) {
-            EventLoop::cancel($handle->extraDataPipeWatcher);
-            $handle->extraDataPipeWatcher = null;
-        }
-
-        /** @var Handle $handle */
-        if ($handle->extraDataPipeStartWatcher !== null) {
-            EventLoop::cancel($handle->extraDataPipeStartWatcher);
-            $handle->extraDataPipeStartWatcher = null;
-        }
-
-        if (\is_resource($handle->extraDataPipe)) {
-            \fclose($handle->extraDataPipe);
-        }
-
-        $handle->stdin->close();
-        $handle->stdout->close();
-        $handle->stderr->close();
-
-        if (\is_resource($handle->proc)) {
-            \proc_close($handle->proc);
         }
     }
 }
