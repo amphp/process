@@ -8,11 +8,11 @@ use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Process;
 use Amp\Process\ProcessException;
 use Amp\Process\ReadableProcessStream;
-use Amp\Process\WritableProcessStream;
 use Amp\Process\StatusError;
+use Amp\Process\WritableProcessStream;
+use function Amp\async;
 use function Amp\ByteStream\buffer;
 use function Amp\delay;
-use function Amp\async;
 use const Amp\Process\IS_WINDOWS;
 
 class ProcessTest extends AsyncTestCase
@@ -289,7 +289,7 @@ class ProcessTest extends AsyncTestCase
         $process = new Process(["php", __DIR__ . "/bin/worker.php"]);
         $process->start();
 
-        $process->getStdin()->write("exit 2")->await();
+        $process->getStdin()->write("exit 2");
         self::assertSame("..", $process->getStdout()->read());
 
         self::assertSame(0, $process->join());
@@ -301,7 +301,7 @@ class ProcessTest extends AsyncTestCase
         $process->start();
 
         $count = 128 * 1024 + 1;
-        $process->getStdin()->write("exit " . $count)->await();
+        $process->getStdin()->write("exit " . $count);
         self::assertSame(\str_repeat(".", $count), buffer($process->getStdout()));
 
         self::assertSame(0, $process->join());

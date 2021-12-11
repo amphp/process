@@ -52,8 +52,8 @@ final class Runner implements ProcessRunner
         if (!$pid || !\is_numeric($pid)) {
             $error = new ProcessException("Could not determine PID");
             $handle->pidDeferred->fail($error);
-            foreach ($deferreds as $DeferredFuture) {
-                $DeferredFuture->error($error);
+            foreach ($deferreds as $deferredFuture) {
+                $deferredFuture->error($error);
             }
             if ($handle->status < ProcessStatus::ENDED) {
                 $handle->status = ProcessStatus::ENDED;

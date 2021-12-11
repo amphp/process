@@ -63,8 +63,8 @@ final class SocketConnector
         $deferreds[] = $handle->joinDeferred;
         $handle->stdioDeferreds = [];
 
-        foreach ($deferreds as $DeferredFuture) {
-            $DeferredFuture->error($error);
+        foreach ($deferreds as $deferredFuture) {
+            $deferredFuture->error($error);
         }
     }
 
@@ -315,8 +315,8 @@ final class SocketConnector
         }
 
         $error = new ProcessException(\trim($error));
-        foreach ($handle->stdioDeferreds as $DeferredFuture) {
-            $DeferredFuture->error($error);
+        foreach ($handle->stdioDeferreds as $deferredFuture) {
+            $deferredFuture->error($error);
         }
 
         \fclose($handle->wrapperStderrPipe);

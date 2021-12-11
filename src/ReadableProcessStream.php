@@ -2,17 +2,16 @@
 
 namespace Amp\Process;
 
-use Amp\ByteStream\ClosableStream;
 use Amp\ByteStream\ReadableStream;
 use Amp\ByteStream\PendingReadError;
-use Amp\ByteStream\ReferencedStream;
+use Amp\ByteStream\ResourceStream;
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\StreamException;
 use Amp\Cancellation;
 use Amp\Future;
 use function Amp\async;
 
-final class ReadableProcessStream implements ReadableStream, ClosableStream, ReferencedStream
+final class ReadableProcessStream implements ReadableStream, ResourceStream
 {
     private ?Future $future;
 
@@ -26,7 +25,7 @@ final class ReadableProcessStream implements ReadableStream, ClosableStream, Ref
 
     public function __construct(Future $resourceStreamFuture)
     {
-        $this->future = async(function () use ($resourceStreamFuture): ?string {
+        $this->future = async(function () use ($resourceStreamFuture): ?ReadableResourceStream {
             try {
                 $this->resourceStream = $resourceStreamFuture->await();
 
@@ -39,7 +38,7 @@ final class ReadableProcessStream implements ReadableStream, ClosableStream, Ref
                     return null;
                 }
 
-                return $this->resourceStream->read();
+                return $this->resourceStream;
             } catch (\Throwable $exception) {
                 throw new StreamException("Failed to async process", 0, $exception);
             } finally {
@@ -55,7 +54,7 @@ final class ReadableProcessStream implements ReadableStream, ClosableStream, Ref
      *
      * @throws PendingReadError Thrown if another read operation is still pending.
      */
-    public function read(?Cancellation $token = null): ?string
+    public function read(?Cancellation $cancellation = null, ?int $length = null): ?string
     {
         if ($this->pending) {
             throw new PendingReadError;
@@ -64,14 +63,14 @@ final class ReadableProcessStream implements ReadableStream, ClosableStream, Ref
         if ($this->future) {
             $this->pending = true;
             try {
-                return $this->future->await($token);
+                $this->future->await($cancellation);
             } finally {
                 $this->pending = false;
             }
         }
 
         \assert($this->resourceStream);
-        return $this->resourceStream->read($token);
+        return $this->resourceStream->read($cancellation, $length);
     }
 
     public function reference(): void
@@ -100,4 +99,13 @@ final class ReadableProcessStream implements ReadableStream, ClosableStream, Ref
 	public function isReadable(): bool {
 		return $this->resourceStream?->isReadable() ?? false;
 	}
+
+    public function getResource()
+    {
+        if ($this->future) {
+            $this->future->await();
+        }
+
+        return $this->resourceStream?->getResource();
+    }
 }

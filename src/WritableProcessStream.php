@@ -2,16 +2,14 @@
 
 namespace Amp\Process;
 
-use Amp\ByteStream\ClosableStream;
 use Amp\ByteStream\ClosedException;
 use Amp\ByteStream\WritableStream;
 use Amp\ByteStream\WritableResourceStream;
 use Amp\ByteStream\StreamException;
-use Amp\DeferredFuture;
 use Amp\Future;
 use Revolt\EventLoop;
 
-final class WritableProcessStream implements WritableStream, ClosableStream
+final class WritableProcessStream implements WritableStream
 {
     /** @var \SplQueue */
     private \SplQueue $queuedWrites;
@@ -33,12 +31,13 @@ final class WritableProcessStream implements WritableStream, ClosableStream
 
                 while (!$this->queuedWrites->isEmpty()) {
                     /**
-                     * @var string        $data
-                     * @var \Amp\DeferredFuture $DeferredFuture
+                     * @var string $data
+                     * @var EventLoop\Suspension $suspension
                      */
-                    [$data, $DeferredFuture] = $this->queuedWrites->shift();
+                    [$data, $suspension] = $this->queuedWrites->bottom();
                     $resourceStream->write($data);
-                    $DeferredFuture->complete();
+                    $suspension->resume();
+                    $this->queuedWrites->shift();
                 }
 
                 $this->resourceStream = $resourceStream;
@@ -50,55 +49,50 @@ final class WritableProcessStream implements WritableStream, ClosableStream
                 $this->error = new StreamException("Failed to launch process", 0, $exception);
 
                 while (!$this->queuedWrites->isEmpty()) {
-                    [, $DeferredFuture] = $this->queuedWrites->shift();
-                    $DeferredFuture->error($this->error);
+                    [, $suspension] = $this->queuedWrites->shift();
+                    $suspension->throw($this->error);
                 }
             }
         });
     }
 
-    /** @inheritdoc */
-    public function write(string $data): Future
+    public function write(string $bytes): void
     {
         if ($this->resourceStream) {
-            return $this->resourceStream->write($data);
+            $this->resourceStream->write($bytes);
+            return;
         }
 
         if ($this->error) {
-            return Future::error($this->error);
+            throw $this->error;
         }
 
         if ($this->shouldClose) {
             throw new ClosedException("Stream has already been closed.");
         }
 
-        $DeferredFuture = new DeferredFuture;
-        $this->queuedWrites->push([$data, $DeferredFuture]);
+        $suspension = EventLoop::createSuspension();
+        $this->queuedWrites->push([$bytes, $suspension]);
 
-        return $DeferredFuture->getFuture();
+        $suspension->suspend();
     }
 
-    /** @inheritdoc */
-    public function end(string $finalData = ""): Future
+    public function end(): void
     {
         if ($this->resourceStream) {
-            return $this->resourceStream->end($finalData);
+            $this->resourceStream->end();
+            return;
         }
 
         if ($this->error) {
-            return Future::error($this->error);
+            throw $this->error;
         }
 
         if ($this->shouldClose) {
             throw new ClosedException("Stream has already been closed.");
         }
 
-        $DeferredFuture = new DeferredFuture;
-        $this->queuedWrites->push([$finalData, $DeferredFuture]);
-
         $this->shouldClose = true;
-
-        return $DeferredFuture->getFuture();
     }
 
     public function close(): void
@@ -109,8 +103,8 @@ final class WritableProcessStream implements WritableStream, ClosableStream
         if (!$this->queuedWrites->isEmpty()) {
             $error = new ClosedException("Stream closed.");
             do {
-                [, $DeferredFuture] = $this->queuedWrites->shift();
-                $DeferredFuture->fail($error);
+                [, $deferredFuture] = $this->queuedWrites->shift();
+                $deferredFuture->fail($error);
             } while (!$this->queuedWrites->isEmpty());
         }
     }
