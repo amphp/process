@@ -6,7 +6,9 @@ use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\WritableResourceStream;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
+use Amp\TimeoutCancellation;
 use Revolt\EventLoop;
+use function Amp\async;
 
 /**
  * @internal
@@ -14,18 +16,17 @@ use Revolt\EventLoop;
  */
 final class SocketConnector
 {
-    const SERVER_SOCKET_URI = 'tcp://127.0.0.1:0';
-    const SECURITY_TOKEN_SIZE = 16;
-    const CONNECT_TIMEOUT = 1000;
-    /** @var string */
+    public const SECURITY_TOKEN_SIZE = 16;
+
+    private const SERVER_SOCKET_URI = 'tcp://127.0.0.1:0';
+
     public string $address;
-    /** @var int */
     public int $port;
+
     /** @var resource */
     private $server;
-    /** @var PendingSocketClient[] */
-    private array $pendingClients = [];
-    /** @var Handle[] */
+
+    /** @var WindowsHandle[] */
     private array $pendingProcesses = [];
 
     public function __construct()
@@ -44,340 +45,172 @@ final class SocketConnector
         [$this->address, $port] = \explode(':', \stream_socket_get_name($this->server, false));
         $this->port = (int) $port;
 
-        EventLoop::unreference(EventLoop::onReadable($this->server, [$this, 'onServerSocketReadable']));
+        EventLoop::unreference(EventLoop::onReadable($this->server, fn () => $this->acceptClient()));
     }
 
-    public function failHandleStart(Handle $handle, string $message, ...$args)
+    public function connectPipes(WindowsHandle $handle): void
     {
-        EventLoop::cancel($handle->connectTimeoutWatcher);
+        $this->pendingProcesses[$handle->wrapperPid] = $handle;
 
-        unset($this->pendingProcesses[$handle->wrapperPid]);
+        async(function () use ($handle) {
+            $handle->pid = $this->readChildPid(new ReadableResourceStream($handle->sockets[0]));
+            $handle->startBarrier->arrive();
+        })->ignore();
 
-        foreach ($handle->sockets as $socket) {
-            \fclose($socket);
+        try {
+            $handle->startBarrier->await(new TimeoutCancellation(10));
+        } catch (\Throwable $exception) {
+            foreach ($handle->sockets as $socket) {
+                \fclose($socket);
+            }
+
+            throw $exception;
+        } finally {
+            unset($this->pendingProcesses[$handle->wrapperPid]);
         }
 
-        $error = new ProcessException(\vsprintf($message, $args));
+        $handle->stdin = new WritableResourceStream($handle->sockets[0]);
+        $handle->stdout = new ReadableResourceStream($handle->sockets[1]);
+        $handle->stderr = new ReadableResourceStream($handle->sockets[2]);
 
-        $deferreds = $handle->stdioDeferreds;
-        $deferreds[] = $handle->joinDeferred;
-        $handle->stdioDeferreds = [];
+        $handle->status = ProcessStatus::RUNNING;
 
-        foreach ($deferreds as $deferredFuture) {
-            $deferredFuture->error($error);
-        }
+        $handle->exitCodeStream = new ReadableResourceStream($handle->sockets[0]);
+
+        async(function () use ($handle) {
+            try {
+                $exitCode = $this->readExitCode($handle->exitCodeStream);
+
+                $handle->joinDeferred->complete($exitCode);
+            } catch (HandshakeException) {
+                $handle->joinDeferred->error(new ProcessException("Failed to read exit code from process wrapper"));
+            } finally {
+                $handle->status = ProcessStatus::ENDED;
+                $handle->stdin->close();
+
+                if (\is_resource($handle->sockets[0])) {
+                    @\fclose($handle->sockets[0]);
+                }
+            }
+        });
     }
 
-    public function onReadableHandshake($watcher, $socket)
+    private function acceptClient(): void
     {
-        $socketId = (int) $socket;
-        $pendingClient = $this->pendingClients[$socketId];
-
-        if (null === $data = $this->readDataFromPendingClient($socket, self::SECURITY_TOKEN_SIZE + 6, $pendingClient)) {
-            return;
+        $socket = \stream_socket_accept($this->server);
+        if (!\stream_set_blocking($socket, false)) {
+            throw new \Error("Failed to set client socket to non-blocking mode");
         }
 
-        $packet = \unpack('Csignal/Npid/Cstream_id/a*client_token', $data);
+        async(function () use ($socket) {
+            try {
+                $handle = $this->performClientHandshake($socket);
+                $handle->startBarrier->arrive();
+            } catch (\Throwable $e) {
+                \fwrite($socket, \chr(SignalCode::HANDSHAKE_ACK) . \chr($e->getCode()));
+                \fclose($socket);
+            }
+        });
+    }
+
+    /**
+     * @throws HandshakeException
+     */
+    public function performClientHandshake($socket): WindowsHandle
+    {
+        $stream = new ReadableResourceStream($socket);
+
+        $packet = \unpack('Csignal/Npid/Cstream_id/a*client_token',
+            $this->read($stream, self::SECURITY_TOKEN_SIZE + 6));
 
         // validate the client's handshake
         if ($packet['signal'] !== SignalCode::HANDSHAKE) {
-            $this->failClientHandshake($socket, HandshakeStatus::SIGNAL_UNEXPECTED);
-            return;
+            throw new HandshakeException(HandshakeStatus::SIGNAL_UNEXPECTED);
         }
 
         if ($packet['stream_id'] > 2) {
-            $this->failClientHandshake($socket, HandshakeStatus::INVALID_STREAM_ID);
-            return;
+            throw new HandshakeException(HandshakeStatus::INVALID_STREAM_ID);
         }
 
         if (!isset($this->pendingProcesses[$packet['pid']])) {
-            $this->failClientHandshake($socket, HandshakeStatus::INVALID_PROCESS_ID);
-            return;
+            throw new HandshakeException(HandshakeStatus::INVALID_PROCESS_ID);
         }
 
         $handle = $this->pendingProcesses[$packet['pid']];
 
         if (isset($handle->sockets[$packet['stream_id']])) {
-            $this->failClientHandshake($socket, HandshakeStatus::DUPLICATE_STREAM_ID);
-            \trigger_error(\sprintf(
-                "%s: Received duplicate socket for process #%s stream #%d",
-                self::class,
-                $handle->pid,
-                $packet['stream_id']
-            ), E_USER_WARNING);
-            return;
+            throw new HandshakeException(HandshakeStatus::DUPLICATE_STREAM_ID);
         }
 
         if (!\hash_equals($packet['client_token'], $handle->securityTokens[$packet['stream_id']])) {
-            $this->failClientHandshake($socket, HandshakeStatus::INVALID_CLIENT_TOKEN);
-            $this->failHandleStart($handle, "Invalid client security token for stream #%d", $packet['stream_id']);
-            return;
+            throw new HandshakeException(HandshakeStatus::INVALID_CLIENT_TOKEN);
         }
 
-        $ackData = \chr(SignalCode::HANDSHAKE_ACK) . \chr(HandshakeStatus::SUCCESS)
-            . $handle->securityTokens[$packet['stream_id'] + 3];
+        $ackData = \chr(SignalCode::HANDSHAKE_ACK) . \chr(HandshakeStatus::SUCCESS) . $handle->securityTokens[$packet['stream_id'] + 3];
 
         // Unless we set the security token size so high that it won't fit in the
         // buffer, this probably shouldn't ever happen unless something has gone wrong
         if (\fwrite($socket, $ackData) !== self::SECURITY_TOKEN_SIZE + 2) {
-            unset($this->pendingClients[$socketId]);
-            return;
+            throw new HandshakeException(HandshakeStatus::ACK_WRITE_ERROR);
         }
 
-        $pendingClient->pid = (int) $packet['pid'];
-        $pendingClient->streamId = (int) $packet['stream_id'];
-        $pendingClient->readWatcher = EventLoop::onReadable($socket, [$this, 'onReadableHandshakeAck']);
-    }
-
-    public function onReadableHandshakeAck($watcher, $socket)
-    {
-        $socketId = (int) $socket;
-        $pendingClient = $this->pendingClients[$socketId];
+        $clientPid = (int) $packet['pid'];
+        $clientStreamId = (int) $packet['stream_id'];
 
         // can happen if the start promise was failed
-        if (!isset($this->pendingProcesses[$pendingClient->pid]) || $this->pendingProcesses[$pendingClient->pid]->status === ProcessStatus::ENDED) {
-            \fclose($socket);
-            EventLoop::cancel($watcher);
-            EventLoop::cancel($pendingClient->timeoutWatcher);
-            unset($this->pendingClients[$socketId]);
-            return;
+        if (!isset($this->pendingProcesses[$clientPid]) || $this->pendingProcesses[$clientPid]->status === ProcessStatus::ENDED) {
+            throw new HandshakeException(HandshakeStatus::NO_LONGER_PENDING);
         }
 
-        if (null === $data = $this->readDataFromPendingClient($socket, 2, $pendingClient)) {
-            return;
-        }
-
-        EventLoop::cancel($pendingClient->timeoutWatcher);
-
-        unset($this->pendingClients[$socketId]);
-        $handle = $this->pendingProcesses[$pendingClient->pid];
-
-        $packet = \unpack('Csignal/Cstatus', $data);
+        $packet = \unpack('Csignal/Cstatus', $this->read($stream, 2));
 
         if ($packet['signal'] !== SignalCode::HANDSHAKE_ACK || $packet['status'] !== HandshakeStatus::SUCCESS) {
-            $this->failHandleStart(
-                $handle,
-                "Client rejected handshake with code %d for stream #%d",
-                $packet['status'],
-                $pendingClient->streamId
-            );
-            return;
+            throw new HandshakeException(HandshakeStatus::ACK_STATUS_ERROR);
         }
 
-        $handle->sockets[$pendingClient->streamId] = $socket;
+        $handle->sockets[$clientStreamId] = $socket;
 
-        if (\count($handle->sockets) === 3) {
-            $handle->childPidWatcher = EventLoop::onReadable($handle->sockets[0], [$this, 'onReadableChildPid'], $handle);
-
-            $deferreds = $handle->stdioDeferreds;
-            $handle->stdioDeferreds = []; // clear, so there's no double resolution if process spawn fails
-
-            $deferreds[0]->complete(new WritableResourceStream($handle->sockets[0]));
-            $deferreds[1]->complete(new ReadableResourceStream($handle->sockets[1]));
-            $deferreds[2]->complete(new ReadableResourceStream($handle->sockets[2]));
-        }
+        return $handle;
     }
 
-    public function onReadableChildPid($watcher, $socket, Handle $handle)
+    private function readChildPid(ReadableResourceStream $stream): int
     {
-        $data = \fread($socket, 5);
-
-        if ($data === false || $data === '') {
-            return;
-        }
-
-        EventLoop::cancel($handle->childPidWatcher);
-        EventLoop::cancel($handle->connectTimeoutWatcher);
-
-        $handle->childPidWatcher = null;
-
-        if (\strlen($data) !== 5) {
-            $this->failHandleStart(
-                $handle,
-                'Failed to read PID from wrapper: Received %d of 5 expected bytes',
-                \strlen($data)
-            );
-            return;
-        }
-
-        $packet = \unpack('Csignal/Npid', $data);
-
+        $packet = \unpack('Csignal/Npid', $this->read($stream, 5));
         if ($packet['signal'] !== SignalCode::CHILD_PID) {
-            $this->failHandleStart(
-                $handle,
-                "Failed to read PID from wrapper: Unexpected signal code %d",
-                $packet['signal']
-            );
-            return;
+            throw new HandshakeException(HandshakeStatus::SIGNAL_UNEXPECTED);
         }
 
-        // Required, because a process might be destroyed while starting
-        if ($handle->status === ProcessStatus::STARTING) {
-            $handle->status = ProcessStatus::RUNNING;
-            $handle->exitCodeWatcher = EventLoop::onReadable($handle->sockets[0], [$this, 'onReadableExitCode'], $handle);
-
-            if (!$handle->exitCodeRequested) {
-                EventLoop::unreference($handle->exitCodeWatcher);
-            }
-        }
-
-        $handle->pidDeferred->complete($packet['pid']);
-
-        unset($this->pendingProcesses[$handle->wrapperPid]);
+        return (int) $packet['pid'];
     }
 
-    public function onReadableExitCode($watcher, $socket, Handle $handle)
+    private function readExitCode(ReadableResourceStream $stream): int
     {
-        $data = \fread($socket, 5);
-
-        if ($data === false || $data === '') {
-            return;
-        }
-
-        EventLoop::cancel($handle->exitCodeWatcher);
-        $handle->exitCodeWatcher = null;
-
-        if (\strlen($data) !== 5) {
-            $handle->status = ProcessStatus::ENDED;
-            $handle->joinDeferred->error(new ProcessException(
-                \sprintf('Failed to read exit code from wrapper: Received %d of 5 expected bytes', \strlen($data))
-            ));
-            return;
-        }
-
-        $packet = \unpack('Csignal/Ncode', $data);
+        $packet = \unpack('Csignal/Ncode', $this->read($stream, 5));
 
         if ($packet['signal'] !== SignalCode::EXIT_CODE) {
-            $this->failHandleStart(
-                $handle,
-                "Failed to read exit code from wrapper: Unexpected signal code %d",
-                $packet['signal']
-            );
-            return;
+            throw new HandshakeException(HandshakeStatus::SIGNAL_UNEXPECTED);
         }
 
-        $handle->status = ProcessStatus::ENDED;
-        $handle->joinDeferred->complete($packet['code']);
-        $handle->stdin->close();
-        $handle->stdout->close();
-        $handle->stderr->close();
+        return (int) $packet['code'];
+    }
 
-        // Explicitly \fclose() sockets, as resource streams shut only one side down.
-        foreach ($handle->sockets as $sock) {
-            // Ensure socket is still open before attempting to close.
-            if (\is_resource($sock)) {
-                @\fclose($sock);
+    private function read(ReadableResourceStream $stream, int $length): string
+    {
+        $buffer = '';
+
+        do {
+            $chunk = $stream->read(length: \strlen($buffer) - $length);
+            if ($chunk === null) {
+                break;
             }
-        }
-    }
 
-    public function onClientSocketConnectTimeout($watcher, $socket)
-    {
-        $id = (int) $socket;
+            $buffer .= $chunk;
+        } while (\strlen($buffer) < $length);
 
-        EventLoop::cancel($this->pendingClients[$id]->readWatcher);
-        unset($this->pendingClients[$id]);
-
-        \fclose($socket);
-    }
-
-    public function onServerSocketReadable()
-    {
-        $socket = \stream_socket_accept($this->server);
-
-        if (!\stream_set_blocking($socket, false)) {
-            throw new \Error("Failed to set client socket to non-blocking mode");
+        if (\strlen($buffer) !== $length) {
+            throw new ProcessException('Received ' . \strlen($buffer) . ' of ' . $length . ' expected bytes');
         }
 
-        $pendingClient = new PendingSocketClient;
-        $pendingClient->readWatcher = EventLoop::onReadable($socket, [$this, 'onReadableHandshake']);
-        $pendingClient->timeoutWatcher = EventLoop::delay(
-            self::CONNECT_TIMEOUT,
-            [$this, 'onClientSocketConnectTimeout'],
-            $socket
-        );
-
-        $this->pendingClients[(int) $socket] = $pendingClient;
-    }
-
-    public function onProcessConnectTimeout($watcher, Handle $handle)
-    {
-        $running = \is_resource($handle->proc) && \proc_get_status($handle->proc)['running'];
-
-        $error = null;
-        if (!$running) {
-            $error = \stream_get_contents($handle->wrapperStderrPipe);
-        }
-        $error = $error ?: 'Process did not connect to server before timeout elapsed';
-
-        foreach ($handle->sockets as $socket) {
-            \fclose($socket);
-        }
-
-        $error = new ProcessException(\trim($error));
-        foreach ($handle->stdioDeferreds as $deferredFuture) {
-            $deferredFuture->error($error);
-        }
-
-        \fclose($handle->wrapperStderrPipe);
-        \proc_close($handle->proc);
-
-        $handle->joinDeferred->error($error);
-    }
-
-    public function registerPendingProcess(Handle $handle)
-    {
-        // Use EventLoop::defer() to start the timeout only after the loop has ticked once. This prevents issues with many
-        // things started at once, see https://github.com/amphp/process/issues/21.
-        $handle->connectTimeoutWatcher = EventLoop::defer(function () use ($handle) {
-            $handle->connectTimeoutWatcher = EventLoop::delay(
-                self::CONNECT_TIMEOUT,
-                [$this, 'onProcessConnectTimeout'],
-                $handle
-            );
-        });
-
-        $this->pendingProcesses[$handle->wrapperPid] = $handle;
-    }
-
-    private function failClientHandshake($socket, int $code)
-    {
-        \fwrite($socket, \chr(SignalCode::HANDSHAKE_ACK) . \chr($code));
-        \fclose($socket);
-
-        unset($this->pendingClients[(int) $socket]);
-    }
-
-    /**
-     * Read data from a client socket.
-     *
-     * This method cleans up internal state as appropriate. Returns null if the read fails or needs to be repeated.
-     *
-     * @param resource            $socket
-     * @param int                 $length
-     * @param PendingSocketClient $state
-     *
-     * @return string|null
-     */
-    private function readDataFromPendingClient($socket, int $length, PendingSocketClient $state)
-    {
-        $data = \fread($socket, $length);
-
-        if ($data === false || $data === '') {
-            return null;
-        }
-
-        $data = $state->receivedDataBuffer . $data;
-
-        if (\strlen($data) < $length) {
-            $state->receivedDataBuffer = $data;
-            return null;
-        }
-
-        $state->receivedDataBuffer = '';
-
-        EventLoop::cancel($state->readWatcher);
-
-        return $data;
+        return $buffer;
     }
 }

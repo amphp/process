@@ -47,11 +47,11 @@ interface ProcessRunner
      * Send a signal to the child process.
      *
      * @param ProcessHandle $handle The process descriptor.
-     * @param int $signo Signal number to send to process.
+     * @param int $signal Signal number to send to process.
      *
      * @throws ProcessException If sending the signal fails.
      */
-    public function signal(ProcessHandle $handle, int $signo): void;
+    public function signal(ProcessHandle $handle, int $signal): void;
 
     /**
      * Release all resources held by the process handle.

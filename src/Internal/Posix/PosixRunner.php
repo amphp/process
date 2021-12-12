@@ -10,7 +10,7 @@ use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
 use Revolt\EventLoop;
 
-final class Runner implements ProcessRunner
+final class PosixRunner implements ProcessRunner
 {
     private const FD_SPEC = [
         ["pipe", "r"], // stdin
@@ -34,8 +34,8 @@ final class Runner implements ProcessRunner
             $command
         );
 
-        $handle = new Handle;
-        $handle->proc = @\proc_open(
+        $handle = new PosixHandle;
+        $proc = @\proc_open(
             $command,
             $this->generateFds(),
             $pipes,
@@ -44,7 +44,7 @@ final class Runner implements ProcessRunner
             $options
         );
 
-        if (!\is_resource($handle->proc)) {
+        if (!\is_resource($proc)) {
             $message = "Could not start process";
             if ($error = \error_get_last()) {
                 $message .= \sprintf(" Errno: %d; %s", $error["type"], $error["message"]);
@@ -52,29 +52,26 @@ final class Runner implements ProcessRunner
             throw new ProcessException($message);
         }
 
-        $status = \proc_get_status($handle->proc);
+        $status = \proc_get_status($proc);
         if (!$status) {
-            \proc_close($handle->proc);
+            \proc_close($proc);
 
             throw new ProcessException("Could not get process status");
         }
 
-        $handle->extraDataPipe = $pipes[3];
-        \stream_set_blocking($handle->extraDataPipe, false);
+        $extraDataPipe = $pipes[3];
+        \stream_set_blocking($extraDataPipe, false);
 
         $suspension = EventLoop::createSuspension();
-        $handle->extraDataPipeStartWatcher = EventLoop::onReadable(
-            $handle->extraDataPipe,
-            static function (string $callbackId) use ($suspension): void {
-                EventLoop::cancel($callbackId);
+        EventLoop::onReadable($extraDataPipe, static function (string $callbackId) use ($suspension): void {
+            EventLoop::cancel($callbackId);
 
-                $suspension->resume();
-            }
-        );
+            $suspension->resume();
+        });
 
         $suspension->suspend();
 
-        $pid = \rtrim(@\fgets($pipes[3]));
+        $pid = \rtrim(@\fgets($extraDataPipe));
         if (!$pid || !\is_numeric($pid)) {
             throw new ProcessException("Could not determine PID");
         }
@@ -86,12 +83,12 @@ final class Runner implements ProcessRunner
         $handle->stdout = new ReadableResourceStream($pipes[1]);
         $handle->stderr = new ReadableResourceStream($pipes[2]);
 
-        $handle->extraDataPipeWatcher = EventLoop::onReadable(
-            $handle->extraDataPipe,
-            static function (string $callbackId, $stream) use ($handle) {
+        $handle->extraDataPipeCallbackId = EventLoop::onReadable(
+            $extraDataPipe,
+            static function (string $callbackId, $stream) use ($handle, $extraDataPipe) {
+                $handle->extraDataPipeCallbackId = null;
                 EventLoop::cancel($callbackId);
 
-                $handle->extraDataPipeWatcher = null;
                 $handle->status = ProcessStatus::ENDED;
 
                 if (!\is_resource($stream) || \feof($stream)) {
@@ -100,18 +97,8 @@ final class Runner implements ProcessRunner
                     $handle->joinDeferred->complete((int) \rtrim(@\stream_get_contents($stream)));
                 }
 
-                if ($handle->extraDataPipeWatcher !== null) {
-                    EventLoop::cancel($handle->extraDataPipeWatcher);
-                    $handle->extraDataPipeWatcher = null;
-                }
-
-                if ($handle->extraDataPipeStartWatcher !== null) {
-                    EventLoop::cancel($handle->extraDataPipeStartWatcher);
-                    $handle->extraDataPipeStartWatcher = null;
-                }
-
-                if (\is_resource($handle->extraDataPipe)) {
-                    \fclose($handle->extraDataPipe);
+                if (\is_resource($extraDataPipe)) {
+                    \fclose($extraDataPipe);
                 }
 
                 // Don't call proc_close here or close output streams, as there might still be stream reads
@@ -119,7 +106,7 @@ final class Runner implements ProcessRunner
             }
         );
 
-        EventLoop::unreference($handle->extraDataPipeWatcher);
+        EventLoop::unreference($handle->extraDataPipeCallbackId);
 
         return $handle;
     }
@@ -150,9 +137,9 @@ final class Runner implements ProcessRunner
 
     public function join(ProcessHandle $handle): int
     {
-        /** @var Handle $handle */
-        if ($handle->extraDataPipeWatcher !== null) {
-            EventLoop::reference($handle->extraDataPipeWatcher);
+        /** @var PosixHandle $handle */
+        if ($handle->extraDataPipeCallbackId !== null) {
+            EventLoop::reference($handle->extraDataPipeCallbackId);
         }
 
         return $handle->joinDeferred->getFuture()->await();
@@ -163,15 +150,15 @@ final class Runner implements ProcessRunner
         $this->signal($handle, 9);
     }
 
-    public function signal(ProcessHandle $handle, int $signo): void
+    public function signal(ProcessHandle $handle, int $signal): void
     {
         /** @noinspection PhpComposerExtensionStubsInspection */
-        @\posix_kill($handle->pid, $signo);
+        @\posix_kill($handle->pid, $signal);
     }
 
     public function destroy(ProcessHandle $handle): void
     {
-        /** @var Handle $handle */
+        /** @var PosixHandle $handle */
         if ($handle->status < ProcessStatus::ENDED && \getmypid() === $handle->originalParentPid) {
             try {
                 $this->kill($handle);

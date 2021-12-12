@@ -4,11 +4,11 @@ namespace Amp\Process;
 
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\WritableResourceStream;
-use Amp\Process\Internal\Posix\Runner as PosixProcessRunner;
+use Amp\Process\Internal\Posix\PosixRunner as PosixProcessRunner;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
-use Amp\Process\Internal\Windows\Runner as WindowsProcessRunner;
+use Amp\Process\Internal\Windows\WindowsRunner as WindowsProcessRunner;
 use JetBrains\PhpStorm\ArrayShape;
 use Revolt\EventLoop;
 
