@@ -222,7 +222,7 @@ class ProcessTest extends AsyncTestCase
     public function testProcessIsNotRunningWithKill(): void
     {
         $this->expectException(StatusError::class);
-        $this->expectExceptionMessage('Process is not running');
+        $this->expectExceptionMessage('Process has not been started');
 
         $process = new Process(self::CMD_PROCESS);
         $process->kill();
@@ -231,7 +231,7 @@ class ProcessTest extends AsyncTestCase
     public function testProcessIsNotRunningWithSignal(): void
     {
         $this->expectException(StatusError::class);
-        $this->expectExceptionMessage('Process is not running');
+        $this->expectExceptionMessage('Process has not been started');
 
         $process = new Process(self::CMD_PROCESS);
         $process->signal(0);
