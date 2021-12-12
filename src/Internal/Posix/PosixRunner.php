@@ -28,6 +28,14 @@ final class PosixRunner implements ProcessRunner
         array $environment = [],
         array $options = []
     ): ProcessHandle {
+        if (!\extension_loaded('pcntl')) {
+            throw new ProcessException('Missing ext-pcntl to run processes with PosixRunner');
+        }
+
+        if (!\extension_loaded('posix')) {
+            throw new ProcessException('Missing ext-posix to run processes with PosixRunner');
+        }
+
         $command = \sprintf(
             '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0; trap "" INT TERM QUIT HUP;' .
             'pid=$!; echo $pid >&3; wait $pid; RC=$?; echo $RC >&3; exit $RC',

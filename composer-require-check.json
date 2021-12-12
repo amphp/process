@@ -16,7 +16,9 @@
         "mixed",
         "void",
         "object",
-        "escapeArguments"
+        "escapeArguments",
+        "IS_WINDOWS",
+        "posix_kill"
     ],
     "php-core-extensions": [
         "Core",
@@ -25,6 +27,7 @@
         "Phar",
         "Reflection",
         "SPL",
-        "standard"
+        "standard",
+        "hash"
     ]
 }

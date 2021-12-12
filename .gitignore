@@ -6,3 +6,4 @@ composer.lock
 phpunit.xml
 vendor
 .phpunit.result.cache
+composer-require-checker.phar
