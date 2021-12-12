@@ -14,20 +14,28 @@ abstract class ProcessHandle
     /** @var DeferredFuture<int> */
     public DeferredFuture $joinDeferred;
 
-    public WritableResourceStream $stdin;
-
-    public ReadableResourceStream $stdout;
-
-    public ReadableResourceStream $stderr;
-
     public int $originalParentPid;
 
+    /** @psalm-suppress PropertyNotSetInConstructor */
+    public WritableResourceStream $stdin;
+
+    /** @psalm-suppress PropertyNotSetInConstructor */
+    public ReadableResourceStream $stdout;
+
+    /** @psalm-suppress PropertyNotSetInConstructor */
+    public ReadableResourceStream $stderr;
+
+    /** @psalm-suppress PropertyNotSetInConstructor */
     public int $pid;
 
     public int $status = ProcessStatus::STARTING;
 
-    public function __construct()
+    /**
+     * @param resource $proc
+     */
+    public function __construct($proc)
     {
+        $this->proc = $proc;
         $this->joinDeferred = new DeferredFuture;
         $this->originalParentPid = \getmypid();
     }

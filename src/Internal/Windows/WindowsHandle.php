@@ -14,8 +14,10 @@ final class WindowsHandle extends ProcessHandle
 {
     public Barrier $startBarrier;
 
+    /** @psalm-suppress PropertyNotSetInConstructor */
     public ReadableResourceStream $exitCodeStream;
 
+    /** @psalm-suppress PropertyNotSetInConstructor */
     public int $wrapperPid;
 
     /** @var resource[] */
@@ -24,9 +26,12 @@ final class WindowsHandle extends ProcessHandle
     /** @var string[] */
     public array $securityTokens = [];
 
-    public function __construct()
+    /**
+     * @param resource $proc
+     */
+    public function __construct($proc)
     {
-        parent::__construct();
+        parent::__construct($proc);
 
         $this->startBarrier = new Barrier(4);
     }

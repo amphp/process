@@ -46,8 +46,7 @@ final class WindowsRunner implements ProcessRunner
 
         $options['bypass_shell'] = true;
 
-        $handle = new WindowsHandle();
-        $handle->proc = $proc = @\proc_open(
+        $proc = @\proc_open(
             $this->makeCommand($workingDirectory ?? ''),
             self::FD_SPEC,
             $pipes,
@@ -65,11 +64,7 @@ final class WindowsRunner implements ProcessRunner
         }
 
         $status = \proc_get_status($proc);
-        if (!$status) {
-            \proc_close($proc);
-
-            throw new ProcessException("Could not get process status");
-        }
+        $handle = new WindowsHandle($proc);
 
         $securityTokens = \random_bytes(SocketConnector::SECURITY_TOKEN_SIZE * 6);
         $written = \fwrite($pipes[0], $securityTokens . "\0" . $command . "\0");
@@ -149,11 +144,13 @@ final class WindowsRunner implements ProcessRunner
             if (self::$pharWrapperPath === null) {
                 $fileHash = \hash('sha1', \file_get_contents(self::WRAPPER_EXE_PATH));
                 self::$pharWrapperPath = \sys_get_temp_dir() . "amphp-process-wrapper-" . $fileHash;
-                \copy(self::WRAPPER_EXE_PATH, self::$pharWrapperPath);
 
-                \register_shutdown_function(static function () {
-                    @\unlink(self::$pharWrapperPath);
-                });
+                if (
+                    !\file_exists(self::$pharWrapperPath)
+                    || \hash('sha1', \file_get_contents(self::$pharWrapperPath)) !== $fileHash
+                ) {
+                    \copy(self::WRAPPER_EXE_PATH, self::$pharWrapperPath);
+                }
             }
 
             $wrapperPath = self::$pharWrapperPath;

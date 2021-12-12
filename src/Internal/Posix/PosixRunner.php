@@ -34,8 +34,7 @@ final class PosixRunner implements ProcessRunner
             $command
         );
 
-        $handle = new PosixHandle;
-        $handle->proc = $proc = @\proc_open(
+        $proc = @\proc_open(
             $command,
             $this->generateFds(),
             $pipes,
@@ -52,12 +51,7 @@ final class PosixRunner implements ProcessRunner
             throw new ProcessException($message);
         }
 
-        $status = \proc_get_status($proc);
-        if (!$status) {
-            \proc_close($proc);
-
-            throw new ProcessException("Could not get process status");
-        }
+        $handle = new PosixHandle($proc);
 
         $extraDataPipe = $pipes[3];
         \stream_set_blocking($extraDataPipe, false);
@@ -97,12 +91,10 @@ final class PosixRunner implements ProcessRunner
                     $handle->joinDeferred->complete((int) \rtrim(@\stream_get_contents($stream)));
                 }
 
-                if (\is_resource($extraDataPipe)) {
-                    \fclose($extraDataPipe);
-                }
-
                 // Don't call proc_close here or close output streams, as there might still be stream reads
                 $handle->stdin->close();
+
+                \fclose($extraDataPipe);
             }
         );
 

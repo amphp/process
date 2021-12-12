@@ -48,6 +48,7 @@ final class Process
         array $environment = [],
         array $options = []
     ) {
+        /** @psalm-suppress RedundantPropertyInitializationCheck */
         self::$driverRunner ??= new \WeakMap();
 
         $envVars = [];
@@ -56,6 +57,7 @@ final class Process
                 throw new \Error('Argument #3 ($environment) cannot accept nested array values');
             }
 
+            /** @psalm-suppress RedundantCastGivenDocblockType */
             $envVars[(string) $key] = (string) $value;
         }
 
@@ -136,8 +138,12 @@ final class Process
      */
     public function kill(): void
     {
+        if (!$this->handle) {
+            throw new StatusError("Process has not been started.");
+        }
+
         if (!$this->isRunning()) {
-            throw new StatusError("Process is not running.");
+            return;
         }
 
         $this->processRunner->kill($this->handle);
@@ -153,8 +159,12 @@ final class Process
      */
     public function signal(int $signo): void
     {
+        if (!$this->handle) {
+            throw new StatusError("Process has not been started.");
+        }
+
         if (!$this->isRunning()) {
-            throw new StatusError("Process is not running.");
+            return;
         }
 
         $this->processRunner->signal($this->handle, $signo);

@@ -106,7 +106,8 @@ final class SocketConnector
             try {
                 $handle = $this->performClientHandshake($socket);
                 $handle->startBarrier->arrive();
-            } catch (\Throwable $e) {
+            } catch (HandshakeException $e) {
+                /** @psalm-suppress InvalidScalarArgument */
                 \fwrite($socket, \chr(SignalCode::HANDSHAKE_ACK) . \chr($e->getCode()));
                 \fclose($socket);
             }
@@ -114,6 +115,8 @@ final class SocketConnector
     }
 
     /**
+     * @param resource $socket
+     *
      * @throws HandshakeException
      */
     public function performClientHandshake($socket): WindowsHandle
@@ -199,7 +202,10 @@ final class SocketConnector
         $buffer = '';
 
         do {
-            $chunk = $stream->read(length: \strlen($buffer) - $length);
+            $remaining = \strlen($buffer) - $length;
+            \assert($remaining > 0);
+
+            $chunk = $stream->read(length: $remaining);
             if ($chunk === null) {
                 break;
             }
