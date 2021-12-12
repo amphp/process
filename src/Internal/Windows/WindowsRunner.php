@@ -47,7 +47,7 @@ final class WindowsRunner implements ProcessRunner
         $options['bypass_shell'] = true;
 
         $handle = new WindowsHandle();
-        $proc = @\proc_open(
+        $handle->proc = $proc = @\proc_open(
             $this->makeCommand($workingDirectory ?? ''),
             self::FD_SPEC,
             $pipes,

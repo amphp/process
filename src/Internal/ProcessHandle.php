@@ -8,6 +8,9 @@ use Amp\DeferredFuture;
 
 abstract class ProcessHandle
 {
+    /** @var resource */
+    public $proc;
+
     /** @var DeferredFuture<int> */
     public DeferredFuture $joinDeferred;
 

@@ -35,7 +35,7 @@ final class PosixRunner implements ProcessRunner
         );
 
         $handle = new PosixHandle;
-        $proc = @\proc_open(
+        $handle->proc = $proc = @\proc_open(
             $command,
             $this->generateFds(),
             $pipes,
