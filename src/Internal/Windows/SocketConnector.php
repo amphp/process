@@ -29,6 +29,8 @@ final class SocketConnector
     /** @var WindowsHandle[] */
     private array $pendingProcesses = [];
 
+    private string $acceptCallbackId;
+
     public function __construct()
     {
         $flags = \STREAM_SERVER_LISTEN | \STREAM_SERVER_BIND;
@@ -45,11 +47,14 @@ final class SocketConnector
         [$this->address, $port] = \explode(':', \stream_socket_get_name($this->server, false));
         $this->port = (int) $port;
 
-        EventLoop::unreference(EventLoop::onReadable($this->server, fn () => $this->acceptClient()));
+        $this->acceptCallbackId = EventLoop::unreference(EventLoop::onReadable($this->server,
+            fn () => $this->acceptClient()));
     }
 
     public function connectPipes(WindowsHandle $handle): void
     {
+        EventLoop::reference($this->acceptCallbackId);
+
         $this->pendingProcesses[$handle->wrapperPid] = $handle;
 
         async(function () use ($handle) {
@@ -67,6 +72,10 @@ final class SocketConnector
             throw $exception;
         } finally {
             unset($this->pendingProcesses[$handle->wrapperPid]);
+
+            if (!$this->pendingProcesses) {
+                EventLoop::unreference($this->acceptCallbackId);
+            }
         }
 
         $handle->stdin = new WritableResourceStream($handle->sockets[0]);
