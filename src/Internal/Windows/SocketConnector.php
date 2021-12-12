@@ -47,8 +47,10 @@ final class SocketConnector
         [$this->address, $port] = \explode(':', \stream_socket_get_name($this->server, false));
         $this->port = (int) $port;
 
-        $this->acceptCallbackId = EventLoop::unreference(EventLoop::onReadable($this->server,
-            fn () => $this->acceptClient()));
+        $this->acceptCallbackId = EventLoop::unreference(EventLoop::onReadable(
+            $this->server,
+            fn () => $this->acceptClient()
+        ));
     }
 
     public function connectPipes(WindowsHandle $handle): void
