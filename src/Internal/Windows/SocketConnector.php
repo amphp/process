@@ -215,7 +215,7 @@ final class SocketConnector
         $buffer = '';
 
         do {
-            $remaining = \strlen($buffer) - $length;
+            $remaining = $length - \strlen($buffer);
             \assert($remaining > 0);
 
             $chunk = $stream->read(length: $remaining);
