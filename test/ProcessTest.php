@@ -6,12 +6,11 @@ use Amp\Future;
 use Amp\PHPUnit\AsyncTestCase;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Process;
-use Amp\Process\ProcessException;
 use Amp\Process\StatusError;
+use const Amp\Process\IS_WINDOWS;
 use function Amp\async;
 use function Amp\ByteStream\buffer;
 use function Amp\delay;
-use const Amp\Process\IS_WINDOWS;
 
 class ProcessTest extends AsyncTestCase
 {

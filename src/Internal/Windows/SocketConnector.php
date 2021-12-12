@@ -123,8 +123,10 @@ final class SocketConnector
     {
         $stream = new ReadableResourceStream($socket);
 
-        $packet = \unpack('Csignal/Npid/Cstream_id/a*client_token',
-            $this->read($stream, self::SECURITY_TOKEN_SIZE + 6));
+        $packet = \unpack(
+            'Csignal/Npid/Cstream_id/a*client_token',
+            $this->read($stream, self::SECURITY_TOKEN_SIZE + 6)
+        );
 
         // validate the client's handshake
         if ($packet['signal'] !== SignalCode::HANDSHAKE) {
