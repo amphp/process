@@ -4,9 +4,7 @@ namespace Amp\Process\Test;
 
 use Amp\Future;
 use Amp\PHPUnit\AsyncTestCase;
-use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Process;
-use Amp\Process\StatusError;
 use const Amp\Process\IS_WINDOWS;
 use function Amp\async;
 use function Amp\ByteStream\buffer;
