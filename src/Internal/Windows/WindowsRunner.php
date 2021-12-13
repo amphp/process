@@ -112,7 +112,7 @@ final class WindowsRunner implements ProcessRunner
     public function kill(ProcessHandle $handle): void
     {
         /** @var WindowsHandle $handle */
-        \exec('taskkill /F /T /PID ' . $handle->wrapperPid . ' 2>&1', $output, $exitCode);
+        \exec('taskkill /F /T /PID ' . $handle->pid . ' 2>&1', $output, $exitCode);
         if ($exitCode) {
             throw new ProcessException("Terminating process failed");
         }
