@@ -119,7 +119,7 @@ final class WindowsRunner implements ProcessRunner
                 return;
             }
 
-            throw new ProcessException("Terminating process failed: " . $message);
+            throw new ProcessException("Terminating process failed: " . $exitCode . ': ' . $message);
         }
     }
 
