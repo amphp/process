@@ -62,7 +62,7 @@ final class Process
         }
 
         $this->command = \is_array($command)
-            ? \implode(" ", \array_map(__NAMESPACE__ . "\\escapeArguments", $command))
+            ? \implode(" ", \array_map(__NAMESPACE__ . "\\escapeArgument", $command))
             : $command;
         $this->workingDirectory = $workingDirectory;
         $this->environment = $envVars;

@@ -13,7 +13,7 @@ if (IS_WINDOWS) {
      *
      * @return string
      */
-    function escapeArguments(string $arg): string
+    function escapeArgument(string $arg): string
     {
         return '"' . \preg_replace_callback('(\\\\*("|$))', function (array $m): string {
             return \str_repeat('\\', \strlen($m[0])) . $m[0];
@@ -27,7 +27,7 @@ if (IS_WINDOWS) {
      *
      * @return string
      */
-    function escapeArguments(string $arg): string
+    function escapeArgument(string $arg): string
     {
         return \escapeshellarg($arg);
     }
