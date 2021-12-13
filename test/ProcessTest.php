@@ -189,6 +189,8 @@ class ProcessTest extends AsyncTestCase
 
     public function testKillImmediately(): void
     {
+        $this->setTimeout(1);
+
         $process = new Process(self::CMD_PROCESS_SLOW);
         $process->start();
         $process->kill();
@@ -198,6 +200,8 @@ class ProcessTest extends AsyncTestCase
 
     public function testKillThenReadStdout(): void
     {
+        $this->setTimeout(1);
+
         $process = new Process(self::CMD_PROCESS_SLOW);
         $process->start();
         $process->kill();
