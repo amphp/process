@@ -168,8 +168,14 @@ class ProcessTest extends AsyncTestCase
 
     public function testCommand(): void
     {
-        $process = Process::start([self::CMD_PROCESS]);
-        self::assertSame(\implode(" ", \array_map("escapeshellarg", [self::CMD_PROCESS])), $process->getCommand());
+        $process = Process::start(['cmd', '/c', 'echo', 'foo']);
+
+        if (IS_WINDOWS) {
+            self::assertSame('"cmd" "/c" "echo" "foo"', $process->getCommand());
+        } else {
+            self::assertSame("'cmd' '/c' 'echo' 'foo'", $process->getCommand());
+        }
+
         $process->join();
     }
 
