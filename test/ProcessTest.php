@@ -200,9 +200,6 @@ class ProcessTest extends AsyncTestCase
     {
         $process = new Process(self::CMD_PROCESS_SLOW);
         $process->start();
-
-        print \shell_exec('tasklist /v /fi "PID gt 1" /fo table');
-
         $process->kill();
 
         self::assertNull($process->getStdout()->read());
