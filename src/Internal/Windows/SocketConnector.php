@@ -59,13 +59,12 @@ final class SocketConnector
 
         $this->pendingProcesses[$handle->wrapperPid] = $handle;
 
-        async(function () use ($handle) {
-            $handle->pid = $this->readChildPid(new ReadableResourceStream($handle->sockets[0]));
-            $handle->startBarrier->arrive();
-        })->ignore();
-
         try {
+            $handle->startBarrier->arrive();
             $handle->startBarrier->await(new TimeoutCancellation(10));
+
+            $controlPipe = new ReadableResourceStream($handle->sockets[0]);
+            $handle->pid = $this->readChildPid($controlPipe);
         } catch (\Throwable $exception) {
             foreach ($handle->sockets as $socket) {
                 \fclose($socket);
@@ -86,7 +85,7 @@ final class SocketConnector
 
         $handle->status = ProcessStatus::RUNNING;
 
-        $handle->exitCodeStream = new ReadableResourceStream($handle->sockets[0]);
+        $handle->exitCodeStream = $controlPipe;
 
         async(function () use ($handle) {
             try {
