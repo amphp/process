@@ -2,68 +2,78 @@
 
 namespace Amp\Process;
 
-use Amp\Process\Internal\Posix\Runner as PosixProcessRunner;
+use Amp\ByteStream\ReadableResourceStream;
+use Amp\ByteStream\WritableResourceStream;
+use Amp\Process\Internal\Posix\PosixRunner as PosixProcessRunner;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
-use Amp\Process\Internal\Windows\Runner as WindowsProcessRunner;
+use Amp\Process\Internal\Windows\WindowsRunner as WindowsProcessRunner;
+use JetBrains\PhpStorm\ArrayShape;
 use Revolt\EventLoop;
 
 final class Process
 {
-    private static \WeakMap $map;
+    private static \WeakMap $driverRunner;
 
     private ProcessRunner $processRunner;
 
     private string $command;
 
-    private ?string $cwd;
+    private ?string $workingDirectory;
 
-    private array $env = [];
+    /** @var string[] */
+    private array $environment;
 
     private array $options;
 
     private ?ProcessHandle $handle = null;
 
+    private bool $started = false;
+
     private ?int $pid = null;
 
     /**
      * @param string|string[] $command Command to run.
-     * @param string|null     $cwd Working directory or use an empty string to use the working directory of the
+     * @param string|null $workingDirectory Working directory, or an empty string to use the working directory of the
      *     parent.
-     * @param mixed[]         $env Environment variables or use an empty array to inherit from the parent.
-     * @param mixed[]         $options Options for `proc_open()`.
+     * @param string[] $environment Environment variables, or use an empty array to inherit from the parent.
+     * @param array $options Options for `proc_open()`.
      *
      * @throws \Error If the arguments are invalid.
      */
-    public function __construct(string|array $command, string $cwd = null, array $env = [], array $options = [])
-    {
-        self::$map ??= new \WeakMap();
+    public function __construct(
+        string|array $command,
+        string $workingDirectory = null,
+        array $environment = [],
+        array $options = []
+    ) {
+        /** @psalm-suppress RedundantPropertyInitializationCheck */
+        self::$driverRunner ??= new \WeakMap();
 
         $envVars = [];
-        foreach ($env as $key => $value) {
+        foreach ($environment as $key => $value) {
             if (\is_array($value)) {
-                throw new \Error("\$env cannot accept array values");
+                throw new \Error('Argument #3 ($environment) cannot accept nested array values');
             }
 
+            /** @psalm-suppress RedundantCastGivenDocblockType */
             $envVars[(string) $key] = (string) $value;
         }
 
         $this->command = \is_array($command)
             ? \implode(" ", \array_map(__NAMESPACE__ . "\\escapeArguments", $command))
             : $command;
-        $this->cwd = $cwd;
-        $this->env = $envVars;
+        $this->workingDirectory = $workingDirectory;
+        $this->environment = $envVars;
         $this->options = $options;
 
         $driver = EventLoop::getDriver();
+        self::$driverRunner[$driver] ??= \PHP_OS_FAMILY === 'Windows'
+            ? new WindowsProcessRunner()
+            : new PosixProcessRunner();
 
-        $this->processRunner = (
-            self::$map[$driver] ??= (\PHP_OS_FAMILY === 'Windows'
-                ? new WindowsProcessRunner()
-                : new PosixProcessRunner()
-            )
-        );
+        $this->processRunner = self::$driverRunner[$driver];
     }
 
     /**
@@ -78,32 +88,38 @@ final class Process
 
     public function __clone()
     {
-        throw new \Error("Cloning is not allowed!");
+        throw new \Error("Cloning " . self::class . " is not allowed.");
     }
 
     /**
      * Start the process.
      *
-     * @return int The PID.
-     *
      * @throws StatusError If the process has already been started.
      */
-    public function start(): int
+    public function start(): void
     {
-        if ($this->handle) {
+        if ($this->started) {
             throw new StatusError("Process has already been started.");
         }
 
-        $this->handle = $this->processRunner->start($this->command, $this->cwd, $this->env, $this->options);
-        return $this->pid = $this->handle->pidDeferred->getFuture()->await();
+        $this->started = true;
+        $this->handle = $this->processRunner->start(
+            $this->command,
+            $this->workingDirectory,
+            $this->environment,
+            $this->options
+        );
+
+        $this->pid = $this->handle->pid;
     }
 
     /**
      * Wait for the process to end.
      *
-     * @return int The process exit code or throws a ProcessException if the process is killed.
+     * @return int The process exit code.
      *
-     * @throws StatusError If the process has already been started.
+     * @throws ProcessException If the process is killed.
+     * @throws StatusError If the process has not been started, yet.
      */
     public function join(): int
     {
@@ -122,15 +138,21 @@ final class Process
      */
     public function kill(): void
     {
+        if (!$this->handle) {
+            throw new StatusError("Process has not been started.");
+        }
+
         if (!$this->isRunning()) {
-            throw new StatusError("Process is not running.");
+            return;
         }
 
         $this->processRunner->kill($this->handle);
+
+        $this->join();
     }
 
     /**
-     * Send a signal signal to the process.
+     * Send a signal to the process.
      *
      * @param int $signo Signal number to send to process.
      *
@@ -139,8 +161,12 @@ final class Process
      */
     public function signal(int $signo): void
     {
+        if (!$this->handle) {
+            throw new StatusError("Process has not been started.");
+        }
+
         if (!$this->isRunning()) {
-            throw new StatusError("Process is not running.");
+            return;
         }
 
         $this->processRunner->signal($this->handle, $signo);
@@ -179,7 +205,7 @@ final class Process
      */
     public function getWorkingDirectory(): ?string
     {
-        return $this->cwd;
+        return $this->workingDirectory;
     }
 
     /**
@@ -187,15 +213,15 @@ final class Process
      *
      * @return string[] Array of environment variables.
      */
-    public function getEnv(): array
+    public function getEnvironment(): array
     {
-        return $this->env;
+        return $this->environment;
     }
 
     /**
      * Gets the options to pass to proc_open().
      *
-     * @return mixed[] Array of options.
+     * @return array Array of options.
      */
     public function getOptions(): array
     {
@@ -214,12 +240,10 @@ final class Process
 
     /**
      * Gets the process input stream (STDIN).
-     *
-     * @return WritableProcessStream
      */
-    public function getStdin(): WritableProcessStream
+    public function getStdin(): WritableResourceStream
     {
-        if (!$this->handle || $this->handle->status === ProcessStatus::STARTING) {
+        if (!$this->handle) {
             throw new StatusError("Process has not been started or has not completed starting.");
         }
 
@@ -228,12 +252,10 @@ final class Process
 
     /**
      * Gets the process output stream (STDOUT).
-     *
-     * @return ReadableProcessStream
      */
-    public function getStdout(): ReadableProcessStream
+    public function getStdout(): ReadableResourceStream
     {
-        if (!$this->handle || $this->handle->status === ProcessStatus::STARTING) {
+        if (!$this->handle) {
             throw new StatusError("Process has not been started or has not completed starting.");
         }
 
@@ -242,27 +264,33 @@ final class Process
 
     /**
      * Gets the process error stream (STDERR).
-     *
-     * @return ReadableProcessStream
      */
-    public function getStderr(): ReadableProcessStream
+    public function getStderr(): ReadableResourceStream
     {
-        if (!$this->handle || $this->handle->status === ProcessStatus::STARTING) {
+        if (!$this->handle) {
             throw new StatusError("Process has not been started or has not completed starting.");
         }
 
         return $this->handle->stderr;
     }
 
+    #[ArrayShape([
+        'command' => "string",
+        'workingDirectory' => "null|string",
+        'environment' => "string[]",
+        'options' => "array",
+        'pid' => "int|null",
+        'status' => "int",
+    ])]
     public function __debugInfo(): array
     {
         return [
             'command' => $this->getCommand(),
-            'cwd' => $this->getWorkingDirectory(),
-            'env' => $this->getEnv(),
+            'workingDirectory' => $this->getWorkingDirectory(),
+            'environment' => $this->getEnvironment(),
             'options' => $this->getOptions(),
             'pid' => $this->pid,
-            'status' => $this->handle ? $this->handle->status : -1,
+            'status' => $this->handle->status ?? -1,
         ];
     }
 }

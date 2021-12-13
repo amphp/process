@@ -6,30 +6,34 @@ use Amp\Future;
 use Amp\PHPUnit\AsyncTestCase;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Process;
-use Amp\Process\ProcessException;
-use Amp\Process\ReadableProcessStream;
 use Amp\Process\StatusError;
-use Amp\Process\WritableProcessStream;
+use const Amp\Process\IS_WINDOWS;
 use function Amp\async;
 use function Amp\ByteStream\buffer;
 use function Amp\delay;
-use const Amp\Process\IS_WINDOWS;
 
 class ProcessTest extends AsyncTestCase
 {
-    const CMD_PROCESS = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c echo foo" : "echo foo";
-    const CMD_PROCESS_SLOW = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c ping -n 3 127.0.0.1 > nul" : "sleep 2";
+    private const CMD_PROCESS = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c echo foo" : "echo foo";
+    private const CMD_PROCESS_SLOW = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c ping -n 3 127.0.0.1 > nul" : "sleep 2";
+    private const CMD_PROCESS_STDIN = (\DIRECTORY_SEPARATOR === "\\" ? 'php.exe "' : 'php "') . __DIR__ . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'worker.php"';
+    private const CMD_PROCESS_STDERR = \DIRECTORY_SEPARATOR === "\\" ? "cmd /c >&2 echo foo" : ">&2 echo foo";
 
-    public function testMultipleExecution()
+    public function testMultipleExecution(): void
     {
-        $this->expectException(StatusError::class);
-
         $process = new Process(self::CMD_PROCESS);
         $process->start();
-        $process->start();
+
+        try {
+            $this->expectException(StatusError::class);
+
+            $process->start();
+        } finally {
+            $process->join();
+        }
     }
 
-    public function testIsRunning()
+    public function testIsRunning(): void
     {
         $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
         $process->start();
@@ -42,7 +46,7 @@ class ProcessTest extends AsyncTestCase
         self::assertFalse($process->isRunning());
     }
 
-    public function testExecuteResolvesToExitCode()
+    public function testExecuteResolvesToExitCode(): void
     {
         $process = new Process(\DIRECTORY_SEPARATOR === "\\" ? "cmd /c exit 42" : "exit 42");
         $process->start();
@@ -53,14 +57,15 @@ class ProcessTest extends AsyncTestCase
         self::assertFalse($process->isRunning());
     }
 
-    public function testCommandCanRun()
+    public function testCommandCanRun(): void
     {
         $process = new Process(self::CMD_PROCESS);
-        self::assertIsInt($process->start());
+        $process->start();
+
         self::assertSame(0, $process->join());
     }
 
-    public function testProcessCanTerminate()
+    public function testProcessCanTerminate(): void
     {
         if (\DIRECTORY_SEPARATOR === "\\") {
             self::markTestSkipped("Signals are not supported on Windows");
@@ -72,49 +77,58 @@ class ProcessTest extends AsyncTestCase
         self::assertSame(0, $process->join());
     }
 
-    public function testGetWorkingDirectoryIsDefault()
+    public function testGetWorkingDirectoryIsDefault(): void
     {
         $process = new Process(self::CMD_PROCESS);
         self::assertNull($process->getWorkingDirectory());
     }
 
-    public function testGetWorkingDirectoryIsCustomized()
+    public function testGetWorkingDirectoryIsCustomized(): void
     {
         $process = new Process(self::CMD_PROCESS, __DIR__);
         self::assertSame(__DIR__, $process->getWorkingDirectory());
     }
 
-    public function testGetEnv()
+    public function testGetEnv(): void
     {
         $process = new Process(self::CMD_PROCESS);
-        self::assertSame([], $process->getEnv());
+        self::assertSame([], $process->getEnvironment());
     }
 
-    public function testGetStdin()
+    public function testGetStdin(): void
     {
-        $process = new Process(self::CMD_PROCESS);
+        $process = new Process(self::CMD_PROCESS_STDIN);
         $process->start();
-        self::assertInstanceOf(WritableProcessStream::class, $process->getStdin());
+
+        $process->getStdin()->write('exit 5');
+        $process->getStdin()->end();
+
+        self::assertSame('.....', buffer($process->getStdout()));
+
         $process->join();
     }
 
-    public function testGetStdout()
+    public function testGetStdout(): void
     {
         $process = new Process(self::CMD_PROCESS);
         $process->start();
-        self::assertInstanceOf(ReadableProcessStream::class, $process->getStdout());
+
+        self::assertSame('foo' . \PHP_EOL, buffer($process->getStdout()));
+
         $process->join();
     }
 
-    public function testGetStderr()
+    public function testGetStderr(): void
     {
-        $process = new Process(self::CMD_PROCESS);
+        $process = new Process(self::CMD_PROCESS_STDERR);
         $process->start();
-        self::assertInstanceOf(ReadableProcessStream::class, $process->getStderr());
+
+        self::assertSame('foo' . \PHP_EOL, buffer($process->getStderr()));
+
         $process->join();
     }
 
-    public function testProcessEnvIsValid()
+    public function testProcessEnvIsValid(): void
     {
         $process = new Process(self::CMD_PROCESS, null, [
             'test' => 'foobar',
@@ -122,20 +136,21 @@ class ProcessTest extends AsyncTestCase
             'SystemRoot' => \getenv('SystemRoot') ?: '', // required on Windows for process wrapper
         ]);
         $process->start();
-        self::assertSame('foobar', $process->getEnv()['test']);
+        self::assertSame('foobar', $process->getEnvironment()['test']);
         $process->join();
     }
 
-    public function testProcessEnvIsInvalid()
+    public function testProcessEnvIsInvalid(): void
     {
         $this->expectException(\Error::class);
 
-        $process = new Process(self::CMD_PROCESS, null, [
+        /** @noinspection PhpParamsInspection */
+        new Process(self::CMD_PROCESS, null, [
             ['error_value'],
         ]);
     }
 
-    public function testGetStdinIsStatusError()
+    public function testGetStdinIsStatusError(): void
     {
         $this->expectException(StatusError::class);
         $this->expectExceptionMessage('Process has not been started or has not completed starting');
@@ -144,7 +159,7 @@ class ProcessTest extends AsyncTestCase
         $process->getStdin();
     }
 
-    public function testGetStdoutIsStatusError()
+    public function testGetStdoutIsStatusError(): void
     {
         $this->expectException(StatusError::class);
         $this->expectExceptionMessage('Process has not been started or has not completed starting');
@@ -153,7 +168,7 @@ class ProcessTest extends AsyncTestCase
         $process->getStdout();
     }
 
-    public function testGetStderrIsStatusError()
+    public function testGetStderrIsStatusError(): void
     {
         $this->expectException(StatusError::class);
         $this->expectExceptionMessage('Process has not been started or has not completed starting');
@@ -162,43 +177,40 @@ class ProcessTest extends AsyncTestCase
         $process->getStderr();
     }
 
-    public function testProcessCantBeCloned()
+    public function testProcessCantBeCloned(): void
     {
+        $process = new Process(self::CMD_PROCESS);
+
         $this->expectException(\Error::class);
 
-        $process = new Process(self::CMD_PROCESS);
-        $clone = clone $process;
+        /** @noinspection PhpExpressionResultUnusedInspection */
+        clone $process;
     }
 
-    public function testKillImmediately()
+    public function testKillImmediately(): void
     {
-        $this->expectException(ProcessException::class);
-        $this->expectExceptionMessage('The process was killed');
+        $this->setTimeout(1);
 
         $process = new Process(self::CMD_PROCESS_SLOW);
         $process->start();
         $process->kill();
-        $process->join();
+
+        self::assertSame(IS_WINDOWS ? 1 : 137, $process->join());
     }
 
-    public function testKillThenReadStdout()
+    public function testKillThenReadStdout(): void
     {
-        $this->expectException(ProcessException::class);
-        $this->expectExceptionMessage('The process was killed');
+        $this->setTimeout(1);
 
         $process = new Process(self::CMD_PROCESS_SLOW);
         $process->start();
-
-        delay(0.1); // Give process a chance to start, otherwise a different error is thrown.
-
         $process->kill();
 
         self::assertNull($process->getStdout()->read());
-
-        $process->join();
+        self::assertSame(IS_WINDOWS ? 1 : 137, $process->join());
     }
 
-    public function testProcessHasNotBeenStartedWithJoin()
+    public function testProcessHasNotBeenStartedWithJoin(): void
     {
         $this->expectException(StatusError::class);
         $this->expectExceptionMessage('Process has not been started');
@@ -207,7 +219,7 @@ class ProcessTest extends AsyncTestCase
         $process->join();
     }
 
-    public function testProcessHasNotBeenStartedWithGetPid()
+    public function testProcessHasNotBeenStartedWithGetPid(): void
     {
         $this->expectException(StatusError::class);
         $this->expectExceptionMessage('Process has not been started');
@@ -216,25 +228,25 @@ class ProcessTest extends AsyncTestCase
         $process->getPid();
     }
 
-    public function testProcessIsNotRunningWithKill()
+    public function testProcessIsNotRunningWithKill(): void
     {
         $this->expectException(StatusError::class);
-        $this->expectExceptionMessage('Process is not running');
+        $this->expectExceptionMessage('Process has not been started');
 
         $process = new Process(self::CMD_PROCESS);
         $process->kill();
     }
 
-    public function testProcessIsNotRunningWithSignal()
+    public function testProcessIsNotRunningWithSignal(): void
     {
         $this->expectException(StatusError::class);
-        $this->expectExceptionMessage('Process is not running');
+        $this->expectExceptionMessage('Process has not been started');
 
         $process = new Process(self::CMD_PROCESS);
         $process->signal(0);
     }
 
-    public function testProcessHasBeenStarted()
+    public function testProcessHasBeenStarted(): void
     {
         $this->expectException(StatusError::class);
         $this->expectExceptionMessage('Process has not been started');
@@ -243,13 +255,13 @@ class ProcessTest extends AsyncTestCase
         $process->join();
     }
 
-    public function testCommand()
+    public function testCommand(): void
     {
         $process = new Process([self::CMD_PROCESS]);
         self::assertSame(\implode(" ", \array_map("escapeshellarg", [self::CMD_PROCESS])), $process->getCommand());
     }
 
-    public function testOptions()
+    public function testOptions(): void
     {
         $process = new Process(self::CMD_PROCESS);
         self::assertSame([], $process->getOptions());
@@ -267,7 +279,7 @@ class ProcessTest extends AsyncTestCase
      *
      * @param int $count
      */
-    public function testSpawnMultipleProcesses(int $count)
+    public function testSpawnMultipleProcesses(int $count): void
     {
         $processes = [];
         for ($i = 0; $i < $count; ++$i) {
@@ -284,7 +296,7 @@ class ProcessTest extends AsyncTestCase
         self::assertEquals(\range(0, $count - 1), Future\all($promises));
     }
 
-    public function testReadOutputAfterExit()
+    public function testReadOutputAfterExit(): void
     {
         $process = new Process(["php", __DIR__ . "/bin/worker.php"]);
         $process->start();
@@ -295,7 +307,7 @@ class ProcessTest extends AsyncTestCase
         self::assertSame(0, $process->join());
     }
 
-    public function testReadOutputAfterExitWithLongOutput()
+    public function testReadOutputAfterExitWithLongOutput(): void
     {
         $process = new Process(["php", __DIR__ . "/bin/worker.php"]);
         $process->start();
@@ -307,9 +319,9 @@ class ProcessTest extends AsyncTestCase
         self::assertSame(0, $process->join());
     }
 
-    public function testKillPHPImmediately()
+    public function testKillPHPImmediately(): void
     {
-        $socket = \stream_socket_server("tcp://0.0.0.0:10000", $errno, $errstr);
+        $socket = \stream_socket_server("tcp://127.0.0.1:10000");
         self::assertNotFalse($socket);
         $process = new Process(["php", __DIR__ . "/bin/socket-worker.php"]);
         $process->start();
@@ -318,21 +330,23 @@ class ProcessTest extends AsyncTestCase
         $process->kill();
         delay(0); // Tick event loop to send signal
         self::assertEmpty(\fread($conn, 3));
+        $process->join();
     }
 
     /**
      * @requires extension pcntl
      */
-    public function testSignal()
+    public function testSignal(): void
     {
         $process = new Process(["php", __DIR__ . "/bin/signal-process.php"]);
         $process->start();
         delay(0.1); // Give process time to set up single handler.
         $process->signal(\SIGTERM);
+
         self::assertSame(42, $process->join());
     }
 
-    public function testDebugInfo()
+    public function testDebugInfo(): void
     {
         $process = new Process(["php", __DIR__ . "/bin/worker.php"], __DIR__);
 
@@ -340,8 +354,8 @@ class ProcessTest extends AsyncTestCase
             'command' => IS_WINDOWS
                 ? "\"php\" \"" . __DIR__ . "/bin/worker.php\""
                 : "'php' '" . __DIR__ . "/bin/worker.php'",
-            'cwd' => __DIR__,
-            'env' => [],
+            'workingDirectory' => __DIR__,
+            'environment' => [],
             'options' => [],
             'pid' => null,
             'status' => -1,
