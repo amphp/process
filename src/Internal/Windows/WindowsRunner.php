@@ -115,7 +115,7 @@ final class WindowsRunner implements ProcessRunner
         \exec('taskkill /F /T /PID ' . $handle->pid . ' 2>&1', $output, $exitCode);
         if ($exitCode) {
             $message = \implode(\PHP_EOL, $output);
-            if (\str_contains('There is no running instance of the task.', $message)) {
+            if (\str_contains($message, 'There is no running instance of the task.')) {
                 return;
             }
 
