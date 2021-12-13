@@ -79,6 +79,7 @@ final class SocketConnector
             }
         }
 
+        /** @psalm-supress PossiblyUndefinedArrayOffset */
         $handle->stdin = new WritableResourceStream($handle->sockets[0]);
         $handle->stdout = new ReadableResourceStream($handle->sockets[1]);
         $handle->stderr = new ReadableResourceStream($handle->sockets[2]);
