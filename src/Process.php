@@ -241,8 +241,8 @@ final class Process
         'workingDirectory' => "null|string",
         'environment' => "string[]",
         'options' => "array",
-        'pid' => "int|null",
-        'status' => "int",
+        'pid' => "int",
+        'status' => "string",
     ])]
     public function __debugInfo(): array
     {
@@ -252,7 +252,7 @@ final class Process
             'environment' => $this->getEnvironment(),
             'options' => $this->getOptions(),
             'pid' => $this->handle->pid,
-            'status' => $this->handle->status ?? -1,
+            'status' => $this->isRunning() ? 'running' : 'terminated',
         ];
     }
 }

@@ -272,7 +272,7 @@ class ProcessTest extends AsyncTestCase
             'workingDirectory' => __DIR__,
             'environment' => [],
             'options' => [],
-            'status' => 1,
+            'status' => 'running',
         ], $debugInfo);
     }
 }
