@@ -8,6 +8,7 @@ use Amp\Process\Internal\Posix\PosixRunner as PosixProcessRunner;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
+use Amp\Process\Internal\ProcHolder;
 use Amp\Process\Internal\Windows\WindowsRunner as WindowsProcessRunner;
 use JetBrains\PhpStorm\ArrayShape;
 use Revolt\EventLoop;
@@ -15,6 +16,8 @@ use Revolt\EventLoop;
 final class Process
 {
     private static \WeakMap $driverRunner;
+
+    private static \WeakMap $procHolder;
 
     /**
      * Starts a new process.
@@ -63,6 +66,14 @@ final class Process
             $options
         );
 
+        $procHolder = new ProcHolder($runner, $handle);
+
+        /** @psalm-suppress RedundantPropertyInitializationCheck */
+        self::$procHolder ??= new \WeakMap();
+        self::$procHolder[$handle->stdin] = $procHolder;
+        self::$procHolder[$handle->stdout] = $procHolder;
+        self::$procHolder[$handle->stderr] = $procHolder;
+
         return new self($runner, $handle, $command, $workingDirectory, $envVars, $options);
     }
 
@@ -93,14 +104,6 @@ final class Process
         $this->workingDirectory = $workingDirectory;
         $this->environment = $environment;
         $this->options = $options;
-    }
-
-    /**
-     * Stops the process if it is still running.
-     */
-    public function __destruct()
-    {
-        $this->runner->destroy($this->handle);
     }
 
     public function __clone()
