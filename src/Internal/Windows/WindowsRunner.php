@@ -114,7 +114,12 @@ final class WindowsRunner implements ProcessRunner
         /** @var WindowsHandle $handle */
         \exec('taskkill /F /T /PID ' . $handle->pid . ' 2>&1', $output, $exitCode);
         if ($exitCode) {
-            throw new ProcessException("Terminating process failed: " . \implode(\PHP_EOL, $output));
+            $message = \implode(\PHP_EOL, $output);
+            if (\str_contains('There is no running instance of the task.', $message)) {
+                return;
+            }
+
+            throw new ProcessException("Terminating process failed: " . $message);
         }
     }
 
