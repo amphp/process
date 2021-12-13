@@ -147,6 +147,8 @@ final class Process
         }
 
         $this->processRunner->kill($this->handle);
+
+        $this->join();
     }
 
     /**
