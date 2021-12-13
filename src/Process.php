@@ -16,24 +16,9 @@ final class Process
 {
     private static \WeakMap $driverRunner;
 
-    private ProcessRunner $processRunner;
-
-    private string $command;
-
-    private ?string $workingDirectory;
-
-    /** @var string[] */
-    private array $environment;
-
-    private array $options;
-
-    private ?ProcessHandle $handle = null;
-
-    private bool $started = false;
-
-    private ?int $pid = null;
-
     /**
+     * Starts a new process.
+     *
      * @param string|string[] $command Command to run.
      * @param string|null $workingDirectory Working directory, or an empty string to use the working directory of the
      *     parent.
@@ -42,15 +27,12 @@ final class Process
      *
      * @throws \Error If the arguments are invalid.
      */
-    public function __construct(
+    public static function start(
         string|array $command,
         string $workingDirectory = null,
         array $environment = [],
         array $options = []
-    ) {
-        /** @psalm-suppress RedundantPropertyInitializationCheck */
-        self::$driverRunner ??= new \WeakMap();
-
+    ): self {
         $envVars = [];
         foreach ($environment as $key => $value) {
             if (\is_array($value)) {
@@ -61,19 +43,56 @@ final class Process
             $envVars[(string) $key] = (string) $value;
         }
 
-        $this->command = \is_array($command)
+        $command = \is_array($command)
             ? \implode(" ", \array_map(__NAMESPACE__ . "\\escapeArgument", $command))
             : $command;
-        $this->workingDirectory = $workingDirectory;
-        $this->environment = $envVars;
-        $this->options = $options;
 
         $driver = EventLoop::getDriver();
+
+        /** @psalm-suppress RedundantPropertyInitializationCheck */
+        self::$driverRunner ??= new \WeakMap();
         self::$driverRunner[$driver] ??= \PHP_OS_FAMILY === 'Windows'
             ? new WindowsProcessRunner()
             : new PosixProcessRunner();
 
-        $this->processRunner = self::$driverRunner[$driver];
+        $runner = self::$driverRunner[$driver];
+        $handle = $runner->start(
+            $command,
+            $workingDirectory,
+            $envVars,
+            $options
+        );
+
+        return new self($runner, $handle, $command, $workingDirectory, $envVars, $options);
+    }
+
+    private ProcessRunner $runner;
+
+    private ProcessHandle $handle;
+
+    private string $command;
+
+    private ?string $workingDirectory;
+
+    /** @var string[] */
+    private array $environment;
+
+    private array $options;
+
+    private function __construct(
+        ProcessRunner $runner,
+        ProcessHandle $handle,
+        string $command,
+        string $workingDirectory = null,
+        array $environment = [],
+        array $options = []
+    ) {
+        $this->runner = $runner;
+        $this->handle = $handle;
+        $this->command = $command;
+        $this->workingDirectory = $workingDirectory;
+        $this->environment = $environment;
+        $this->options = $options;
     }
 
     /**
@@ -81,36 +100,12 @@ final class Process
      */
     public function __destruct()
     {
-        if ($this->handle !== null) {
-            $this->processRunner->destroy($this->handle);
-        }
+        $this->runner->destroy($this->handle);
     }
 
     public function __clone()
     {
         throw new \Error("Cloning " . self::class . " is not allowed.");
-    }
-
-    /**
-     * Start the process.
-     *
-     * @throws StatusError If the process has already been started.
-     */
-    public function start(): void
-    {
-        if ($this->started) {
-            throw new StatusError("Process has already been started.");
-        }
-
-        $this->started = true;
-        $this->handle = $this->processRunner->start(
-            $this->command,
-            $this->workingDirectory,
-            $this->environment,
-            $this->options
-        );
-
-        $this->pid = $this->handle->pid;
     }
 
     /**
@@ -123,31 +118,21 @@ final class Process
      */
     public function join(): int
     {
-        if (!$this->handle) {
-            throw new StatusError("Process has not been started.");
-        }
-
-        return $this->processRunner->join($this->handle);
+        return $this->runner->join($this->handle);
     }
 
     /**
      * Forcibly end the process.
      *
-     * @throws StatusError If the process is not running.
      * @throws ProcessException If terminating the process fails.
      */
     public function kill(): void
     {
-        if (!$this->handle) {
-            throw new StatusError("Process has not been started.");
-        }
-
         if (!$this->isRunning()) {
             return;
         }
 
-        $this->processRunner->kill($this->handle);
-
+        $this->runner->kill($this->handle);
         $this->join();
     }
 
@@ -156,36 +141,25 @@ final class Process
      *
      * @param int $signo Signal number to send to process.
      *
-     * @throws StatusError If the process is not running.
-     * @throws ProcessException If sending the signal fails.
+     * @throws ProcessException If signal sending is not supported.
      */
     public function signal(int $signo): void
     {
-        if (!$this->handle) {
-            throw new StatusError("Process has not been started.");
-        }
-
         if (!$this->isRunning()) {
             return;
         }
 
-        $this->processRunner->signal($this->handle, $signo);
+        $this->runner->signal($this->handle, $signo);
     }
 
     /**
      * Returns the PID of the child process.
      *
      * @return int
-     *
-     * @throws StatusError If the process has not started or has not completed starting.
      */
     public function getPid(): int
     {
-        if (!$this->pid) {
-            throw new StatusError("Process has not been started or has not completed starting.");
-        }
-
-        return $this->pid;
+        return $this->handle->pid;
     }
 
     /**
@@ -235,7 +209,7 @@ final class Process
      */
     public function isRunning(): bool
     {
-        return $this->handle && $this->handle->status !== ProcessStatus::ENDED;
+        return $this->handle->status !== ProcessStatus::ENDED;
     }
 
     /**
@@ -243,10 +217,6 @@ final class Process
      */
     public function getStdin(): WritableResourceStream
     {
-        if (!$this->handle) {
-            throw new StatusError("Process has not been started or has not completed starting.");
-        }
-
         return $this->handle->stdin;
     }
 
@@ -255,10 +225,6 @@ final class Process
      */
     public function getStdout(): ReadableResourceStream
     {
-        if (!$this->handle) {
-            throw new StatusError("Process has not been started or has not completed starting.");
-        }
-
         return $this->handle->stdout;
     }
 
@@ -267,10 +233,6 @@ final class Process
      */
     public function getStderr(): ReadableResourceStream
     {
-        if (!$this->handle) {
-            throw new StatusError("Process has not been started or has not completed starting.");
-        }
-
         return $this->handle->stderr;
     }
 
@@ -279,8 +241,8 @@ final class Process
         'workingDirectory' => "null|string",
         'environment' => "string[]",
         'options' => "array",
-        'pid' => "int|null",
-        'status' => "int",
+        'pid' => "int",
+        'status' => "string",
     ])]
     public function __debugInfo(): array
     {
@@ -289,8 +251,8 @@ final class Process
             'workingDirectory' => $this->getWorkingDirectory(),
             'environment' => $this->getEnvironment(),
             'options' => $this->getOptions(),
-            'pid' => $this->pid,
-            'status' => $this->handle->status ?? -1,
+            'pid' => $this->handle->pid,
+            'status' => $this->isRunning() ? 'running' : 'terminated',
         ];
     }
 }

@@ -8,8 +8,7 @@ use Amp\Process\Process;
 $command = \DIRECTORY_SEPARATOR === "\\"
     ? "cmd /c echo 1 & ping -n 2 127.0.0.1 > nul & echo 2 & ping -n 2 127.0.0.1 > nul & echo 3 & exit 42"
     : "echo 1; sleep 1; echo 2; sleep 1; echo 3; exit 42";
-$process = new Process($command);
-$process->start();
+$process = Process::start($command);
 
 $stream = $process->getStdout();
 

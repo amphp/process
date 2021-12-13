@@ -10,8 +10,7 @@ if (DIRECTORY_SEPARATOR === "\\") {
     exit(1);
 }
 
-$process = new Process('read; echo "$REPLY"');
-$process->start();
+$process = Process::start('read; echo "$REPLY"');
 
 /* send to stdin */
 $process->getStdin()->write("abc\n");
