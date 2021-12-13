@@ -108,7 +108,7 @@ class ProcessTest extends AsyncTestCase
         $process = new Process(self::CMD_PROCESS);
         $process->start();
 
-        self::assertSame('foo' . "\n", buffer($process->getStdout()));
+        self::assertSame('foo' . \PHP_EOL, buffer($process->getStdout()));
 
         $process->join();
     }
@@ -118,7 +118,7 @@ class ProcessTest extends AsyncTestCase
         $process = new Process(self::CMD_PROCESS_STDERR);
         $process->start();
 
-        self::assertSame('foo' . "\n", buffer($process->getStderr()));
+        self::assertSame('foo' . \PHP_EOL, buffer($process->getStderr()));
 
         $process->join();
     }
@@ -188,7 +188,7 @@ class ProcessTest extends AsyncTestCase
         $process->start();
         $process->kill();
 
-        self::assertSame(137, $process->join());
+        self::assertSame(IS_WINDOWS ? 1 : 137, $process->join());
     }
 
     public function testKillThenReadStdout(): void
