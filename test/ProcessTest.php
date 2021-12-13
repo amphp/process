@@ -235,6 +235,19 @@ class ProcessTest extends AsyncTestCase
         self::assertSame(0, $process->join());
     }
 
+    public function testReadOutputAfterExitWithLongOutputDestructedProcess(): void
+    {
+        $process = Process::start(["php", __DIR__ . "/bin/worker.php"]);
+
+        $count = 128 * 1024 + 1;
+        $process->getStdin()->write("exit " . $count);
+        $stdout = $process->getStdout();
+
+        unset($process);
+
+        self::assertSame(\str_repeat(".", $count), buffer($stdout));
+    }
+
     public function testKillPHPImmediately(): void
     {
         $socket = \stream_socket_server("tcp://127.0.0.1:10000");
