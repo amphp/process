@@ -114,7 +114,7 @@ final class WindowsRunner implements ProcessRunner
         /** @var WindowsHandle $handle */
         \exec('taskkill /F /T /PID ' . $handle->pid . ' 2>&1', $output, $exitCode);
         if ($exitCode) {
-            throw new ProcessException("Terminating process failed");
+            throw new ProcessException("Terminating process failed: " . \implode(\PHP_EOL, $output));
         }
     }
 
