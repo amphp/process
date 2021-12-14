@@ -108,7 +108,11 @@ final class SocketConnector
 
     private function acceptClient(): void
     {
-        $socket = \stream_socket_accept($this->server);
+        $socket = @\stream_socket_accept($this->server);
+        if (!$socket) {
+            return;
+        }
+
         if (!\stream_set_blocking($socket, false)) {
             throw new \Error("Failed to set client socket to non-blocking mode");
         }
