@@ -117,7 +117,6 @@ final class Process
      * @return int The process exit code.
      *
      * @throws ProcessException If the process is killed.
-     * @throws StatusError If the process has not been started, yet.
      */
     public function join(): int
     {
