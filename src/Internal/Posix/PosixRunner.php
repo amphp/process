@@ -10,6 +10,7 @@ use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
 use Revolt\EventLoop;
 
+/** @internal */
 final class PosixRunner implements ProcessRunner
 {
     private const FD_SPEC = [

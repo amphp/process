@@ -6,6 +6,7 @@ use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\WritableResourceStream;
 use Amp\DeferredFuture;
 
+/** @internal */
 abstract class ProcessHandle
 {
     /** @var resource */

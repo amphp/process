@@ -2,6 +2,7 @@
 
 namespace Amp\Process\Internal;
 
+/** @internal */
 final class ProcessStatus
 {
     public const STARTING = 0;

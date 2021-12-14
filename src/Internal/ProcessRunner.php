@@ -4,6 +4,7 @@ namespace Amp\Process\Internal;
 
 use Amp\Process\ProcessException;
 
+/** @internal */
 interface ProcessRunner
 {
     /**

@@ -2,6 +2,7 @@
 
 namespace Amp\Process\Internal;
 
+/** @internal */
 final class ProcHolder
 {
     private ProcessRunner $runner;
