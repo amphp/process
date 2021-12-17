@@ -162,7 +162,7 @@ final class Runner implements ProcessRunner
         /** @var Handle $handle */
         \exec('taskkill /F /T /PID ' . $handle->wrapperPid . ' 2>&1', $output, $exitCode);
         if ($exitCode) {
-            throw new ProcessException("Terminating process failed");
+            throw new ProcessException("Terminating process failed: " . $exitCode . ": " . $output);
         }
 
         $failStart = false;
