@@ -222,7 +222,7 @@ final class SocketConnector
             $remaining = $length - \strlen($buffer);
             \assert($remaining > 0);
 
-            $chunk = $stream->read(length: $remaining);
+            $chunk = $stream->read(limit: $remaining);
             if ($chunk === null) {
                 break;
             }

@@ -20,6 +20,8 @@ final class PosixRunner implements ProcessRunner
         ["pipe", "w"], // exit code pipe
     ];
 
+    private const NULL_DESCRIPTOR = ["file", "/dev/null", "r"];
+
     /** @var string|null */
     private static ?string $fdPath = null;
 
@@ -130,7 +132,7 @@ final class PosixRunner implements ProcessRunner
 
         $fds = [];
         foreach ($fdList as $id) {
-            $fds[(int) $id] = ["file", "/dev/null", "r"];
+            $fds[(int) $id] = self::NULL_DESCRIPTOR;
         }
 
         return self::FD_SPEC + $fds;
