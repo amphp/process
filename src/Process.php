@@ -58,6 +58,15 @@ final class Process
             ? new WindowsProcessRunner()
             : new PosixProcessRunner();
 
+        if (!$workingDirectory) {
+            $cwd = \getcwd();
+            if ($cwd === false) {
+                throw new ProcessException('Failed to determine current working directory');
+            }
+
+            $workingDirectory = $cwd;
+        }
+
         $runner = self::$driverRunner[$driver];
         $handle = $runner->start(
             $command,
@@ -83,7 +92,7 @@ final class Process
 
     private string $command;
 
-    private ?string $workingDirectory;
+    private string $workingDirectory;
 
     /** @var string[] */
     private array $environment;
@@ -94,7 +103,7 @@ final class Process
         ProcessRunner $runner,
         ProcessHandle $handle,
         string $command,
-        string $workingDirectory = null,
+        string $workingDirectory,
         array $environment = [],
         array $options = []
     ) {
@@ -108,7 +117,7 @@ final class Process
 
     public function __clone()
     {
-        throw new \Error("Cloning " . self::class . " is not allowed.");
+        throw new \Error(self::class . " does not support cloning");
     }
 
     /**
@@ -177,9 +186,9 @@ final class Process
     /**
      * Gets the current working directory.
      *
-     * @return string|null The current working directory or null if inherited from the current PHP process.
+     * @return string The working directory.
      */
-    public function getWorkingDirectory(): ?string
+    public function getWorkingDirectory(): string
     {
         return $this->workingDirectory;
     }
@@ -240,7 +249,7 @@ final class Process
 
     #[ArrayShape([
         'command' => "string",
-        'workingDirectory' => "null|string",
+        'workingDirectory' => "string",
         'environment' => "string[]",
         'options' => "array",
         'pid' => "int",
