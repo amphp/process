@@ -17,8 +17,8 @@ if (!\function_exists(__NAMESPACE__ . '\\escapeArguments')) {
         function escapeArguments(string $arg): string
         {
             return '"'.\preg_replace_callback('(\\\\*("|$))', function (array $m): string {
-                    return \str_repeat('\\', \strlen($m[0])).$m[0];
-                }, $arg).'"';
+                return \str_repeat('\\', \strlen($m[0])).$m[0];
+            }, $arg).'"';
         }
     } else {
         /**
