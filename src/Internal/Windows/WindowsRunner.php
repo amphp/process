@@ -139,12 +139,12 @@ final class WindowsRunner implements ProcessRunner
         // We can't execute the exe from within the PHAR, so copy it out...
         if (\strncmp($wrapperPath, "phar://", 7) === 0) {
             if (self::$pharWrapperPath === null) {
-                $fileHash = \hash('sha1', \file_get_contents(self::WRAPPER_EXE_PATH));
-                self::$pharWrapperPath = \sys_get_temp_dir() . "amphp-process-wrapper-" . $fileHash;
+                $fileHash = \hash_file('sha1', self::WRAPPER_EXE_PATH);
+                self::$pharWrapperPath = \sys_get_temp_dir() . "/amphp-process-wrapper-" . $fileHash;
 
                 if (
                     !\file_exists(self::$pharWrapperPath)
-                    || \hash('sha1', \file_get_contents(self::$pharWrapperPath)) !== $fileHash
+                    || \hash_file('sha1', self::$pharWrapperPath) !== $fileHash
                 ) {
                     \copy(self::WRAPPER_EXE_PATH, self::$pharWrapperPath);
                 }
