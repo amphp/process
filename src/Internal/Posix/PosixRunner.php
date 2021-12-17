@@ -9,6 +9,7 @@ use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
 use Revolt\EventLoop;
+use function Amp\delay;
 
 /** @internal */
 final class PosixRunner implements ProcessRunner
@@ -150,6 +151,10 @@ final class PosixRunner implements ProcessRunner
 
     public function kill(ProcessHandle $handle): void
     {
+        // Ensure we suspend, so Posix and Windows behave equally.
+        // Destructors throw an exception on suspension.
+        delay(0);
+
         $this->signal($handle, 9);
     }
 
