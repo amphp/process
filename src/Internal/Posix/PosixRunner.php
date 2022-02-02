@@ -67,7 +67,7 @@ final class PosixRunner implements ProcessRunner
         $extraDataPipe = $pipes[3];
         \stream_set_blocking($extraDataPipe, false);
 
-        $suspension = EventLoop::createSuspension();
+        $suspension = EventLoop::getSuspension();
         EventLoop::onReadable($extraDataPipe, static function (string $callbackId) use ($suspension): void {
             EventLoop::cancel($callbackId);
 

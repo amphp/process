@@ -31,4 +31,4 @@ foreach ($hosts as $host) {
     $futures[] = async(fn () => show_process_output(Process::start($command)));
 }
 
-Future\all($futures);
+Future\await($futures);
