@@ -77,6 +77,7 @@ jobs:
         env:
           PHP_CS_FIXER_IGNORE_ENV: 1
         run: vendor/bin/php-cs-fixer --diff --dry-run -v fix
+        if: runner.os != 'Windows'
 
       - name: Install composer-require-checker
         run: php -r 'file_put_contents("composer-require-checker.phar", file_get_contents("https://github.com/maglnet/ComposerRequireChecker/releases/download/3.7.0/composer-require-checker.phar"));'
