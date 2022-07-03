@@ -32,4 +32,7 @@ final class Handle extends ProcessHandle
 
     /** @var int */
     public $originalParentPid;
+
+    /** @var int */
+    public $shellPid;
 }
