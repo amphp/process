@@ -91,9 +91,11 @@ final class PosixRunner implements ProcessRunner
         $handle->stdout = new ReadableResourceStream($pipes[1]);
         $handle->stderr = new ReadableResourceStream($pipes[2]);
 
+        $pid = \proc_get_status($proc)['pid'];
+
         $handle->extraDataPipeCallbackId = EventLoop::onReadable(
             $extraDataPipe,
-            static function (string $callbackId, $stream) use ($handle, $status, $extraDataPipe) {
+            static function (string $callbackId, $stream) use ($handle, $pid, $extraDataPipe) {
                 $handle->extraDataPipeCallbackId = null;
                 EventLoop::cancel($callbackId);
 
@@ -109,6 +111,10 @@ final class PosixRunner implements ProcessRunner
                 $handle->stdin->close();
 
                 \fclose($extraDataPipe);
+
+                if (\extension_loaded('pcntl')) {
+                    \pcntl_waitpid($pid, $status, \WNOHANG);
+                }
             }
         );
 
