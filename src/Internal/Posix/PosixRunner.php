@@ -31,10 +31,6 @@ final class PosixRunner implements ProcessRunner
         array $environment = [],
         array $options = []
     ): ProcessHandle {
-        if (!\extension_loaded('pcntl')) {
-            throw new ProcessException('Missing ext-pcntl to run processes with PosixRunner');
-        }
-
         if (!\extension_loaded('posix')) {
             throw new ProcessException('Missing ext-posix to run processes with PosixRunner');
         }
