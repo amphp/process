@@ -41,14 +41,21 @@ final class PosixRunner implements ProcessRunner
             $command
         );
 
-        $proc = @\proc_open(
-            $command,
-            $this->generateFds(),
-            $pipes,
-            $workingDirectory ?: null,
-            $environment ?: null,
-            $options
-        );
+        // Errors checked below, so suppressing all errors during call to proc_open() and $this->generateFds().
+        \set_error_handler(static fn () => true);
+
+        try {
+            $proc = \proc_open(
+                $command,
+                $this->generateFds(),
+                $pipes,
+                $workingDirectory,
+                $environment ?: null,
+                $options
+            );
+        } finally {
+            \restore_error_handler();
+        }
 
         if (!\is_resource($proc)) {
             $message = "Could not start process";
@@ -72,7 +79,7 @@ final class PosixRunner implements ProcessRunner
 
         $suspension->suspend();
 
-        $pid = \rtrim(@\fgets($extraDataPipe));
+        $pid = \rtrim(\fgets($extraDataPipe));
         if (!$pid || !\is_numeric($pid)) {
             throw new ProcessException("Could not determine PID");
         }
@@ -86,7 +93,7 @@ final class PosixRunner implements ProcessRunner
 
         $handle->extraDataPipeCallbackId = EventLoop::onReadable(
             $extraDataPipe,
-            static function (string $callbackId, $stream) use ($handle, $extraDataPipe) {
+            static function (string $callbackId, $stream) use ($handle, $status, $extraDataPipe) {
                 $handle->extraDataPipeCallbackId = null;
                 EventLoop::cancel($callbackId);
 
@@ -95,7 +102,7 @@ final class PosixRunner implements ProcessRunner
                 if (!\is_resource($stream) || \feof($stream)) {
                     $handle->joinDeferred->error(new ProcessException("Process ended unexpectedly"));
                 } else {
-                    $handle->joinDeferred->complete((int) \rtrim(@\stream_get_contents($stream)));
+                    $handle->joinDeferred->complete((int) \rtrim(\stream_get_contents($stream)));
                 }
 
                 // Don't call proc_close here or close output streams, as there might still be stream reads
@@ -116,7 +123,7 @@ final class PosixRunner implements ProcessRunner
             self::$fdPath = \file_exists("/dev/fd") ? "/dev/fd" : "/proc/self/fd";
         }
 
-        $fdList = @\scandir(self::$fdPath, \SCANDIR_SORT_NONE);
+        $fdList = \scandir(self::$fdPath, \SCANDIR_SORT_NONE);
 
         if ($fdList === false) {
             throw new ProcessException("Unable to list open file descriptors");
@@ -152,7 +159,7 @@ final class PosixRunner implements ProcessRunner
     public function signal(ProcessHandle $handle, int $signal): void
     {
         /** @noinspection PhpComposerExtensionStubsInspection */
-        @\posix_kill($handle->pid, $signal);
+        \posix_kill($handle->pid, $signal);
     }
 
     public function destroy(ProcessHandle $handle): void
