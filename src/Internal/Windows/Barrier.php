@@ -31,8 +31,6 @@ final class Barrier
     private DeferredFuture $completion;
 
     /**
-     * @param int $count
-     *
      * @psalm-param positive-int $count
      */
     public function __construct(int $count)
@@ -52,8 +50,6 @@ final class Barrier
     }
 
     /**
-     * @param int $count
-     *
      * @psalm-param positive-int $count
      */
     public function arrive(int $count = 1): void

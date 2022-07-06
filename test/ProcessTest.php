@@ -195,8 +195,6 @@ class ProcessTest extends AsyncTestCase
 
     /**
      * @dataProvider getProcessCounts
-     *
-     * @param int $count
      */
     public function testSpawnMultipleProcesses(int $count): void
     {

@@ -153,8 +153,6 @@ final class Process
 
     /**
      * Returns the PID of the child process.
-     *
-     * @return int
      */
     public function getPid(): int
     {
@@ -203,8 +201,6 @@ final class Process
 
     /**
      * Determines if the process is still running.
-     *
-     * @return bool
      */
     public function isRunning(): bool
     {

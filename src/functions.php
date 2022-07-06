@@ -9,10 +9,6 @@ if (!\function_exists(__NAMESPACE__ . '\\escapeArgument')) {
     if (IS_WINDOWS) {
         /**
          * Escapes the command argument for safe inclusion into a Windows command string.
-         *
-         * @param string $arg
-         *
-         * @return string
          */
         function escapeArgument(string $arg): string
         {
@@ -23,10 +19,6 @@ if (!\function_exists(__NAMESPACE__ . '\\escapeArgument')) {
     } else {
         /**
          * Escapes the command argument for safe inclusion into a Posix shell command string.
-         *
-         * @param string $arg
-         *
-         * @return string
          */
         function escapeArgument(string $arg): string
         {
