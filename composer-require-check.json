@@ -18,7 +18,9 @@
         "object",
         "escapeArguments",
         "IS_WINDOWS",
-        "posix_kill"
+        "posix_kill",
+        "pcntl_waitpid",
+        "WNOHANG"
     ],
     "php-core-extensions": [
         "Core",
