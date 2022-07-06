@@ -40,9 +40,7 @@ final class Runner implements ProcessRunner
             $handle->joinDeferred->resolve((int) \rtrim(@\stream_get_contents($stream)));
         }
 
-        if (\extension_loaded('pcntl')) {
-            \pcntl_waitpid($handle->shellPid, $status, \WNOHANG);
-        }
+        $handle->wait();
     }
 
     public static function onProcessStartExtraDataPipeReadable($watcher, $stream, $data)
