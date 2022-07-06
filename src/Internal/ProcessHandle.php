@@ -2,29 +2,18 @@
 
 namespace Amp\Process\Internal;
 
-use Amp\ByteStream\ReadableResourceStream;
-use Amp\ByteStream\WritableResourceStream;
 use Amp\DeferredFuture;
 
 /** @internal */
 abstract class ProcessHandle
 {
     /** @var resource */
-    public $proc;
+    private $proc;
 
     /** @var DeferredFuture<int> */
-    public DeferredFuture $joinDeferred;
+    public readonly DeferredFuture $joinDeferred;
 
-    public int $originalParentPid;
-
-    /** @psalm-suppress PropertyNotSetInConstructor */
-    public WritableResourceStream $stdin;
-
-    /** @psalm-suppress PropertyNotSetInConstructor */
-    public ReadableResourceStream $stdout;
-
-    /** @psalm-suppress PropertyNotSetInConstructor */
-    public ReadableResourceStream $stderr;
+    public readonly int $originalParentPid;
 
     /** @psalm-suppress PropertyNotSetInConstructor */
     public int $pid;

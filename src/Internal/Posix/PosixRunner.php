@@ -4,13 +4,18 @@ namespace Amp\Process\Internal\Posix;
 
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\WritableResourceStream;
+use Amp\Process\Internal\ProcessContext;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
+use Amp\Process\Internal\ProcessStreams;
 use Amp\Process\ProcessException;
 use Revolt\EventLoop;
 
-/** @internal */
+/**
+ * @internal
+ * @implements ProcessRunner<PosixHandle>
+ */
 final class PosixRunner implements ProcessRunner
 {
     private const FD_SPEC = [
@@ -22,7 +27,6 @@ final class PosixRunner implements ProcessRunner
 
     private const NULL_DESCRIPTOR = ["file", "/dev/null", "r"];
 
-    /** @var string|null */
     private static ?string $fdPath = null;
 
     public function start(
@@ -30,7 +34,7 @@ final class PosixRunner implements ProcessRunner
         string $workingDirectory = null,
         array $environment = [],
         array $options = []
-    ): ProcessHandle {
+    ): ProcessContext {
         if (!\extension_loaded('posix')) {
             throw new ProcessException('Missing ext-posix to run processes with PosixRunner');
         }
@@ -65,8 +69,6 @@ final class PosixRunner implements ProcessRunner
             throw new ProcessException($message);
         }
 
-        $handle = new PosixHandle($proc);
-
         $extraDataPipe = $pipes[3];
         \stream_set_blocking($extraDataPipe, false);
 
@@ -84,43 +86,14 @@ final class PosixRunner implements ProcessRunner
             throw new ProcessException("Could not determine PID");
         }
 
-        $handle->status = ProcessStatus::RUNNING;
-        $handle->pid = (int) $pid;
+        $stdin = new WritableResourceStream($pipes[0]);
+        $stdout = new ReadableResourceStream($pipes[1]);
+        $stderr = new ReadableResourceStream($pipes[2]);
 
-        $handle->stdin = new WritableResourceStream($pipes[0]);
-        $handle->stdout = new ReadableResourceStream($pipes[1]);
-        $handle->stderr = new ReadableResourceStream($pipes[2]);
-
-        $pid = \proc_get_status($proc)['pid'];
-
-        $handle->extraDataPipeCallbackId = EventLoop::onReadable(
-            $extraDataPipe,
-            static function (string $callbackId, $stream) use ($handle, $pid, $extraDataPipe) {
-                $handle->extraDataPipeCallbackId = null;
-                EventLoop::cancel($callbackId);
-
-                $handle->status = ProcessStatus::ENDED;
-
-                if (!\is_resource($stream) || \feof($stream)) {
-                    $handle->joinDeferred->error(new ProcessException("Process ended unexpectedly"));
-                } else {
-                    $handle->joinDeferred->complete((int) \rtrim(\stream_get_contents($stream)));
-                }
-
-                // Don't call proc_close here or close output streams, as there might still be stream reads
-                $handle->stdin->close();
-
-                \fclose($extraDataPipe);
-
-                if (\extension_loaded('pcntl')) {
-                    \pcntl_waitpid($pid, $status, \WNOHANG);
-                }
-            }
+        return new ProcessContext(
+            new PosixHandle($proc, (int) $pid, $stdin, $extraDataPipe),
+            new ProcessStreams($stdin, $stdout, $stderr),
         );
-
-        EventLoop::unreference($handle->extraDataPipeCallbackId);
-
-        return $handle;
     }
 
     private function generateFds(): array
@@ -150,15 +123,16 @@ final class PosixRunner implements ProcessRunner
     public function join(ProcessHandle $handle): int
     {
         /** @var PosixHandle $handle */
-        if ($handle->extraDataPipeCallbackId !== null) {
-            EventLoop::reference($handle->extraDataPipeCallbackId);
-        }
+        $handle->reference();
 
         return $handle->joinDeferred->getFuture()->await();
     }
 
     public function kill(ProcessHandle $handle): void
     {
+        /** @var PosixHandle $handle */
+        $handle->reference();
+
         $this->signal($handle, 9);
     }
 

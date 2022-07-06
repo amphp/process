@@ -2,6 +2,7 @@
 
 namespace Amp\Process\Internal\Windows;
 
+use Amp\Process\Internal\ProcessContext;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
@@ -10,6 +11,7 @@ use const Amp\Process\BIN_DIR;
 
 /**
  * @internal
+ * @implements ProcessRunner<WindowsHandle>
  * @codeCoverageIgnore Windows only.
  */
 final class WindowsRunner implements ProcessRunner
@@ -39,7 +41,7 @@ final class WindowsRunner implements ProcessRunner
         string $workingDirectory = null,
         array $environment = [],
         array $options = []
-    ): ProcessHandle {
+    ): ProcessContext {
         if (\str_contains($command, "\0")) {
             throw new ProcessException("Can't execute commands that contain NUL bytes.");
         }
@@ -83,7 +85,7 @@ final class WindowsRunner implements ProcessRunner
         $handle->wrapperPid = $status['pid'];
 
         try {
-            $this->socketConnector->connectPipes($handle);
+            $streams = $this->socketConnector->connectPipes($handle);
         } catch (\Exception) {
             $running = \is_resource($proc) && \proc_get_status($proc)['running'];
 
@@ -98,7 +100,7 @@ final class WindowsRunner implements ProcessRunner
             throw new ProcessException(\trim($message ?: 'Process did not connect to server before timeout elapsed'));
         }
 
-        return $handle;
+        return new ProcessContext($handle, $streams);
     }
 
     public function join(ProcessHandle $handle): int

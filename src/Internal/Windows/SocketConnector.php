@@ -5,6 +5,7 @@ namespace Amp\Process\Internal\Windows;
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\WritableResourceStream;
 use Amp\Process\Internal\ProcessStatus;
+use Amp\Process\Internal\ProcessStreams;
 use Amp\Process\ProcessException;
 use Amp\TimeoutCancellation;
 use Revolt\EventLoop;
@@ -53,7 +54,7 @@ final class SocketConnector
         ));
     }
 
-    public function connectPipes(WindowsHandle $handle): void
+    public function connectPipes(WindowsHandle $handle): ProcessStreams
     {
         EventLoop::reference($this->acceptCallbackId);
 
@@ -80,15 +81,18 @@ final class SocketConnector
         }
 
         /** @psalm-suppress PossiblyUndefinedArrayOffset */
-        $handle->stdin = new WritableResourceStream($handle->sockets[0]);
-        $handle->stdout = new ReadableResourceStream($handle->sockets[1]);
-        $handle->stderr = new ReadableResourceStream($handle->sockets[2]);
+        $streams = new ProcessStreams(
+            new WritableResourceStream($handle->sockets[0]),
+            new ReadableResourceStream($handle->sockets[1]),
+            new ReadableResourceStream($handle->sockets[2]),
+        );
 
         $handle->status = ProcessStatus::RUNNING;
 
         $handle->exitCodeStream = $controlPipe;
 
-        async(function () use ($handle) {
+        $stdin = \WeakReference::create($streams->stdin);
+        async(function () use ($handle, $stdin) {
             try {
                 $exitCode = $this->readExitCode($handle->exitCodeStream);
 
@@ -97,13 +101,15 @@ final class SocketConnector
                 $handle->joinDeferred->error(new ProcessException("Failed to read exit code from process wrapper"));
             } finally {
                 $handle->status = ProcessStatus::ENDED;
-                $handle->stdin->close();
+                $stdin->get()?->close();
 
                 if (\is_resource($handle->sockets[0])) {
                     @\fclose($handle->sockets[0]);
                 }
             }
         });
+
+        return $streams;
     }
 
     private function acceptClient(): void

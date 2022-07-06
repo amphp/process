@@ -4,7 +4,10 @@ namespace Amp\Process\Internal;
 
 use Amp\Process\ProcessException;
 
-/** @internal */
+/**
+ * @internal
+ * @template THandle extends ProcessHandle
+ */
 interface ProcessRunner
 {
     /**
@@ -15,8 +18,6 @@ interface ProcessRunner
      * @param array $environment Environment variables to pass to the child process.
      * @param array $options `proc_open()` options.
      *
-     * @return ProcessHandle
-     *
      * @throws ProcessException If starting the process fails.
      */
     public function start(
@@ -24,12 +25,12 @@ interface ProcessRunner
         string $workingDirectory = null,
         array $environment = [],
         array $options = []
-    ): ProcessHandle;
+    ): ProcessContext;
 
     /**
      * Wait for the child process to end.
      *
-     * @param ProcessHandle $handle The process descriptor.
+     * @param THandle $handle The process descriptor.
      *
      * @return int Exit code.
      */
@@ -38,7 +39,7 @@ interface ProcessRunner
     /**
      * Forcibly end the child process.
      *
-     * @param ProcessHandle $handle The process descriptor.
+     * @param THandle $handle The process descriptor.
      *
      * @throws ProcessException If terminating the process fails.
      */
@@ -47,7 +48,7 @@ interface ProcessRunner
     /**
      * Send a signal to the child process.
      *
-     * @param ProcessHandle $handle The process descriptor.
+     * @param THandle $handle The process descriptor.
      * @param int $signal Signal number to send to process.
      *
      * @throws ProcessException If sending the signal fails.
@@ -57,7 +58,7 @@ interface ProcessRunner
     /**
      * Release all resources held by the process handle.
      *
-     * @param ProcessHandle $handle The process descriptor.
+     * @param THandle $handle The process descriptor.
      */
     public function destroy(ProcessHandle $handle): void;
 }
