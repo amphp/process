@@ -29,14 +29,14 @@ final class PosixHandle extends ProcessHandle
 
         $this->status = ProcessStatus::RUNNING;
         $this->pid = $pid;
-        $this->shellPid = \proc_get_status($proc)['pid'];
+        $this->shellPid = $shellPid = \proc_get_status($proc)['pid'];
 
         $status = &$this->status;
         $deferred = $this->joinDeferred;
         $stdin = \WeakReference::create($stdin);
         $this->extraDataPipeCallbackId = EventLoop::unreference(EventLoop::onReadable(
             $extraDataPipe,
-            static function (string $callbackId, $stream) use (&$status, $deferred, $stdin): void {
+            static function (string $callbackId, $stream) use (&$status, $deferred, $stdin, $shellPid): void {
                 EventLoop::disable($callbackId);
 
                 $status = ProcessStatus::ENDED;
@@ -51,6 +51,8 @@ final class PosixHandle extends ProcessHandle
                 $stdin->get()?->close();
 
                 \fclose($stream);
+
+                self::waitPid($shellPid);
             },
         ));
     }
@@ -60,15 +62,32 @@ final class PosixHandle extends ProcessHandle
         EventLoop::reference($this->extraDataPipeCallbackId);
     }
 
+    private static function waitPid(int $pid): void
+    {
+        if (self::hasChildExited($pid)) {
+            return;
+        }
+
+        EventLoop::unreference(EventLoop::repeat(0.1, static function (string $callbackId) use ($pid): void {
+            if (self::hasChildExited($pid)) {
+                EventLoop::cancel($callbackId);
+            }
+        }));
+    }
+
+    private static function hasChildExited(int $pid): bool
+    {
+        return !\extension_loaded('pcntl') || \pcntl_waitpid($pid, $status, \WNOHANG) !== 0;
+    }
+
     public function __destruct()
     {
         EventLoop::cancel($this->extraDataPipeCallbackId);
 
-        $pid = $this->shellPid;
-        EventLoop::unreference(EventLoop::repeat(0.1, static function (string $callbackId) use ($pid): void {
-            if (!\extension_loaded('pcntl') || \pcntl_waitpid($pid, $status, \WNOHANG) !== 0) {
-                EventLoop::cancel($callbackId);
-            }
-        }));
+        if ($this->joinDeferred->isComplete()) {
+            return;
+        }
+
+        self::waitPid($this->shellPid);
     }
 }
