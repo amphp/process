@@ -4,6 +4,8 @@ namespace Amp\Process\Internal\Windows;
 
 use Amp\Cancellation;
 use Amp\DeferredFuture;
+use Amp\ForbidCloning;
+use Amp\ForbidSerialization;
 
 /**
  * A barrier is a synchronization primitive.
@@ -26,9 +28,12 @@ use Amp\DeferredFuture;
  */
 final class Barrier
 {
+    use ForbidCloning;
+    use ForbidSerialization;
+
     private int $count;
 
-    private DeferredFuture $completion;
+    private readonly DeferredFuture $completion;
 
     /**
      * @psalm-param positive-int $count

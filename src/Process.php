@@ -4,6 +4,8 @@ namespace Amp\Process;
 
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\WritableResourceStream;
+use Amp\ForbidCloning;
+use Amp\ForbidSerialization;
 use Amp\Process\Internal\Posix\PosixRunner as PosixProcessRunner;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
@@ -16,6 +18,9 @@ use Revolt\EventLoop;
 
 final class Process
 {
+    use ForbidCloning;
+    use ForbidSerialization;
+
     private static \WeakMap $driverRunner;
 
     private static \WeakMap $procHolder;
@@ -29,11 +34,12 @@ final class Process
      * @param array<string, string> $environment Environment variables, or use an empty array to inherit from the parent.
      * @param array $options Options for `proc_open()`.
      *
+     * @throws ProcessException If starting the process fails.
      * @throws \Error If the arguments are invalid.
      */
     public static function start(
         string|array $command,
-        string $workingDirectory = null,
+        ?string $workingDirectory = null,
         array $environment = [],
         array $options = []
     ): self {
@@ -48,7 +54,7 @@ final class Process
         }
 
         $command = \is_array($command)
-            ? \implode(" ", \array_map(__NAMESPACE__ . "\\escapeArgument", $command))
+            ? \implode(" ", \array_map(escapeArgument(...), $command))
             : $command;
 
         $driver = EventLoop::getDriver();
@@ -102,11 +108,6 @@ final class Process
         private readonly array $environment = [],
         private readonly array $options = []
     ) {
-    }
-
-    public function __clone()
-    {
-        throw new \Error(self::class . " does not support cloning");
     }
 
     /**

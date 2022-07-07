@@ -3,10 +3,15 @@
 namespace Amp\Process\Internal;
 
 use Amp\DeferredFuture;
+use Amp\ForbidCloning;
+use Amp\ForbidSerialization;
 
 /** @internal */
 abstract class ProcessHandle
 {
+    use ForbidCloning;
+    use ForbidSerialization;
+
     /** @var resource */
     private $proc;
 

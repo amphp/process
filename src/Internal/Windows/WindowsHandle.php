@@ -11,7 +11,7 @@ use Amp\Process\Internal\ProcessHandle;
  */
 final class WindowsHandle extends ProcessHandle
 {
-    public Barrier $startBarrier;
+    public readonly Barrier $startBarrier;
 
     /** @psalm-suppress PropertyNotSetInConstructor */
     public ReadableResourceStream $exitCodeStream;

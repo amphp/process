@@ -4,6 +4,8 @@ namespace Amp\Process\Internal\Posix;
 
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\WritableResourceStream;
+use Amp\ForbidCloning;
+use Amp\ForbidSerialization;
 use Amp\Process\Internal\ProcessContext;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
@@ -18,6 +20,9 @@ use Revolt\EventLoop;
  */
 final class PosixRunner implements ProcessRunner
 {
+    use ForbidCloning;
+    use ForbidSerialization;
+
     private const FD_SPEC = [
         ["pipe", "r"], // stdin
         ["pipe", "w"], // stdout

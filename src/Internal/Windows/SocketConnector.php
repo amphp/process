@@ -4,6 +4,8 @@ namespace Amp\Process\Internal\Windows;
 
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\WritableResourceStream;
+use Amp\ForbidCloning;
+use Amp\ForbidSerialization;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Internal\ProcessStreams;
 use Amp\Process\ProcessException;
@@ -17,6 +19,9 @@ use function Amp\async;
  */
 final class SocketConnector
 {
+    use ForbidCloning;
+    use ForbidSerialization;
+
     public const SECURITY_TOKEN_SIZE = 16;
 
     private const SERVER_SOCKET_URI = 'tcp://127.0.0.1:0';

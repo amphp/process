@@ -2,6 +2,8 @@
 
 namespace Amp\Process\Internal\Windows;
 
+use Amp\ForbidCloning;
+use Amp\ForbidSerialization;
 use Amp\Process\Internal\ProcessContext;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
@@ -16,6 +18,9 @@ use const Amp\Process\BIN_DIR;
  */
 final class WindowsRunner implements ProcessRunner
 {
+    use ForbidCloning;
+    use ForbidSerialization;
+
     private const FD_SPEC = [
         ["pipe", "r"], // stdin
         ["pipe", "w"], // stdout
