@@ -16,7 +16,7 @@
         "mixed",
         "void",
         "object",
-        "escapeArguments",
+        "escapeArgument",
         "IS_WINDOWS",
         "posix_kill",
         "pcntl_waitpid",
