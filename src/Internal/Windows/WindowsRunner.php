@@ -130,7 +130,7 @@ final class WindowsRunner implements ProcessRunner
     public function destroy(ProcessHandle $handle): void
     {
         /** @var WindowsHandle $handle */
-        if ($handle->status < ProcessStatus::ENDED && \getmypid() === $handle->originalParentPid) {
+        if ($handle->status !== ProcessStatus::Ended && \getmypid() === $handle->originalParentPid) {
             try {
                 $this->kill($handle);
             } catch (ProcessException) {

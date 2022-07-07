@@ -23,7 +23,7 @@ abstract class ProcessHandle
     /** @psalm-suppress PropertyNotSetInConstructor */
     public int $pid;
 
-    public int $status = ProcessStatus::STARTING;
+    public ProcessStatus $status = ProcessStatus::Starting;
 
     /**
      * @param resource $proc

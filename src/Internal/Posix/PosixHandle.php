@@ -27,7 +27,7 @@ final class PosixHandle extends ProcessHandle
     ) {
         parent::__construct($proc);
 
-        $this->status = ProcessStatus::RUNNING;
+        $this->status = ProcessStatus::Running;
         $this->pid = $pid;
         $this->shellPid = $shellPid = \proc_get_status($proc)['pid'];
 
@@ -39,7 +39,7 @@ final class PosixHandle extends ProcessHandle
             static function (string $callbackId, $stream) use (&$status, $deferred, $stdin, $shellPid): void {
                 EventLoop::disable($callbackId);
 
-                $status = ProcessStatus::ENDED;
+                $status = ProcessStatus::Ended;
 
                 if (!\is_resource($stream) || \feof($stream)) {
                     $deferred->error(new ProcessException("Process ended unexpectedly"));

@@ -92,7 +92,7 @@ final class SocketConnector
             new ReadableResourceStream($handle->sockets[2]),
         );
 
-        $handle->status = ProcessStatus::RUNNING;
+        $handle->status = ProcessStatus::Running;
 
         $handle->exitCodeStream = $controlPipe;
 
@@ -105,7 +105,7 @@ final class SocketConnector
             } catch (HandshakeException) {
                 $handle->joinDeferred->error(new ProcessException("Failed to read exit code from process wrapper"));
             } finally {
-                $handle->status = ProcessStatus::ENDED;
+                $handle->status = ProcessStatus::Ended;
                 $stdin->get()?->close();
 
                 if (\is_resource($handle->sockets[0])) {
@@ -189,7 +189,7 @@ final class SocketConnector
         $clientStreamId = (int) $packet['stream_id'];
 
         // can happen if the start promise was failed
-        if (!isset($this->pendingProcesses[$clientPid]) || $this->pendingProcesses[$clientPid]->status === ProcessStatus::ENDED) {
+        if (!isset($this->pendingProcesses[$clientPid]) || $this->pendingProcesses[$clientPid]->status === ProcessStatus::Ended) {
             throw new HandshakeException(HandshakeStatus::NO_LONGER_PENDING);
         }
 

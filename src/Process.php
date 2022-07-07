@@ -205,7 +205,7 @@ final class Process
      */
     public function isRunning(): bool
     {
-        return $this->handle->status !== ProcessStatus::ENDED;
+        return $this->handle->status !== ProcessStatus::Ended;
     }
 
     /**
