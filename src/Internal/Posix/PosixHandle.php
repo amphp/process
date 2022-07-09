@@ -70,11 +70,7 @@ final class PosixHandle extends ProcessHandle
             return;
         }
 
-        EventLoop::unreference(EventLoop::repeat(0.1, static function (string $callbackId) use ($pid): void {
-            if (self::hasChildExited($pid)) {
-                EventLoop::cancel($callbackId);
-            }
-        }));
+        EventLoop::unreference(EventLoop::defer(static fn () => self::waitPid($pid)));
     }
 
     private static function hasChildExited(int $pid): bool
