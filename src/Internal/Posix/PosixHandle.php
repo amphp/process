@@ -11,7 +11,7 @@ use Revolt\EventLoop;
 /** @internal */
 final class PosixHandle extends ProcessHandle
 {
-    private readonly string $extraDataPipeCallbackId;
+    private ?string $extraDataPipeCallbackId;
 
     private readonly int $shellPid;
 
@@ -59,7 +59,9 @@ final class PosixHandle extends ProcessHandle
 
     public function reference(): void
     {
-        EventLoop::reference($this->extraDataPipeCallbackId);
+        if ($this->extraDataPipeCallbackId !== null) {
+            EventLoop::reference($this->extraDataPipeCallbackId);
+        }
     }
 
     private static function waitPid(int $pid): void
@@ -82,7 +84,10 @@ final class PosixHandle extends ProcessHandle
 
     public function __destruct()
     {
-        EventLoop::cancel($this->extraDataPipeCallbackId);
+        if ($this->extraDataPipeCallbackId !== null) {
+            EventLoop::cancel($this->extraDataPipeCallbackId);
+            $this->extraDataPipeCallbackId = null;
+        }
 
         if ($this->joinDeferred->isComplete()) {
             return;
