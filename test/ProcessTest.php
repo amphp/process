@@ -209,7 +209,7 @@ class ProcessTest extends AsyncTestCase
             $promises[] = async(fn () => $process->join());
         }
 
-        self::assertEquals(\range(0, $count - 1), Future\all($promises));
+        self::assertEquals(\range(0, $count - 1), Future\await($promises));
     }
 
     public function testReadOutputAfterExit(): void
