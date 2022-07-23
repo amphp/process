@@ -4,6 +4,7 @@ namespace Amp\Process;
 
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\WritableResourceStream;
+use Amp\Cancellation;
 use Amp\ForbidCloning;
 use Amp\ForbidSerialization;
 use Amp\Process\Internal\Posix\PosixRunner as PosixProcessRunner;
@@ -114,12 +115,10 @@ final class Process
      * Wait for the process to end.
      *
      * @return int The process exit code.
-     *
-     * @throws ProcessException If the process is killed.
      */
-    public function join(): int
+    public function join(?Cancellation $cancellation = null): int
     {
-        return $this->runner->join($this->handle);
+        return $this->runner->join($this->handle, $cancellation);
     }
 
     /**

@@ -64,6 +64,13 @@ final class PosixHandle extends ProcessHandle
         }
     }
 
+    public function unreference(): void
+    {
+        if ($this->extraDataPipeCallbackId !== null) {
+            EventLoop::unreference($this->extraDataPipeCallbackId);
+        }
+    }
+
     private static function waitPid(int $pid): void
     {
         if (self::hasChildExited($pid)) {

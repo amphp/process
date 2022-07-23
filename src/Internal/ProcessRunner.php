@@ -2,6 +2,7 @@
 
 namespace Amp\Process\Internal;
 
+use Amp\Cancellation;
 use Amp\Process\ProcessException;
 
 /**
@@ -34,7 +35,7 @@ interface ProcessRunner
      *
      * @return int Exit code.
      */
-    public function join(ProcessHandle $handle): int;
+    public function join(ProcessHandle $handle, ?Cancellation $cancellation = null): int;
 
     /**
      * Forcibly end the child process.

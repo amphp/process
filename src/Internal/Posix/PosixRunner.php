@@ -4,6 +4,7 @@ namespace Amp\Process\Internal\Posix;
 
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\WritableResourceStream;
+use Amp\Cancellation;
 use Amp\ForbidCloning;
 use Amp\ForbidSerialization;
 use Amp\Process\Internal\ProcessContext;
@@ -125,12 +126,16 @@ final class PosixRunner implements ProcessRunner
         return self::FD_SPEC + $fds;
     }
 
-    public function join(ProcessHandle $handle): int
+    public function join(ProcessHandle $handle, ?Cancellation $cancellation = null): int
     {
         /** @var PosixHandle $handle */
         $handle->reference();
 
-        return $handle->joinDeferred->getFuture()->await();
+        try {
+            return $handle->joinDeferred->getFuture()->await($cancellation);
+        } finally {
+            $handle->unreference();
+        }
     }
 
     public function kill(ProcessHandle $handle): void

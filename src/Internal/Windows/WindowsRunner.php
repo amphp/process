@@ -2,6 +2,7 @@
 
 namespace Amp\Process\Internal\Windows;
 
+use Amp\Cancellation;
 use Amp\ForbidCloning;
 use Amp\ForbidSerialization;
 use Amp\Process\Internal\ProcessContext;
@@ -108,12 +109,16 @@ final class WindowsRunner implements ProcessRunner
         return new ProcessContext($handle, $streams);
     }
 
-    public function join(ProcessHandle $handle): int
+    public function join(ProcessHandle $handle, ?Cancellation $cancellation = null): int
     {
         /** @var WindowsHandle $handle */
         $handle->exitCodeStream->reference();
 
-        return $handle->joinDeferred->getFuture()->await();
+        try {
+            return $handle->joinDeferred->getFuture()->await($cancellation);
+        } finally {
+            $handle->exitCodeStream->unreference();
+        }
     }
 
     public function kill(ProcessHandle $handle): void
