@@ -123,8 +123,6 @@ final class Process
 
     /**
      * Forcibly end the process.
-     *
-     * @throws ProcessException If terminating the process fails.
      */
     public function kill(): void
     {
