@@ -1,6 +1,6 @@
 <?php
 
-include dirname(__DIR__) . "/vendor/autoload.php";
+require dirname(__DIR__) . "/vendor/autoload.php";
 
 use Amp\ByteStream;
 use Amp\Process\Process;
@@ -12,5 +12,5 @@ $process = Process::start($command);
 
 echo ByteStream\buffer($process->getStdout());
 
-$code = $process->join();
-echo "Process exited with {$code}.\n";
+$exitCode = $process->join();
+echo "Process exited with {$exitCode}.\n";
