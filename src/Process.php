@@ -14,7 +14,6 @@ use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Internal\ProcessStreams;
 use Amp\Process\Internal\ProcHolder;
 use Amp\Process\Internal\Windows\WindowsRunner as WindowsProcessRunner;
-use JetBrains\PhpStorm\ArrayShape;
 use Revolt\EventLoop;
 
 final class Process
@@ -33,7 +32,7 @@ final class Process
      * @param string|null $workingDirectory Working directory, or an empty string to use the working directory of the
      *     parent.
      * @param array<string, string> $environment Environment variables, or use an empty array to inherit from the parent.
-     * @param array $options Options for `proc_open()`.
+     * @param array<string, bool> $options Options for {@see proc_open()}.
      *
      * @throws ProcessException If starting the process fails.
      * @throws \Error If the arguments are invalid.
@@ -180,7 +179,7 @@ final class Process
     /**
      * Gets the environment variables array.
      *
-     * @return string[] Array of environment variables.
+     * @return array<string, string> Array of environment variables.
      */
     public function getEnvironment(): array
     {
@@ -188,9 +187,9 @@ final class Process
     }
 
     /**
-     * Gets the options to pass to proc_open().
+     * Gets the options to pass to {@see proc_open()}.
      *
-     * @return array Array of options.
+     * @return array<string, bool> Array of options.
      */
     public function getOptions(): array
     {
@@ -229,14 +228,16 @@ final class Process
         return $this->streams->stderr;
     }
 
-    #[ArrayShape([
-        'command' => "string",
-        'workingDirectory' => "string",
-        'environment' => "string[]",
-        'options' => "array",
-        'pid' => "int",
-        'status' => "string",
-    ])]
+    /**
+     * @return array{
+     *     command: string,
+     *     workingDirectory: string,
+     *     environment: array<string, string>,
+     *     options: array<string, bool>,
+     *     pid: positive-int,
+     *     status: string,
+     * }
+     */
     public function __debugInfo(): array
     {
         return [
