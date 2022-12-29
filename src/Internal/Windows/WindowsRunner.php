@@ -16,6 +16,7 @@ use const Amp\Process\BIN_DIR;
  * @internal
  * @implements ProcessRunner<WindowsHandle>
  * @codeCoverageIgnore Windows only.
+ * @psalm-suppress UndefinedConstant Psalm 5.4 may have a bug with conditionally defined constants.
  */
 final class WindowsRunner implements ProcessRunner
 {
