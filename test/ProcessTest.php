@@ -131,20 +131,6 @@ class ProcessTest extends AsyncTestCase
         ]);
     }
 
-    public function testProcessCantBeCloned(): void
-    {
-        $process = Process::start(self::CMD_PROCESS);
-
-        $this->expectException(\Error::class);
-
-        try {
-            /** @noinspection PhpExpressionResultUnusedInspection */
-            clone $process;
-        } finally {
-            $process->join();
-        }
-    }
-
     public function testKillImmediately(): void
     {
         $this->setTimeout(1);
