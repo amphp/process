@@ -4,6 +4,7 @@ namespace Amp\Process\Internal\Windows;
 
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\Process\Internal\ProcessHandle;
+use Amp\Sync\Barrier;
 
 /**
  * @internal
