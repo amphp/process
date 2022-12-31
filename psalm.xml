@@ -15,13 +15,6 @@
     </projectFiles>
 
     <issueHandlers>
-        <StringIncrement>
-            <errorLevel type="suppress">
-                <directory name="examples"/>
-                <directory name="src"/>
-            </errorLevel>
-        </StringIncrement>
-
         <RedundantConditionGivenDocblockType>
             <errorLevel type="suppress">
                 <directory name="src"/>
@@ -33,13 +26,6 @@
                 <directory name="src"/>
             </errorLevel>
         </DocblockTypeContradiction>
-
-        <MissingClosureParamType>
-            <errorLevel type="suppress">
-                <directory name="examples"/>
-                <directory name="src"/>
-            </errorLevel>
-        </MissingClosureParamType>
 
         <MissingClosureReturnType>
             <errorLevel type="suppress">
