@@ -16,6 +16,7 @@
         "mixed",
         "void",
         "object",
+        "random_int",
         "escapeArgument",
         "IS_WINDOWS",
         "posix_kill",
