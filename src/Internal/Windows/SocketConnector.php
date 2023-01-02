@@ -4,7 +4,7 @@ namespace Amp\Process\Internal\Windows;
 
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\WritableResourceStream;
- use Amp\Cancellation;
+use Amp\Cancellation;
 use Amp\ForbidCloning;
 use Amp\ForbidSerialization;
 use Amp\Process\Internal\ProcessStatus;
