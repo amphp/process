@@ -8,6 +8,9 @@ As Windows pipes are file handles and do not allow non-blocking access, this pac
 On Unix-like systems it uses the standard pipes, as these can be accessed without blocking there.
 Concurrency is managed by the [Revolt](https://revolt.run/) event loop.
 
+[![Latest Release](https://img.shields.io/github/release/amphp/process.svg?style=flat-square)](https://github.com/amphp/process/releases)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/amphp/process/blob/master/LICENSE)
+
 ## Installation
 
 This package can be installed as a [Composer](https://getcomposer.org/) dependency.
@@ -69,7 +72,7 @@ $process = Amp\Process\Process::start($command, environment: [
 
 ## Security
 
-If you discover any security related issues, please email [`me@kelunik.com`](mailto:me@kelunik.com) instead of using the issue tracker.
+If you discover any security related issues, please use the private security issue reporter instead of using the public issue tracker.
 
 ## License
 
