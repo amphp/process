@@ -4,12 +4,12 @@ namespace Amp\Process\Internal\Windows;
 
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\WritableResourceStream;
+ use Amp\Cancellation;
 use Amp\ForbidCloning;
 use Amp\ForbidSerialization;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Internal\ProcessStreams;
 use Amp\Process\ProcessException;
-use Amp\TimeoutCancellation;
 use Revolt\EventLoop;
 use function Amp\async;
 
@@ -59,7 +59,7 @@ final class SocketConnector
         ));
     }
 
-    public function connectPipes(WindowsHandle $handle): ProcessStreams
+    public function connectPipes(WindowsHandle $handle, Cancellation $cancellation): ProcessStreams
     {
         EventLoop::reference($this->acceptCallbackId);
 
@@ -67,7 +67,7 @@ final class SocketConnector
 
         try {
             $handle->startBarrier->arrive();
-            $handle->startBarrier->await(new TimeoutCancellation(10));
+            $handle->startBarrier->await($cancellation);
 
             $controlPipe = new ReadableResourceStream($handle->sockets[0]);
             $handle->pid = $this->readChildPid($controlPipe);

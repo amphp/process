@@ -45,6 +45,7 @@ final class WindowsRunner implements ProcessRunner
 
     public function start(
         string $command,
+        Cancellation $cancellation,
         string $workingDirectory = null,
         array $environment = [],
         array $options = []
@@ -92,7 +93,7 @@ final class WindowsRunner implements ProcessRunner
         $handle->wrapperPid = $status['pid'];
 
         try {
-            $streams = $this->socketConnector->connectPipes($handle);
+            $streams = $this->socketConnector->connectPipes($handle, $cancellation);
         } catch (\Exception) {
             $running = \is_resource($proc) && \proc_get_status($proc)['running'];
 

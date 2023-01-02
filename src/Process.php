@@ -14,6 +14,7 @@ use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Internal\ProcessStreams;
 use Amp\Process\Internal\ProcHolder;
 use Amp\Process\Internal\Windows\WindowsRunner as WindowsProcessRunner;
+use Amp\TimeoutCancellation;
 use Revolt\EventLoop;
 
 final class Process
@@ -41,7 +42,8 @@ final class Process
         string|array $command,
         ?string $workingDirectory = null,
         array $environment = [],
-        array $options = []
+        array $options = [],
+        Cancellation $cancellation = new TimeoutCancellation(10),
     ): self {
         $envVars = [];
         foreach ($environment as $key => $value) {
@@ -77,9 +79,10 @@ final class Process
         $runner = self::$driverRunner[$driver];
         $context = $runner->start(
             $command,
+            $cancellation,
             $workingDirectory,
             $envVars,
-            $options
+            $options,
         );
 
         $handle = $context->handle;

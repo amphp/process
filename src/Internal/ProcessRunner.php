@@ -23,9 +23,10 @@ interface ProcessRunner
      */
     public function start(
         string $command,
+        Cancellation $cancellation,
         string $workingDirectory = null,
         array $environment = [],
-        array $options = []
+        array $options = [],
     ): ProcessContext;
 
     /**

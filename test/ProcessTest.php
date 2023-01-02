@@ -2,9 +2,11 @@
 
 namespace Amp\Process\Test;
 
+use Amp\CancelledException;
 use Amp\Future;
 use Amp\PHPUnit\AsyncTestCase;
 use Amp\Process\Process;
+use Amp\TimeoutCancellation;
 use const Amp\Process\IS_WINDOWS;
 use function Amp\async;
 use function Amp\ByteStream\buffer;
@@ -66,7 +68,7 @@ class ProcessTest extends AsyncTestCase
 
     public function testGetWorkingDirectoryIsCustomized(): void
     {
-        $process = Process::start(self::CMD_PROCESS, __DIR__);
+        $process = Process::start(self::CMD_PROCESS, workingDirectory: __DIR__);
         self::assertSame(__DIR__, $process->getWorkingDirectory());
         $process->join();
     }
@@ -110,7 +112,7 @@ class ProcessTest extends AsyncTestCase
 
     public function testProcessEnvIsValid(): void
     {
-        $process = Process::start(self::CMD_PROCESS, null, [
+        $process = Process::start(self::CMD_PROCESS, environment: [
             'test' => 'foobar',
             'PATH' => \getenv('PATH'),
             'SystemRoot' => \getenv('SystemRoot') ?: '', // required on Windows for process wrapper
@@ -126,7 +128,7 @@ class ProcessTest extends AsyncTestCase
         $this->expectException(\Error::class);
 
         /** @noinspection PhpParamsInspection */
-        Process::start(self::CMD_PROCESS, null, [
+        Process::start(self::CMD_PROCESS, environment: [
             ['error_value'],
         ]);
     }
@@ -257,9 +259,15 @@ class ProcessTest extends AsyncTestCase
         self::assertSame(42, $process->join());
     }
 
+    public function testCancellation(): void
+    {
+        $this->expectException(CancelledException::class);
+        Process::start(["php", __DIR__ . "/bin/worker.php"], cancellation: new TimeoutCancellation(0));
+    }
+
     public function testDebugInfo(): void
     {
-        $process = Process::start(["php", __DIR__ . "/bin/worker.php"], __DIR__);
+        $process = Process::start(["php", __DIR__ . "/bin/worker.php"], workingDirectory: __DIR__);
 
         $debugInfo = $process->__debugInfo();
 
