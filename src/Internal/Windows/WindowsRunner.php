@@ -106,6 +106,8 @@ final class WindowsRunner implements ProcessRunner
             \proc_terminate($proc);
             \proc_close($proc);
 
+            $cancellation->throwIfRequested();
+
             throw new ProcessException(\trim($message ?: 'Process did not connect to server before timeout elapsed'));
         }
 
