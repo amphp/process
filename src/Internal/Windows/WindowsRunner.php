@@ -103,6 +103,7 @@ final class WindowsRunner implements ProcessRunner
             }
 
             \fclose($pipes[2]);
+            \proc_terminate($proc);
             \proc_close($proc);
 
             throw new ProcessException(\trim($message ?: 'Process did not connect to server before timeout elapsed'));

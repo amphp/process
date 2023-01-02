@@ -99,6 +99,7 @@ final class PosixRunner implements ProcessRunner
         try {
             $suspension->suspend();
         } catch (\Throwable $exception) {
+            \proc_terminate($proc);
             \proc_close($proc);
             throw $exception;
         } finally {
