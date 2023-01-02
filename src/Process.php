@@ -7,6 +7,7 @@ use Amp\ByteStream\WritableResourceStream;
 use Amp\Cancellation;
 use Amp\ForbidCloning;
 use Amp\ForbidSerialization;
+use Amp\NullCancellation;
 use Amp\Process\Internal\Posix\PosixRunner as PosixProcessRunner;
 use Amp\Process\Internal\ProcessHandle;
 use Amp\Process\Internal\ProcessRunner;
@@ -14,7 +15,6 @@ use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\Internal\ProcessStreams;
 use Amp\Process\Internal\ProcHolder;
 use Amp\Process\Internal\Windows\WindowsRunner as WindowsProcessRunner;
-use Amp\TimeoutCancellation;
 use Revolt\EventLoop;
 
 final class Process
@@ -43,7 +43,7 @@ final class Process
         ?string $workingDirectory = null,
         array $environment = [],
         array $options = [],
-        Cancellation $cancellation = new TimeoutCancellation(10),
+        ?Cancellation $cancellation = null,
     ): self {
         $envVars = [];
         foreach ($environment as $key => $value) {
@@ -79,7 +79,7 @@ final class Process
         $runner = self::$driverRunner[$driver];
         $context = $runner->start(
             $command,
-            $cancellation,
+            $cancellation ?? new NullCancellation(),
             $workingDirectory,
             $envVars,
             $options,
