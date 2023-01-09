@@ -1,6 +1,6 @@
 {
     "name": "amphp/process",
-    "homepage": "https://github.com/amphp/process",
+    "homepage": "https://amphp.org/process",
     "description": "A fiber-aware process manager based on Amp and Revolt.",
     "require": {
         "php": ">=8.1",
@@ -15,8 +15,6 @@
         "amphp/php-cs-fixer-config": "^2",
         "psalm/phar": "^5.4"
     },
-    "prefer-stable": true,
-    "minimum-stability": "beta",
     "license": "MIT",
     "authors": [
         {
