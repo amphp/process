@@ -237,7 +237,7 @@ final class Process
      *     workingDirectory: string,
      *     environment: array<string, string>,
      *     options: array<string, bool>,
-     *     pid: positive-int,
+     *     pid: int,
      *     status: string,
      * }
      */

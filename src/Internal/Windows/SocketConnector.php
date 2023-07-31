@@ -204,6 +204,9 @@ final class SocketConnector
         return $handle;
     }
 
+    /**
+     * @return positive-int
+     */
     private function readChildPid(ReadableResourceStream $stream): int
     {
         $packet = \unpack('Csignal/Npid', $this->read($stream, 5));
@@ -211,7 +214,9 @@ final class SocketConnector
             throw new HandshakeException(HandshakeStatus::SIGNAL_UNEXPECTED);
         }
 
-        return (int) $packet['pid'];
+        $pid = (int) $packet['pid'];
+        \assert($pid > 0, 'Expected positive integer for PID');
+        return $pid;
     }
 
     private function readExitCode(ReadableResourceStream $stream): int

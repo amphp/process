@@ -18,6 +18,7 @@ final class PosixHandle extends ProcessHandle
     /**
      * @param resource $proc Resource from proc_open()
      * @param resource $extraDataPipe Stream resource for exit code
+     * @param positive-int $pid
      */
     public function __construct(
         $proc,

@@ -20,7 +20,10 @@ abstract class ProcessHandle
 
     public readonly int $originalParentPid;
 
-    /** @psalm-suppress PropertyNotSetInConstructor */
+    /**
+     * @psalm-suppress PropertyNotSetInConstructor
+     * @var positive-int
+     */
     public int $pid;
 
     public ProcessStatus $status = ProcessStatus::Starting;

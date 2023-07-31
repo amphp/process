@@ -120,8 +120,11 @@ final class PosixRunner implements ProcessRunner
         $stdout = new ReadableResourceStream($pipes[1]);
         $stderr = new ReadableResourceStream($pipes[2]);
 
+        $pid = (int) $pid;
+        \assert($pid > 0, 'Expected positive integer for PID');
+
         return new ProcessContext(
-            new PosixHandle($proc, (int) $pid, $stdin, $extraDataPipe),
+            new PosixHandle($proc, $pid, $stdin, $extraDataPipe),
             new ProcessStreams($stdin, $stdout, $stderr),
         );
     }
