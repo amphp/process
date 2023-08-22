@@ -12,7 +12,7 @@ $start = microtime(true);
 
 Pipeline::fromIterable(new DirectoryIterator('.'))
     ->concurrent(3)
-    ->filter(fn ($item) => $item->getExtension() === 'php')
+    ->filter(fn ($item) => $item->getExtension() === 'mkv')
     ->map(fn ($item) => createVideoClip($ffmpeg, $item->getPathname(), getTempDestination()))
     ->forEach(fn ($result) => getStdout()->write('Successfully created clip from ' . $result[0] . ' => ' . $result[1] . PHP_EOL));
 
