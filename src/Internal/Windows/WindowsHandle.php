@@ -35,4 +35,9 @@ final class WindowsHandle extends ProcessHandle
 
         $this->startBarrier = new Barrier(4);
     }
+
+    public function wait(): void
+    {
+        // Nothing to do.
+    }
 }

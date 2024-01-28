@@ -12,8 +12,8 @@ final class ProcHolder
     use ForbidSerialization;
 
     public function __construct(
-        private readonly ProcessRunner $runner,
-        private readonly ProcessHandle $handle
+        public readonly ProcessRunner $runner,
+        public readonly ProcessHandle $handle,
     ) {
     }
 

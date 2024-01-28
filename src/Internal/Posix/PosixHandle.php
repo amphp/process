@@ -53,7 +53,7 @@ final class PosixHandle extends ProcessHandle
 
                 \fclose($stream);
 
-                self::waitPid($shellPid);
+                self::asyncWaitPid($shellPid);
             },
         ));
     }
@@ -72,13 +72,13 @@ final class PosixHandle extends ProcessHandle
         }
     }
 
-    private static function waitPid(int $pid): void
+    private static function asyncWaitPid(int $pid): void
     {
         if (self::hasChildExited($pid)) {
             return;
         }
 
-        EventLoop::unreference(EventLoop::defer(static fn () => self::waitPid($pid)));
+        EventLoop::unreference(EventLoop::defer(static fn () => self::asyncWaitPid($pid)));
     }
 
     private static function hasChildExited(int $pid): bool
@@ -97,6 +97,13 @@ final class PosixHandle extends ProcessHandle
             return;
         }
 
-        self::waitPid($this->shellPid);
+        self::asyncWaitPid($this->shellPid);
+    }
+
+    public function wait(): void
+    {
+        if (\extension_loaded('pcntl')) {
+            \pcntl_waitpid($this->pid, $status);
+        }
     }
 }

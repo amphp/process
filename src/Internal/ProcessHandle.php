@@ -37,4 +37,6 @@ abstract class ProcessHandle
         $this->joinDeferred = new DeferredFuture;
         $this->originalParentPid = \getmypid();
     }
+
+    abstract public function wait(): void;
 }

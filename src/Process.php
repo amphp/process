@@ -26,13 +26,16 @@ final class Process
 
     private static \WeakMap $procHolder;
 
+    private static \WeakMap $streamHolder;
+
     /**
      * Starts a new process.
      *
      * @param string|list<string> $command Command to run.
      * @param string|null $workingDirectory Working directory, or an empty string to use the working directory of the
      *     parent.
-     * @param array<string, string> $environment Environment variables, or use an empty array to inherit from the parent.
+     * @param array<string, string> $environment Environment variables, or use an empty array to inherit from the
+     *     parent.
      * @param array<string, bool> $options Options for {@see proc_open()}.
      *
      * @throws ProcessException If starting the process fails.
@@ -59,14 +62,6 @@ final class Process
             ? \implode(" ", \array_map(escapeArgument(...), $command))
             : $command;
 
-        $driver = EventLoop::getDriver();
-
-        /** @psalm-suppress RedundantPropertyInitializationCheck */
-        self::$driverRunner ??= new \WeakMap();
-        self::$driverRunner[$driver] ??= \PHP_OS_FAMILY === 'Windows'
-            ? new WindowsProcessRunner()
-            : new PosixProcessRunner();
-
         if (!$workingDirectory) {
             $cwd = \getcwd();
             if ($cwd === false) {
@@ -76,7 +71,10 @@ final class Process
             $workingDirectory = $cwd;
         }
 
-        $runner = self::$driverRunner[$driver];
+        $driver = EventLoop::getDriver();
+
+        $runner = self::$driverRunner[$driver] ??= self::initialize();
+
         $context = $runner->start(
             $command,
             $cancellation ?? new NullCancellation(),
@@ -90,13 +88,38 @@ final class Process
 
         $procHolder = new ProcHolder($runner, $handle);
 
-        /** @psalm-suppress RedundantPropertyInitializationCheck */
-        self::$procHolder ??= new \WeakMap();
-        self::$procHolder[$streams->stdin] = $procHolder;
-        self::$procHolder[$streams->stdout] = $procHolder;
-        self::$procHolder[$streams->stderr] = $procHolder;
+        self::$streamHolder[$streams->stdin] = $procHolder;
+        self::$streamHolder[$streams->stdout] = $procHolder;
+        self::$streamHolder[$streams->stderr] = $procHolder;
+
+        self::$procHolder[$procHolder] = $handle->pid;
 
         return new self($runner, $handle, $streams, $command, $workingDirectory, $envVars, $options);
+    }
+
+    private static function initialize(): ProcessRunner
+    {
+        /** @psalm-suppress RedundantPropertyInitializationCheck */
+        self::$driverRunner ??= new \WeakMap();
+
+        /** @psalm-suppress RedundantPropertyInitializationCheck */
+        self::$procHolder ??= new \WeakMap();
+
+        /** @psalm-suppress RedundantPropertyInitializationCheck */
+        self::$streamHolder ??= new \WeakMap();
+
+        $runner = \PHP_OS_FAMILY === 'Windows'
+            ? new WindowsProcessRunner()
+            : new PosixProcessRunner();
+
+        \register_shutdown_function(static function (): void {
+            /** @var ProcHolder $procHolder */
+            foreach (self::$procHolder as $procHolder => $pid) {
+                $procHolder->handle->wait();
+            }
+        });
+
+        return $runner;
     }
 
     /**
