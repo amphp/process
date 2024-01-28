@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 use Amp\Pipeline\Pipeline;
 use Amp\Process\Process;
@@ -6,8 +6,9 @@ use function Amp\ByteStream\getStdout;
 
 require dirname(__DIR__) . "/vendor/autoload.php";
 
+/** @psalm-suppress RiskyTruthyFalsyComparison */
 $ffmpeg = getenv('FFMPEG_BIN') ?: 'ffmpeg';
-$concurrency = $argv[1] ?? 3;
+$concurrency = (int) ($argv[1] ?? 3);
 $start = microtime(true);
 
 Pipeline::fromIterable(new DirectoryIterator('.'))
@@ -35,9 +36,9 @@ function createVideoClip(string $ffmpeg, string $source, string $destination): a
 
     $success = Process::start($cmd)->join() === 0;
 
-    if ($success) {
-        return [$source, $destination];
-    } else {
+    if (!$success) {
         throw new \RuntimeException('Unable to perform conversion');
     }
+
+    return [$source, $destination];
 }
