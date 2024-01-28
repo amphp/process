@@ -71,9 +71,7 @@ final class Process
             $workingDirectory = $cwd;
         }
 
-        $driver = EventLoop::getDriver();
-
-        $runner = self::$driverRunner[$driver] ??= self::initialize();
+        $runner = self::getRunner();
 
         $context = $runner->start(
             $command,
@@ -87,20 +85,28 @@ final class Process
         $streams = $context->streams;
 
         $procHolder = new ProcHolder($runner, $handle);
+        self::$procHolder[$procHolder] = $handle->pid;
 
         self::$streamHolder[$streams->stdin] = $procHolder;
         self::$streamHolder[$streams->stdout] = $procHolder;
         self::$streamHolder[$streams->stderr] = $procHolder;
 
-        self::$procHolder[$procHolder] = $handle->pid;
-
         return new self($runner, $handle, $streams, $command, $workingDirectory, $envVars, $options);
     }
 
-    private static function initialize(): ProcessRunner
+    private static function getRunner(): ProcessRunner
     {
         /** @psalm-suppress RedundantPropertyInitializationCheck */
-        self::$driverRunner ??= new \WeakMap();
+        if (!isset(self::$driverRunner)) {
+            self::$driverRunner = new \WeakMap();
+
+            \register_shutdown_function(static function (): void {
+                /** @var ProcHolder $procHolder */
+                foreach (self::$procHolder as $procHolder => $pid) {
+                    $procHolder->handle->wait();
+                }
+            });
+        }
 
         /** @psalm-suppress RedundantPropertyInitializationCheck */
         self::$procHolder ??= new \WeakMap();
@@ -108,18 +114,10 @@ final class Process
         /** @psalm-suppress RedundantPropertyInitializationCheck */
         self::$streamHolder ??= new \WeakMap();
 
-        $runner = \PHP_OS_FAMILY === 'Windows'
+        $driver = EventLoop::getDriver();
+        return self::$driverRunner[$driver] ??= \PHP_OS_FAMILY === 'Windows'
             ? new WindowsProcessRunner()
             : new PosixProcessRunner();
-
-        \register_shutdown_function(static function (): void {
-            /** @var ProcHolder $procHolder */
-            foreach (self::$procHolder as $procHolder => $pid) {
-                $procHolder->handle->wait();
-            }
-        });
-
-        return $runner;
     }
 
     /**
