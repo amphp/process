@@ -109,6 +109,7 @@ final class PosixRunner implements ProcessRunner
             $cancellation->unsubscribe($cancellationId);
         }
 
+        /** @psalm-suppress RiskyTruthyFalsyComparison */
         $pid = \rtrim(\fgets($extraDataPipe) ?: '');
         if (!$pid || !\is_numeric($pid)) {
             \proc_terminate($proc);

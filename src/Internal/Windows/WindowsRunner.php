@@ -61,6 +61,7 @@ final class WindowsRunner implements ProcessRunner
         });
 
         try {
+            /** @psalm-suppress RiskyTruthyFalsyComparison */
             $proc = \proc_open(
                 $this->makeCommand($workingDirectory ?? ''),
                 self::FD_SPEC,
@@ -113,6 +114,7 @@ final class WindowsRunner implements ProcessRunner
 
             $cancellation->throwIfRequested();
 
+            /** @psalm-suppress RiskyTruthyFalsyComparison */
             throw new ProcessException(\trim($message ?: 'Process did not connect to server before timeout elapsed'));
         }
 

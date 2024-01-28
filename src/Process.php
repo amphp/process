@@ -62,7 +62,7 @@ final class Process
             ? \implode(" ", \array_map(escapeArgument(...), $command))
             : $command;
 
-        if (!$workingDirectory) {
+        if ($workingDirectory === null) {
             $cwd = \getcwd();
             if ($cwd === false) {
                 throw new ProcessException('Failed to determine current working directory');
