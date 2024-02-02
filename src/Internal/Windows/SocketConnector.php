@@ -102,7 +102,7 @@ final class SocketConnector
                 $exitCode = $this->readExitCode($handle->exitCodeStream);
 
                 $handle->joinDeferred->complete($exitCode);
-            } catch (HandshakeException) {
+            } catch (\Throwable) {
                 $handle->joinDeferred->error(new ProcessException("Failed to read exit code from process wrapper"));
             } finally {
                 $handle->status = ProcessStatus::Ended;
