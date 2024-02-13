@@ -97,8 +97,11 @@ final class Process
     private static function getRunner(): ProcessRunner
     {
         /** @psalm-suppress RedundantPropertyInitializationCheck */
-        if (!isset(self::$driverRunner)) {
-            self::$driverRunner = new \WeakMap();
+        self::$driverRunner ??= new \WeakMap();
+
+        /** @psalm-suppress RedundantPropertyInitializationCheck */
+        if (!isset(self::$procHolder)) {
+            self::$procHolder = new \WeakMap();
 
             \register_shutdown_function(static function (): void {
                 /** @var ProcHolder $procHolder */
@@ -107,9 +110,6 @@ final class Process
                 }
             });
         }
-
-        /** @psalm-suppress RedundantPropertyInitializationCheck */
-        self::$procHolder ??= new \WeakMap();
 
         /** @psalm-suppress RedundantPropertyInitializationCheck */
         self::$streamHolder ??= new \WeakMap();
