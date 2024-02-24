@@ -217,7 +217,7 @@ final class Runner implements ProcessRunner
         });
     }
 
-    public static function tryPosixKill($pid, int $signo)
+    private static function tryPosixKill($pid, int $signo)
     {
         if ($pid !== null) {
             @\posix_kill($pid, $signo);
