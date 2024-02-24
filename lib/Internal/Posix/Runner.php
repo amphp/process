@@ -194,7 +194,7 @@ final class Runner implements ProcessRunner
                 return;
             }
             // ignore errors because process not always detached
-            @\posix_kill($pid, 9);
+            self::tryPosixKill($pid, 9);
         });
 
         if ($handle->status < ProcessStatus::ENDED) {
@@ -213,8 +213,15 @@ final class Runner implements ProcessRunner
                 return;
             }
 
-            @\posix_kill($pid, $signo);
+            self::tryPosixKill($pid, $signo);
         });
+    }
+
+    private static function tryPosixKill($pid, int $signo)
+    {
+        if ($pid !== null) {
+            @\posix_kill($pid, $signo);
+        }
     }
 
     /** @inheritdoc */
