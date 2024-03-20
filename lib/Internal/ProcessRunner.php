@@ -19,7 +19,7 @@ interface ProcessRunner
      *
      * @throws ProcessException If starting the process fails.
      */
-    public function start(string $command, string $cwd = null, array $env = [], array $options = []): ProcessHandle;
+    public function start(string $command, ?string $cwd = null, array $env = [], array $options = []): ProcessHandle;
 
     /**
      * Wait for the child process to end.
