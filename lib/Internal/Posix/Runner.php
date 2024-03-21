@@ -78,7 +78,7 @@ final class Runner implements ProcessRunner
     }
 
     /** @inheritdoc */
-    public function start(string $command, string $cwd = null, array $env = [], array $options = []): ProcessHandle
+    public function start(string $command, ?string $cwd = null, array $env = [], array $options = []): ProcessHandle
     {
         $command = \sprintf(
             '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0; trap "" INT TERM QUIT HUP;' .
