@@ -41,7 +41,7 @@ final class Handle extends ProcessHandle
     /** @var Deferred[] */
     public $stdioDeferreds;
 
-    /** @var string */
+    /** @var string|null */
     public $childPidWatcher;
 
     /** @var string */
