@@ -41,6 +41,11 @@
     "config": {
         "platform": {
             "php": "7.1.3"
+        },
+        "audit": {
+            "ignore": [
+                "PKSA-z3gr-8qht-p93v"
+            ]
         }
     },
     "scripts": {
