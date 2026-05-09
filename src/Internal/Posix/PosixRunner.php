@@ -156,7 +156,6 @@ final class PosixRunner implements ProcessRunner
 
     public function join(ProcessHandle $handle, ?Cancellation $cancellation = null): int
     {
-        /** @var PosixHandle $handle */
         $handle->reference();
 
         try {
@@ -168,7 +167,6 @@ final class PosixRunner implements ProcessRunner
 
     public function kill(ProcessHandle $handle): void
     {
-        /** @var PosixHandle $handle */
         $handle->reference();
 
         $this->signal($handle, 9);
@@ -182,7 +180,6 @@ final class PosixRunner implements ProcessRunner
 
     public function destroy(ProcessHandle $handle): void
     {
-        /** @var PosixHandle $handle */
         if ($handle->status !== ProcessStatus::Ended && \getmypid() === $handle->originalParentPid) {
             try {
                 $this->kill($handle);

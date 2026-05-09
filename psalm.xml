@@ -21,23 +21,58 @@
             </errorLevel>
         </RedundantConditionGivenDocblockType>
 
+        <PossiblyUnusedMethod>
+            <errorLevel type="suppress">
+                <directory name="src" />
+            </errorLevel>
+        </PossiblyUnusedMethod>
+
+        <ClassMustBeFinal>
+            <errorLevel type="suppress">
+                <file name="src/ProcessException.php" />
+            </errorLevel>
+        </ClassMustBeFinal>
+
+        <MissingOverrideAttribute>
+            <errorLevel type="suppress">
+                <directory name="src" />
+            </errorLevel>
+        </MissingOverrideAttribute>
+
+        <PossiblyInvalidArrayAccess>
+            <errorLevel type="suppress">
+                <directory name="src" />
+            </errorLevel>
+        </PossiblyInvalidArrayAccess>
+
         <DocblockTypeContradiction>
             <errorLevel type="suppress">
                 <directory name="src"/>
             </errorLevel>
         </DocblockTypeContradiction>
 
-        <MissingClosureReturnType>
-            <errorLevel type="suppress">
-                <directory name="examples"/>
-                <directory name="src"/>
-            </errorLevel>
-        </MissingClosureReturnType>
-
         <UnsupportedPropertyReferenceUsage>
             <errorLevel type="suppress">
                 <directory name="src"/>
             </errorLevel>
         </UnsupportedPropertyReferenceUsage>
+
+        <UnusedForeachValue>
+            <errorLevel type="suppress">
+                <directory name="src" />
+            </errorLevel>
+        </UnusedForeachValue>
+
+        <UnusedConstructor>
+            <errorLevel type="suppress">
+                <directory name="src" />
+            </errorLevel>
+        </UnusedConstructor>
+
+        <PossiblyFalseArgument>
+            <errorLevel type="suppress">
+                <directory name="examples" />
+            </errorLevel>
+        </PossiblyFalseArgument>
     </issueHandlers>
 </psalm>

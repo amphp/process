@@ -122,7 +122,6 @@ final class WindowsRunner implements ProcessRunner
 
     public function join(ProcessHandle $handle, ?Cancellation $cancellation = null): int
     {
-        /** @var WindowsHandle $handle */
         $handle->exitCodeStream->reference();
 
         try {
@@ -134,7 +133,6 @@ final class WindowsRunner implements ProcessRunner
 
     public function kill(ProcessHandle $handle): void
     {
-        /** @var WindowsHandle $handle */
         \exec('taskkill /F /T /PID ' . $handle->pid . ' 2>&1');
     }
 
@@ -145,7 +143,6 @@ final class WindowsRunner implements ProcessRunner
 
     public function destroy(ProcessHandle $handle): void
     {
-        /** @var WindowsHandle $handle */
         if ($handle->status !== ProcessStatus::Ended && \getmypid() === $handle->originalParentPid) {
             try {
                 $this->kill($handle);
@@ -163,6 +160,10 @@ final class WindowsRunner implements ProcessRunner
         if (\strncmp($wrapperPath, "phar://", 7) === 0) {
             if (self::$pharWrapperPath === null) {
                 $fileHash = \hash_file('sha1', self::WRAPPER_EXE_PATH);
+                if ($fileHash === false) {
+                    throw new ProcessException("Failed to calculate hash of wrapper executable at " . self::WRAPPER_EXE_PATH);
+                }
+
                 self::$pharWrapperPath = \sys_get_temp_dir() . "/amphp-process-wrapper-" . $fileHash;
 
                 if (

@@ -12,7 +12,10 @@ abstract class ProcessHandle
     use ForbidCloning;
     use ForbidSerialization;
 
-    /** @var resource */
+    /**
+     * @var resource
+     * @psalm-suppress UnusedProperty
+     */
     private $proc;
 
     /** @var DeferredFuture<int> */
@@ -35,6 +38,8 @@ abstract class ProcessHandle
     {
         $this->proc = $proc;
         $this->joinDeferred = new DeferredFuture;
+
+        /** @psalm-suppress PossiblyFalsePropertyAssignmentValue */
         $this->originalParentPid = \getmypid();
     }
 

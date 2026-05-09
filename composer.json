@@ -13,7 +13,7 @@
         "phpunit/phpunit": "^9",
         "amphp/phpunit-util": "^3",
         "amphp/php-cs-fixer-config": "^2",
-        "psalm/phar": "^5.4"
+        "psalm/phar": "6.16.1"
     },
     "license": "MIT",
     "authors": [

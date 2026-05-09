@@ -42,17 +42,23 @@ final class SocketConnector
     public function __construct()
     {
         $flags = \STREAM_SERVER_LISTEN | \STREAM_SERVER_BIND;
-        $this->server = \stream_socket_server(self::SERVER_SOCKET_URI, $errNo, $errStr, $flags);
-
-        if (!$this->server) {
+        $socket = \stream_socket_server(self::SERVER_SOCKET_URI, $errNo, $errStr, $flags);
+        if (!$socket) {
             throw new \Error("Failed to create TCP server socket for process wrapper: {$errNo}: {$errStr}");
         }
+
+        $this->server = $socket;
 
         if (!\stream_set_blocking($this->server, false)) {
             throw new \Error("Failed to set server socket to non-blocking mode");
         }
 
-        [$this->address, $port] = \explode(':', \stream_socket_get_name($this->server, false));
+        $socketName = \stream_socket_get_name($this->server, false);
+        if ($socketName === false) {
+            throw new \Error("Failed to get server socket name");
+        }
+
+        [$this->address, $port] = \explode(':', $socketName);
         $this->port = (int) $port;
 
         $this->acceptCallbackId = EventLoop::unreference(EventLoop::onReadable(

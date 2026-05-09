@@ -18,7 +18,7 @@ Pipeline::fromIterable(new DirectoryIterator('.'))
     ->forEach(fn ($result) => getStdout()->write('Successfully created clip from ' . $result[0] . ' => ' . $result[1] . PHP_EOL));
 
 $end = microtime(true);
-echo 'Directory processed in ' . round($end - $start, 1) . ' seconds' . PHP_EOL;
+echo 'Directory processed in ' . number_format($end - $start, 1) . ' seconds' . PHP_EOL;
 
 function getTempDestination(): string
 {
