@@ -11,6 +11,8 @@ jobs:
         include:
           - operating-system: 'ubuntu-latest'
             php-version: '8.1'
+            psalm: skip
+            style-fix: none
 
           - operating-system: 'ubuntu-latest'
             php-version: '8.2'
@@ -66,6 +68,10 @@ jobs:
             composer-${{ runner.os }}-
             composer-
 
+      - name: Remove psalm/phar
+        run: composer remove --no-update --dev psalm/phar
+        if: matrix.psalm == 'skip'
+
       - name: Install dependencies
         run: |
           composer update --optimize-autoloader --no-interaction --no-progress ${{ matrix.composer-flags }}
@@ -76,7 +82,7 @@ jobs:
 
       - name: Run static analysis
         run: vendor/bin/psalm.phar
-        if: matrix.static-analysis != 'none'
+        if: matrix.psalm != 'skip'
 
       - name: Run style fixer
         env:
