@@ -103,6 +103,7 @@ final class PosixHandle extends ProcessHandle
         self::asyncWaitPid($this->shellPid);
     }
 
+    #[\Override]
     public function wait(): void
     {
         if (\extension_loaded('pcntl')) {

@@ -42,6 +42,7 @@ final class WindowsRunner implements ProcessRunner
         $this->socketConnector = new SocketConnector;
     }
 
+    #[\Override]
     public function start(
         string $command,
         Cancellation $cancellation,
@@ -120,6 +121,7 @@ final class WindowsRunner implements ProcessRunner
         return new ProcessContext($handle, $streams);
     }
 
+    #[\Override]
     public function join(ProcessHandle $handle, ?Cancellation $cancellation = null): int
     {
         $handle->exitCodeStream->reference();
@@ -131,16 +133,19 @@ final class WindowsRunner implements ProcessRunner
         }
     }
 
+    #[\Override]
     public function kill(ProcessHandle $handle): void
     {
         \exec('taskkill /F /T /PID ' . $handle->pid . ' 2>&1');
     }
 
+    #[\Override]
     public function signal(ProcessHandle $handle, int $signal): void
     {
         throw new ProcessException('Signals are not supported on Windows');
     }
 
+    #[\Override]
     public function destroy(ProcessHandle $handle): void
     {
         if ($handle->status !== ProcessStatus::Ended && \getmypid() === $handle->originalParentPid) {

@@ -33,12 +33,6 @@
             </errorLevel>
         </ClassMustBeFinal>
 
-        <MissingOverrideAttribute>
-            <errorLevel type="suppress">
-                <directory name="src" />
-            </errorLevel>
-        </MissingOverrideAttribute>
-
         <PossiblyInvalidArrayAccess>
             <errorLevel type="suppress">
                 <directory name="src" />
