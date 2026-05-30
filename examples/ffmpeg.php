@@ -13,9 +13,9 @@ $start = microtime(true);
 
 Pipeline::fromIterable(new DirectoryIterator('.'))
     ->concurrent($concurrency)
-    ->filter(fn ($item) => $item->getExtension() === 'mkv')
-    ->map(fn ($item) => createVideoClip($ffmpeg, $item->getPathname(), getTempDestination()))
-    ->forEach(fn ($result) => getStdout()->write('Successfully created clip from ' . $result[0] . ' => ' . $result[1] . PHP_EOL));
+    ->filter(fn (DirectoryIterator $item) => $item->getExtension() === 'mkv')
+    ->map(fn (DirectoryIterator $item) => createVideoClip($ffmpeg, $item->getPathname(), getTempDestination()))
+    ->forEach(fn (array $result) => getStdout()->write('Successfully created clip from ' . $result[0] . ' => ' . $result[1] . PHP_EOL));
 
 $end = microtime(true);
 echo 'Directory processed in ' . number_format($end - $start, 1) . ' seconds' . PHP_EOL;
