@@ -8,7 +8,8 @@ const IS_WINDOWS = \PHP_OS_FAMILY === 'Windows';
 if (!\function_exists(__NAMESPACE__ . '\\escapeArgument')) {
     if (IS_WINDOWS) {
         /**
-         * Escapes the command argument for safe inclusion into a Windows command string.
+         * Escapes the command argument for safe inclusion into a Windows command string used with proc_open()
+         * and the option bypass_shell=true.
          */
         function escapeArgument(string $arg): string
         {
@@ -18,7 +19,7 @@ if (!\function_exists(__NAMESPACE__ . '\\escapeArgument')) {
         }
     } else {
         /**
-         * Escapes the command argument for safe inclusion into a Posix shell command string.
+         * Escapes the command argument for safe inclusion into a Posix shell command string used with proc_open().
          */
         function escapeArgument(string $arg): string
         {
