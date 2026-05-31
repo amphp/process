@@ -11,6 +11,7 @@ use Amp\Process\Internal\ProcessRunner;
 use Amp\Process\Internal\ProcessStatus;
 use Amp\Process\ProcessException;
 use const Amp\Process\BIN_DIR;
+use const DIRECTORY_SEPARATOR;
 
 /**
  * @internal
@@ -164,19 +165,29 @@ final class WindowsRunner implements ProcessRunner
         // We can't execute the exe from within the PHAR, so copy it out...
         if (\strncmp($wrapperPath, "phar://", 7) === 0) {
             if (self::$pharWrapperPath === null) {
-                $fileHash = \hash_file('sha1', self::WRAPPER_EXE_PATH);
-                if ($fileHash === false) {
-                    throw new ProcessException("Failed to calculate hash of wrapper executable at " . self::WRAPPER_EXE_PATH);
+                $fileHash = self::hashFile(self::WRAPPER_EXE_PATH);
+
+                $tempDir = \sys_get_temp_dir();
+                $tempPath = $tempDir . DIRECTORY_SEPARATOR . "amphp-process-wrapper-" . \bin2hex(\random_bytes(16));
+                $wrapperPath = $tempDir . DIRECTORY_SEPARATOR . "amphp-process-wrapper-" . $fileHash;
+
+                if (!self::verifyHash($wrapperPath, $fileHash)) {
+                    try {
+                        if (!\copy(self::WRAPPER_EXE_PATH, $tempPath)) {
+                            throw new ProcessException("Failed to copy wrapper executable to " . $tempPath);
+                        }
+
+                        if (!\rename($tempPath, $wrapperPath) && !self::verifyHash($wrapperPath, $fileHash)) {
+                            throw new ProcessException(
+                                "Failed to rename temporary wrapper executable to " . $wrapperPath,
+                            );
+                        }
+                    } finally {
+                        @\unlink($tempPath);
+                    }
                 }
 
-                self::$pharWrapperPath = \sys_get_temp_dir() . "/amphp-process-wrapper-" . $fileHash;
-
-                if (
-                    !\file_exists(self::$pharWrapperPath)
-                    || \hash_file('sha1', self::$pharWrapperPath) !== $fileHash
-                ) {
-                    \copy(self::WRAPPER_EXE_PATH, self::$pharWrapperPath);
-                }
+                self::$pharWrapperPath = $wrapperPath;
             }
 
             $wrapperPath = self::$pharWrapperPath;
@@ -195,5 +206,20 @@ final class WindowsRunner implements ProcessRunner
         }
 
         return $result;
+    }
+
+    private static function hashFile(string $path): string
+    {
+        $hash = \hash_file('sha256', $path);
+        if ($hash === false) {
+            throw new ProcessException("Failed to calculate hash of file at " . $path);
+        }
+
+        return $hash;
+    }
+
+    private static function verifyHash(string $path, string $hash): bool
+    {
+        return \file_exists($path) && \hash_equals($hash, self::hashFile($path));
     }
 }
