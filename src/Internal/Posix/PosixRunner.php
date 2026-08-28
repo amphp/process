@@ -175,6 +175,7 @@ final class PosixRunner implements ProcessRunner
         $handle->reference();
 
         $this->signal($handle, 9);
+        $handle->reapShell();
     }
 
     #[\Override]

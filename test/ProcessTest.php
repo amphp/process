@@ -144,6 +144,94 @@ class ProcessTest extends AsyncTestCase
         self::assertSame(IS_WINDOWS ? 1 : 137, $process->join());
     }
 
+    /**
+     * @requires extension pcntl
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testKillReapsShellWhileProcessIsRetained(): void
+    {
+        $process = Process::start(self::CMD_PROCESS_SLOW);
+        $process->kill();
+
+        // Keep Process reachable after kill; this is the state that previously left the shell unreaped.
+        $status = 0;
+        $remainingChildPid = \pcntl_waitpid(-1, $status);
+        $error = \pcntl_get_last_error();
+        $exitCode = $process->join();
+
+        self::assertSame(-1, $remainingChildPid);
+        self::assertSame(\PCNTL_ECHILD, $error);
+        self::assertSame(137, $exitCode);
+    }
+
+    /**
+     * @requires extension pcntl
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testProcessDestructionReapsShell(): void
+    {
+        $process = Process::start(self::CMD_PROCESS_SLOW);
+        unset($process);
+
+        $status = 0;
+        self::assertSame(-1, \pcntl_waitpid(-1, $status, \WNOHANG));
+        self::assertSame(\PCNTL_ECHILD, \pcntl_get_last_error());
+    }
+
+    /**
+     * @requires extension pcntl
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testCompletedProcessDestructionReapsShell(): void
+    {
+        $process = Process::start('exit 0');
+        self::assertSame(0, $process->join());
+        unset($process);
+
+        $status = 0;
+        self::assertSame(-1, \pcntl_waitpid(-1, $status, \WNOHANG));
+        self::assertSame(\PCNTL_ECHILD, \pcntl_get_last_error());
+    }
+
+    /**
+     * @requires extension pcntl
+     */
+    public function testShutdownDoesNotWaitForRunningProcess(): void
+    {
+        $code = \sprintf(
+            'require %s; $GLOBALS["process"] = Amp\\Process\\Process::start("sleep 30");',
+            \var_export(\dirname(__DIR__) . '/vendor/autoload.php', true),
+        );
+        $process = Process::start([\PHP_BINARY, '-r', $code]);
+
+        self::assertSame(0, $process->join(new TimeoutCancellation(2)));
+    }
+
+    /**
+     * @requires extension pcntl
+     */
+    public function testRunningHandleDestructionDoesNotWaitForProcess(): void
+    {
+        // Emulate handle destruction in a long-running PHP worker without depending on garbage collection order.
+        $code = \sprintf(
+            'require %s;'
+            . '$process = Amp\\Process\\Process::start("cat >/dev/null");'
+            . '$handle = (new ReflectionProperty($process, "handle"))->getValue($process);'
+            . '$handle->__destruct();',
+            \var_export(\dirname(__DIR__) . '/vendor/autoload.php', true),
+        );
+        $process = Process::start([\PHP_BINARY, '-r', $code]);
+
+        try {
+            self::assertSame(0, $process->join(new TimeoutCancellation(2)));
+        } finally {
+            $process->kill();
+        }
+    }
+
     public function testKillThenReadStdout(): void
     {
         $this->setTimeout(1);

@@ -86,7 +86,15 @@ final class PosixHandle extends ProcessHandle
 
     private static function hasChildExited(int $pid): bool
     {
-        return !\extension_loaded('pcntl') || \pcntl_waitpid($pid, $status, \WNOHANG) !== 0;
+        if (!\extension_loaded('pcntl')) {
+            return true;
+        }
+
+        do {
+            $result = \pcntl_waitpid($pid, $status, \WNOHANG);
+        } while ($result === -1 && \pcntl_get_last_error() === \PCNTL_EINTR);
+
+        return $result !== 0;
     }
 
     public function __destruct()
@@ -96,18 +104,27 @@ final class PosixHandle extends ProcessHandle
             $this->extraDataPipeCallbackId = null;
         }
 
-        if ($this->joinDeferred->isComplete()) {
+        if ($this->status === ProcessStatus::Ended) {
+            $this->reapShell();
             return;
         }
 
         self::asyncWaitPid($this->shellPid);
     }
 
+    public function reapShell(): void
+    {
+        if (\extension_loaded('pcntl')) {
+            do {
+                $result = \pcntl_waitpid($this->shellPid, $status);
+            } while ($result === -1 && \pcntl_get_last_error() === \PCNTL_EINTR);
+        }
+    }
+
     #[\Override]
     public function wait(): void
     {
-        if (\extension_loaded('pcntl')) {
-            \pcntl_waitpid($this->pid, $status);
-        }
+        // Do not block the shutdown handler before ProcHolder destruction terminates the process.
+        self::hasChildExited($this->shellPid);
     }
 }
