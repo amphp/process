@@ -20,6 +20,8 @@
         "escapeArgument",
         "IS_WINDOWS",
         "posix_kill",
+        "posix_get_last_error",
+        "posix_strerror",
         "pcntl_waitpid",
         "WNOHANG"
     ],

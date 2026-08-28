@@ -6,6 +6,7 @@ use Amp\CancelledException;
 use Amp\Future;
 use Amp\PHPUnit\AsyncTestCase;
 use Amp\Process\Process;
+use Amp\Process\ProcessException;
 use Amp\TimeoutCancellation;
 use const Amp\Process\IS_WINDOWS;
 use function Amp\async;
@@ -257,6 +258,42 @@ class ProcessTest extends AsyncTestCase
         $process->signal(\SIGTERM);
 
         self::assertSame(42, $process->join());
+    }
+
+    /**
+     * @requires extension posix
+     */
+    public function testSignalThrowsIfDeliveryFails(): void
+    {
+        $process = Process::start(self::CMD_PROCESS_SLOW);
+
+        try {
+            $this->expectException(ProcessException::class);
+            $this->expectExceptionMessage('Failed to send signal 9999');
+            $process->signal(9999);
+        } finally {
+            $process->kill();
+            $process->join();
+        }
+    }
+
+    /**
+     * @requires extension posix
+     */
+    public function testSignalIgnoresProcessThatAlreadyExited(): void
+    {
+        $process = Process::start('exit 0');
+
+        // Keep the event loop paused so Process status is not updated before the OS process exits.
+        $isRunning = true;
+        for ($attempt = 0; $attempt < 1000 && $isRunning; ++$attempt) {
+            $isRunning = \posix_kill($process->getPid(), 0);
+            \usleep(1000);
+        }
+
+        self::assertFalse($isRunning);
+        $process->signal(0);
+        self::assertSame(0, $process->join());
     }
 
     public function testCancellation(): void
