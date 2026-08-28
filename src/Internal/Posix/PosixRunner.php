@@ -22,6 +22,8 @@ use Revolt\EventLoop;
  */
 final class PosixRunner implements ProcessRunner
 {
+    private const ESRCH = 3;
+
     use ForbidCloning;
     use ForbidSerialization;
 
@@ -179,7 +181,25 @@ final class PosixRunner implements ProcessRunner
     public function signal(ProcessHandle $handle, int $signal): void
     {
         /** @noinspection PhpComposerExtensionStubsInspection */
-        \posix_kill($handle->pid, $signal);
+        if (\posix_kill($handle->pid, $signal)) {
+            return;
+        }
+
+        $error = \posix_get_last_error();
+        if ($error === self::ESRCH) {
+            return;
+        }
+
+        throw new ProcessException(
+            \sprintf(
+                "Failed to send signal %d to process %d: Errno: %d; %s",
+                $signal,
+                $handle->pid,
+                $error,
+                \posix_strerror($error),
+            ),
+            $error,
+        );
     }
 
     #[\Override]
