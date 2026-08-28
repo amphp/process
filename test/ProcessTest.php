@@ -149,7 +149,7 @@ class ProcessTest extends AsyncTestCase
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
-    public function testKillReapsShellWhileProcessIsRetained(): void
+    public function testKillReapsShellWithPcntlWhileProcessIsRetained(): void
     {
         $process = Process::start(self::CMD_PROCESS_SLOW);
         $process->kill();
@@ -163,6 +163,35 @@ class ProcessTest extends AsyncTestCase
         self::assertSame(-1, $remainingChildPid);
         self::assertSame(\PCNTL_ECHILD, $error);
         self::assertSame(137, $exitCode);
+    }
+
+    public function testKillReapsShellWithoutPcntlWhileProcessIsRetained(): void
+    {
+        if (\DIRECTORY_SEPARATOR === "\\") {
+            self::markTestSkipped("Signals are not supported on Windows");
+        }
+
+        $code = \sprintf(
+            'require %s;'
+            . '$process = Amp\\Process\\Process::start("sleep 30");'
+            . '$handle = (new ReflectionProperty($process, "handle"))->getValue($process);'
+            . '$shellPid = (new ReflectionProperty($handle, "shellPid"))->getValue($handle);'
+            . '$process->kill();'
+            . 'exit(posix_kill($shellPid, 0) ? 1 : 0);',
+            \var_export(\dirname(__DIR__) . '/vendor/autoload.php', true),
+        );
+        $process = Process::start([
+            \PHP_BINARY,
+            '-d',
+            'disable_functions=pcntl_waitpid,pcntl_get_last_error',
+            '-r',
+            $code,
+        ]);
+
+        $exitCode = $process->join(new TimeoutCancellation(2));
+        $error = buffer($process->getStderr());
+
+        self::assertSame(0, $exitCode, $error);
     }
 
     /**
