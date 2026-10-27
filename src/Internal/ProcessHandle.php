@@ -14,9 +14,8 @@ abstract class ProcessHandle
 
     /**
      * @var resource
-     * @psalm-suppress UnusedProperty
      */
-    private $proc;
+    protected $proc;
 
     /** @var DeferredFuture<int> */
     public readonly DeferredFuture $joinDeferred;
