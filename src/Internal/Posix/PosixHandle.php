@@ -52,10 +52,6 @@ final class PosixHandle extends ProcessHandle
                 // Don't call proc_close here or close output streams, as there might still be stream reads
                 $stdin->get()?->close();
 
-                if (\is_resource($stream)) {
-                    \fclose($stream);
-                }
-
                 self::asyncWaitPid($shellPid);
             },
         ));
