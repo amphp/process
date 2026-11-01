@@ -175,6 +175,7 @@ final class PosixRunner implements ProcessRunner
         $handle->reference();
 
         $this->signal($handle, 9);
+
         $handle->reapShell();
     }
 
@@ -187,7 +188,7 @@ final class PosixRunner implements ProcessRunner
         }
 
         $error = \posix_get_last_error();
-        if ($error === self::ESRCH) {
+        if ($error === (\defined('PCNTL_ESRCH') ? \PCNTL_ESRCH : self::ESRCH)) {
             return;
         }
 

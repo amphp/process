@@ -25,6 +25,7 @@
         "pcntl_waitpid",
         "pcntl_get_last_error",
         "PCNTL_EINTR",
+        "PCNTL_ESRCH",
         "WNOHANG"
     ],
     "php-core-extensions": [
