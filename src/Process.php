@@ -40,6 +40,9 @@ final class Process
      *
      * @throws ProcessException If starting the process fails.
      * @throws \Error If the arguments are invalid.
+     *
+     * @psalm-taint-sink shell $command
+     * @psalm-taint-sink file $workingDirectory
      */
     public static function start(
         string|array $command,
