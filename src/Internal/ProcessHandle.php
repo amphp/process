@@ -12,11 +12,6 @@ abstract class ProcessHandle
     use ForbidCloning;
     use ForbidSerialization;
 
-    /**
-     * @var resource
-     */
-    protected $proc;
-
     /** @var DeferredFuture<int> */
     public readonly DeferredFuture $joinDeferred;
 
@@ -33,10 +28,9 @@ abstract class ProcessHandle
     /**
      * @param resource $proc
      */
-    public function __construct($proc)
+    public function __construct(protected readonly mixed $proc)
     {
-        $this->proc = $proc;
-        $this->joinDeferred = new DeferredFuture;
+        $this->joinDeferred = new DeferredFuture();
 
         /** @psalm-suppress PossiblyFalsePropertyAssignmentValue */
         $this->originalParentPid = \getmypid();
