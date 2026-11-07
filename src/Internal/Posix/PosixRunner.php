@@ -51,7 +51,7 @@ final class PosixRunner implements ProcessRunner
 
         $command = \sprintf(
             '{ (%s) <&3 3<&- 3>/dev/null & } 3<&0; trap "" INT TERM QUIT HUP;' .
-            'pid=$!; echo $pid >&3; wait $pid; RC=$?; echo $RC >&3; exit $RC',
+            'pid=$!; echo $pid >&3; wait $pid 2>/dev/null; RC=$?; echo $RC >&3; exit $RC',
             $command
         );
 
