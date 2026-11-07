@@ -371,7 +371,8 @@ class ProcessTest extends AsyncTestCase
     public function testSignal(): void
     {
         $process = Process::start(["php", __DIR__ . "/bin/signal-process.php"]);
-        delay(0.1); // Give process time to set up single handler.
+        // Wait for the signal handler: starting PHP may take longer than any fixed delay.
+        self::assertSame('ready', $process->getStdout()->read());
         $process->signal(\SIGTERM);
 
         self::assertSame(42, $process->join());
