@@ -272,6 +272,26 @@ class ProcessTest extends AsyncTestCase
         self::assertSame(IS_WINDOWS ? 1 : 137, $process->join());
     }
 
+    /**
+     * A shell reports a job killed by a signal on its stderr ("Killed: 9"), the stderr of the
+     * process: with the pipe full of output nobody read, the wrapper shell blocked writing it,
+     * and kill(), which waits for the shell to exit, never returned.
+     */
+    public function testKillWithUnreadOutput(): void
+    {
+        if (IS_WINDOWS) {
+            self::markTestSkipped('No wrapper shell on Windows');
+        }
+
+        $this->setTimeout(10);
+
+        // In another process: a kill() that never returns blocks the event loop.
+        $process = Process::start([\PHP_BINARY, __DIR__ . '/bin/kill-unread-output.php']);
+
+        self::assertSame('killed', buffer($process->getStdout(), new TimeoutCancellation(5)));
+        self::assertSame(0, $process->join());
+    }
+
     public function testCommand(): void
     {
         $process = Process::start(['cmd', '/c', 'echo', 'foo']);
